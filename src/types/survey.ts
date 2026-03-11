@@ -3,7 +3,9 @@ export type QuestionType = 'radio' | 'checkbox' | 'rating' | 'text' | 'textarea'
 export interface Question {
   id: string;
   type: QuestionType;
-  label: string;
+  label?: string;
+  title?: string;
+  description?: string;
   required: boolean;
   options?: string[];
   min?: number;

@@ -131,10 +131,16 @@ export default function SurveyRenderer({
             className="mb-5 p-5 rounded-2xl"
             style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
           >
-            <label className="block text-sm font-medium mb-3" style={{ color: colors.text }}>
-              {q.label}
+            <label className="block text-sm font-medium mb-1" style={{ color: colors.text }}>
+              {q.title || q.label}
               {q.required && <span className="ml-1" style={{ color: '#D4A0A0' }}>*</span>}
             </label>
+            {q.description && (
+              <p className="text-xs mb-3" style={{ color: colors.textLight }}>
+                {q.description}
+              </p>
+            )}
+            {!q.description && <div className="mb-3" />}
 
             {/* Radio */}
             {q.type === 'radio' && q.options && (

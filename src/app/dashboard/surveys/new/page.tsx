@@ -38,7 +38,7 @@ export default function NewSurveyPage() {
       const tmpl = surveyTemplates.find(t => t.id === selectedPreset);
       return tmpl?.questions || [];
     }
-    return customQuestions.filter(q => q.label.trim() !== '');
+    return customQuestions.filter(q => (q.title || q.label || '').trim() !== '');
   };
 
   const canProceed = (): boolean => {
