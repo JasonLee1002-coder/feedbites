@@ -40,7 +40,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
 
   // Get responses
   const { data: responses } = await adminDb
-    .from('survey_responses')
+    .from('responses')
     .select('*')
     .eq('survey_id', id)
     .order('submitted_at', { ascending: false });

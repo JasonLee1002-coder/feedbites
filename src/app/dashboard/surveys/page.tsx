@@ -34,7 +34,7 @@ export default async function SurveysPage() {
 
   if (surveyIds.length > 0) {
     const { data: responses } = await adminDb
-      .from('survey_responses')
+      .from('responses')
       .select('survey_id')
       .in('survey_id', surveyIds);
 

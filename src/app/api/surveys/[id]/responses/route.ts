@@ -39,7 +39,7 @@ export async function GET(
     }
 
     const { data: responses, error } = await adminDb
-      .from('survey_responses')
+      .from('responses')
       .select('*')
       .eq('survey_id', id)
       .order('submitted_at', { ascending: false });
@@ -84,12 +84,11 @@ export async function POST(
 
     // Create response
     const { data: response, error: responseError } = await adminDb
-      .from('survey_responses')
+      .from('responses')
       .insert({
         survey_id: id,
         answers,
         respondent_name: respondent_name || null,
-        phone: phone || null,
       })
       .select()
       .single();
@@ -121,11 +120,7 @@ export async function POST(
       } else {
         discountCode = codeData;
 
-        // Update response with discount code
-        await adminDb
-          .from('survey_responses')
-          .update({ discount_code: code })
-          .eq('id', response.id);
+        // Discount code is linked via response_id in discount_codes table
       }
     }
 

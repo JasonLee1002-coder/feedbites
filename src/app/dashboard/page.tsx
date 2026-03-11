@@ -47,7 +47,7 @@ export default async function DashboardPage() {
 
       // Get total responses
       const { count: totalResponses } = await adminDb
-        .from('survey_responses')
+        .from('responses')
         .select('*', { count: 'exact', head: true })
         .in('survey_id', surveyIds);
 
@@ -71,7 +71,7 @@ export default async function DashboardPage() {
 
       // Get recent responses
       const { data: recent } = await adminDb
-        .from('survey_responses')
+        .from('responses')
         .select('id, respondent_name, submitted_at, survey_id')
         .in('survey_id', surveyIds)
         .order('submitted_at', { ascending: false })
