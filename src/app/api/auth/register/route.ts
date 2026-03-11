@@ -1,4 +1,4 @@
-import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
+import { createServiceSupabase } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
@@ -9,24 +9,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '請填寫所有欄位' }, { status: 400 });
     }
 
-    const supabase = await createServerSupabase();
+    const adminDb = createServiceSupabase();
 
-    // Register user via auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    // Register user via admin API (auto-confirms email, no verification needed)
+    const { data: authData, error: authError } = await adminDb.auth.admin.createUser({
       email,
       password,
+      email_confirm: true,
     });
 
     if (authError) {
-      if (authError.message.includes('already registered')) {
+      if (authError.message.includes('already registered') || authError.message.includes('already been registered')) {
         return NextResponse.json({ error: '此 Email 已註冊' }, { status: 400 });
       }
       return NextResponse.json({ error: authError.message }, { status: 400 });
     }
 
-    // Create store record using service role (server-side only)
+    // Create store record
     if (authData.user) {
-      const adminDb = createServiceSupabase();
       const { error: storeError } = await adminDb.from('stores').insert({
         user_id: authData.user.id,
         email,
