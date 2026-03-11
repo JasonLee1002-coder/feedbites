@@ -5,8 +5,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import type { Question, ThemeColors, DiscountTier } from '@/types/survey';
 
-const EMOJI_LABELS = ['😢', '😕', '😐', '😊', '😍'];
-const EMOJI_TEXTS = ['非常不滿意', '不滿意', '普通', '滿意', '非常滿意'];
+const EMOJI_LABELS = ['😫', '😕', '😐', '😊', '🤩'];
+const EMOJI_TEXTS = ['不太行', '還好', '普通', '不錯', '超讚！'];
+const EMOJI_COLORS = ['#FF6B6B', '#FFB74D', '#90A4AE', '#66BB6A', '#FFD700'];
+
+/* Rating faces (used for 1-5 rating type) */
+const RATING_FACES = ['😣', '😕', '😐', '🙂', '😄'];
+const RATING_LABELS = ['1', '2', '3', '4', '5'];
 
 interface SurveyRendererProps {
   questions: Question[];
@@ -466,7 +471,7 @@ export default function SurveyRenderer({
     exit: (dir: number) => ({ x: dir > 0 ? -200 : 200, opacity: 0 }),
   };
 
-  /* ───── helper: render pill ───── */
+  /* ───── helper: render option button (card-style, not boring pill) ───── */
   const renderPill = (
     opt: string,
     isSelected: boolean,
@@ -476,62 +481,65 @@ export default function SurveyRenderer({
     <motion.button
       key={opt}
       onClick={onClick}
-      whileTap={{ scale: 0.95 }}
-      animate={{
-        background: isSelected
-          ? `linear-gradient(135deg, ${colors.primaryLight}, ${colors.primary})`
-          : colors.background,
-        borderColor: isSelected ? colors.primary : colors.border,
-      }}
-      transition={springSmooth}
+      whileTap={{ scale: 0.92 }}
+      animate={isSelected ? { scale: [1, 1.05, 1] } : { scale: 1 }}
+      transition={springBounce}
       layout
-      className={`${size === 'sm' ? 'px-3 py-1.5 text-xs' : 'px-4 py-2 text-sm'} rounded-full transition-colors`}
+      className={`${size === 'sm' ? 'px-3 py-2 text-xs' : 'px-4 py-2.5 text-sm'} rounded-xl font-medium transition-all relative overflow-hidden`}
       style={{
         background: isSelected
-          ? `linear-gradient(135deg, ${colors.primaryLight}, ${colors.primary})`
-          : colors.background,
+          ? `linear-gradient(135deg, ${colors.primary}, ${colors.primaryDark || colors.primary})`
+          : colors.surface,
         color: isSelected ? 'white' : colors.text,
-        border: `1px solid ${isSelected ? colors.primary : colors.border}`,
+        border: `2px solid ${isSelected ? colors.primary : colors.border}`,
+        boxShadow: isSelected ? `0 4px 12px ${colors.primary}30` : 'none',
       }}
     >
+      {/* Selection checkmark */}
+      {isSelected && (
+        <motion.span
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="inline-block mr-1"
+        >
+          ✓
+        </motion.span>
+      )}
       {opt}
     </motion.button>
   );
 
-  /* ───── helper: render rating ───── */
+  /* ───── helper: render rating (emoji faces instead of numbers) ───── */
   const renderRating = (qId: string, compact = false) => (
-    <div className="flex gap-0 rounded-xl overflow-hidden" style={{ border: `1px solid ${colors.border}` }}>
+    <div className="flex gap-2 justify-between">
       {[1, 2, 3, 4, 5].map(n => {
         const selected = answers[qId] === String(n);
+        const face = RATING_FACES[n - 1];
+        const emojiColor = EMOJI_COLORS[n - 1];
         return (
           <motion.button
             key={n}
             onClick={() => setAnswer(qId, String(n), 'rating')}
-            whileTap={{ scale: 0.92 }}
-            animate={{
-              backgroundColor: selected ? `${colors.primary}20` : colors.background,
-            }}
-            transition={springSmooth}
-            className={`flex-1 ${compact ? 'py-2 text-sm' : 'py-3'} text-center transition-all relative`}
+            whileTap={{ scale: 0.85 }}
+            animate={selected ? { scale: [1, 1.15, 1.05] } : { scale: 1 }}
+            transition={springBounce}
+            className={`flex-1 flex flex-col items-center gap-1 ${compact ? 'py-2' : 'py-3'} rounded-xl relative`}
             style={{
-              background: selected ? `${colors.primary}20` : colors.background,
-              color: selected ? colors.primary : colors.textLight,
-              fontWeight: selected ? 700 : 400,
-              fontSize: compact ? undefined : '18px',
-              borderRight: n < 5 ? `1px solid ${colors.border}` : 'none',
+              background: selected ? `${emojiColor}15` : colors.background,
+              border: `2px solid ${selected ? emojiColor : colors.border}`,
+              boxShadow: selected ? `0 3px 12px ${emojiColor}25` : 'none',
             }}
           >
-            {n}
-            {/* Golden pulse for selected star */}
-            {selected && (
-              <motion.div
-                className="absolute inset-0 rounded-none"
-                initial={{ opacity: 0.6 }}
-                animate={{ opacity: 0 }}
-                transition={{ duration: 0.8 }}
-                style={{ background: '#FFD70030' }}
-              />
-            )}
+            <motion.span
+              className={compact ? 'text-xl' : 'text-2xl'}
+              animate={selected ? { rotate: [0, -8, 8, 0] } : {}}
+              transition={selected ? { repeat: Infinity, duration: 2, ease: 'easeInOut' } : {}}
+            >
+              {face}
+            </motion.span>
+            <span className="text-[10px] font-medium" style={{ color: selected ? emojiColor : colors.textLight }}>
+              {RATING_LABELS[n - 1]}
+            </span>
           </motion.button>
         );
       })}
@@ -1165,42 +1173,51 @@ export default function SurveyRenderer({
                     </>
                   )}
 
-                  {/* Emoji rating */}
+                  {/* Emoji rating — BIG expressive faces */}
                   {q.type === 'emoji-rating' && (
-                    <div className="flex justify-between gap-1">
+                    <div className="flex justify-between gap-2">
                       {EMOJI_LABELS.map((emoji, i) => {
                         const val = String(i + 1);
                         const selected = answers[q.id] === val;
+                        const emojiColor = EMOJI_COLORS[i];
                         return (
                           <motion.button
                             key={i}
                             onClick={() => setAnswer(q.id, val, 'emoji-rating')}
-                            whileTap={{ scale: 0.9 }}
-                            animate={{
-                              scale: selected ? [1, 1.3, 1] : 1,
-                              borderColor: selected ? colors.primary : 'transparent',
-                            }}
+                            whileTap={{ scale: 0.85 }}
+                            animate={selected ? { scale: [1, 1.2, 1.05] } : { scale: 1 }}
                             transition={springBounce}
-                            className="flex-1 flex flex-col items-center gap-1 py-3 rounded-xl"
+                            className="flex-1 flex flex-col items-center gap-1.5 py-3 rounded-2xl relative overflow-hidden"
                             style={{
-                              background: selected ? `${colors.primary}15` : 'transparent',
-                              border: `2px solid ${selected ? colors.primary : 'transparent'}`,
+                              background: selected ? `${emojiColor}20` : 'transparent',
+                              border: `2.5px solid ${selected ? emojiColor : colors.border}`,
+                              boxShadow: selected ? `0 4px 16px ${emojiColor}30` : 'none',
                             }}
                           >
+                            {/* Glow ring behind emoji when selected */}
+                            {selected && (
+                              <motion.div
+                                className="absolute inset-0 rounded-2xl"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: [0.3, 0.1, 0.3] }}
+                                transition={{ repeat: Infinity, duration: 2 }}
+                                style={{ background: `radial-gradient(circle, ${emojiColor}30, transparent 70%)` }}
+                              />
+                            )}
                             <motion.span
-                              className="text-2xl"
-                              animate={selected ? { scale: [1, 1.15, 1] } : {}}
-                              transition={{
-                                repeat: selected ? Infinity : 0,
-                                duration: 2,
-                                ease: 'easeInOut',
-                              }}
+                              className="text-4xl relative z-10"
+                              animate={selected
+                                ? { scale: [1, 1.15, 1], rotate: [0, -5, 5, 0] }
+                                : { scale: 1 }}
+                              transition={selected
+                                ? { repeat: Infinity, duration: 2.5, ease: 'easeInOut' }
+                                : {}}
                             >
                               {emoji}
                             </motion.span>
                             <span
-                              className="text-[10px]"
-                              style={{ color: selected ? colors.primary : colors.textLight }}
+                              className="text-[10px] font-medium relative z-10"
+                              style={{ color: selected ? emojiColor : colors.textLight }}
                             >
                               {EMOJI_TEXTS[i]}
                             </span>
@@ -1210,13 +1227,13 @@ export default function SurveyRenderer({
                     </div>
                   )}
 
-                  {/* Text */}
+                  {/* Text — chat-bubble style */}
                   {q.type === 'text' && (
                     <input
                       type="text"
                       value={(answers[q.id] as string) || ''}
                       onChange={e => setAnswer(q.id, e.target.value, 'text')}
-                      placeholder={q.placeholder || ''}
+                      placeholder={q.placeholder || '說說你的想法...'}
                       className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
                       style={{
                         background: colors.background,
@@ -1228,12 +1245,12 @@ export default function SurveyRenderer({
                     />
                   )}
 
-                  {/* Textarea */}
+                  {/* Textarea — chat style */}
                   {q.type === 'textarea' && (
                     <textarea
                       value={(answers[q.id] as string) || ''}
                       onChange={e => setAnswer(q.id, e.target.value, 'textarea')}
-                      placeholder={q.placeholder || ''}
+                      placeholder={q.placeholder || '在這裡暢所欲言吧～ 💬'}
                       rows={4}
                       className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-y transition-all"
                       style={{
