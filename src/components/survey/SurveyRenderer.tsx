@@ -26,7 +26,7 @@ interface SurveyRendererProps {
 const springBounce = { type: 'spring' as const, stiffness: 400, damping: 17 };
 const springSmooth = { type: 'spring' as const, stiffness: 300, damping: 24 };
 
-/* ───── XP config ───── */
+/* ───── XP (點數) config ───── */
 const XP_MAP: Record<string, number> = {
   radio: 10,
   checkbox: 10,
@@ -40,6 +40,35 @@ const XP_MAP: Record<string, number> = {
 };
 
 const LEVEL_THRESHOLDS = [0, 50, 120, 200];
+
+/* ───── Default display tiers ───── */
+const DEFAULT_DISPLAY_TIERS = [
+  { name: '銅牌', emoji: '🥉', min_xp: 0, color: '#CD7F32', colorDark: '#8B5A2B' },
+  { name: '銀牌', emoji: '🥈', min_xp: 51, color: '#C0C0C0', colorDark: '#808080' },
+  { name: '金牌', emoji: '🥇', min_xp: 121, color: '#FFD700', colorDark: '#DAA520' },
+  { name: '鑽石', emoji: '💎', min_xp: 201, color: '#B9F2FF', colorDark: '#5BC0DE' },
+];
+
+function buildDisplayTiers(discountMode?: string, discountTiers?: DiscountTier[] | null) {
+  if (discountMode === 'advanced' && discountTiers && discountTiers.length > 0) {
+    return discountTiers.map((t, i) => ({
+      name: DEFAULT_DISPLAY_TIERS[i]?.name || `Lv.${i + 1}`,
+      emoji: DEFAULT_DISPLAY_TIERS[i]?.emoji || '⭐',
+      min_xp: t.min_xp ?? DEFAULT_DISPLAY_TIERS[i]?.min_xp ?? i * 50,
+      color: DEFAULT_DISPLAY_TIERS[i]?.color || '#FFD700',
+      colorDark: DEFAULT_DISPLAY_TIERS[i]?.colorDark || '#DAA520',
+    }));
+  }
+  return DEFAULT_DISPLAY_TIERS;
+}
+
+function getCurrentTierIndex(xp: number, tiers: typeof DEFAULT_DISPLAY_TIERS) {
+  for (let i = tiers.length - 1; i >= 0; i--) {
+    if (xp >= tiers[i].min_xp) return i;
+  }
+  return 0;
+}
+
 function getLevel(xp: number) {
   for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
     if (xp >= LEVEL_THRESHOLDS[i]) return i + 1;
@@ -63,7 +92,7 @@ interface Achievement {
 const ACHIEVEMENTS: Achievement[] = [
   { id: 'streak3', icon: '🔥', title: '連答達人', condition: '連續快速回答 3 題' },
   { id: 'speed5', icon: '⚡', title: '閃電手', condition: '30 秒內回答 5 題' },
-  { id: 'perfect', icon: '🎯', title: '精準評分', condition: '給出 5/5 滿分' },
+  { id: 'perfect', icon: '🎯', title: '滿分評價', condition: '給出 5/5 滿分' },
   { id: 'writer', icon: '📝', title: '認真回饋', condition: '文字回饋超過 20 字' },
   { id: 'complete', icon: '🏆', title: '問卷達人', condition: '完成 100% 問卷' },
 ];
@@ -116,6 +145,8 @@ export default function SurveyRenderer({
   discountValue,
   onSubmit,
   isSubmitting,
+  discountMode,
+  discountTiers,
 }: SurveyRendererProps) {
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [currentSection, setCurrentSection] = useState(0);
@@ -123,7 +154,7 @@ export default function SurveyRenderer({
   const [combo, setCombo] = useState(0);
   const comboTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // XP system
+  // XP (折扣點數) system
   const [xp, setXp] = useState(0);
   const [displayXp, setDisplayXp] = useState(0);
   const [floatingXp, setFloatingXp] = useState<{ amount: number; id: number } | null>(null);
@@ -132,7 +163,7 @@ export default function SurveyRenderer({
   const [levelUpVisible, setLevelUpVisible] = useState(false);
 
   // AI Companion
-  const [companionMsg, setCompanionMsg] = useState<string>('嗨！我是小饗，今天來陪你填問卷 🎯');
+  const [companionMsg, setCompanionMsg] = useState<string>('嗨！我是小饗，每答一題都會累積折扣點數喔 🪙');
   const [companionVisible, setCompanionVisible] = useState(true);
   const [companionTyped, setCompanionTyped] = useState('');
   const companionTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -156,6 +187,20 @@ export default function SurveyRenderer({
 
   // Card glow on answer
   const [glowCardId, setGlowCardId] = useState<string | null>(null);
+
+  /* ───── Display tiers ───── */
+  const displayTiers = useMemo(
+    () => buildDisplayTiers(discountMode, discountTiers),
+    [discountMode, discountTiers],
+  );
+
+  const currentTierIndex = getCurrentTierIndex(xp, displayTiers);
+  const currentTier = displayTiers[currentTierIndex];
+  const nextTier = displayTiers[currentTierIndex + 1] || null;
+
+  // Max XP for progress bar (use last tier's min_xp + some buffer)
+  const maxXpForBar = displayTiers[displayTiers.length - 1].min_xp + 50;
+  const xpBarProgress = Math.min(100, (xp / maxXpForBar) * 100);
 
   /* ───── Sections ───── */
   const sections = useMemo(() => {
@@ -238,9 +283,9 @@ export default function SurveyRenderer({
           triggerAchievement('complete');
         }
         const msgs: Record<number, string> = {
-          25: '已經完成四分之一了，你好棒！',
-          50: '一半了！快到了喔～加油！🔥',
-          75: '剩最後幾題了！衝刺！🚀',
+          25: '已經四分之一了！點數越多折扣越好喔！',
+          50: '一半了！你的點數快要升級了～加油！🔥',
+          75: '剩最後幾題！衝刺拿更好的獎勵！🚀',
           100: '全部完成！太厲害了！🎉',
         };
         showCompanionMessage({ text: msgs[m], priority: 8 });
@@ -304,7 +349,7 @@ export default function SurveyRenderer({
     const earnedXp = baseXp * multiplier;
     setXp(prev => prev + earnedXp);
 
-    // Floating XP
+    // Floating 點數
     floatingIdRef.current += 1;
     setFloatingXp({ amount: earnedXp, id: floatingIdRef.current });
 
@@ -344,7 +389,7 @@ export default function SurveyRenderer({
 
     // Combo companion messages
     if (newCombo === 3) {
-      showCompanionMessage({ text: `哇！連擊 x${newCombo}！好快 ⚡`, priority: 5 });
+      showCompanionMessage({ text: `哇！連擊 x${newCombo}！點數加倍中 ⚡`, priority: 5 });
     } else if (newCombo === 5) {
       showCompanionMessage({ text: '太猛了！你是問卷之神！👑', priority: 6 });
     }
@@ -363,7 +408,7 @@ export default function SurveyRenderer({
     // First answer encouragement
     if (Object.keys(answers).filter(k => !k.endsWith('_reason')).length === 0) {
       setTimeout(() => {
-        showCompanionMessage({ text: '不錯喔！繼續保持～ 💪', priority: 3 });
+        showCompanionMessage({ text: '不錯喔！已經開始累積點數了～ 💪', priority: 3 });
       }, 300);
     }
   }, [combo, answers, colors, triggerAchievement, showCompanionMessage]);
@@ -402,7 +447,7 @@ export default function SurveyRenderer({
     setCurrentSection(prev => prev + 1);
     // Last section companion message
     if (currentSection + 1 === sections.length - 1) {
-      showCompanionMessage({ text: '最後一步了，加油加油！🎊', priority: 7 });
+      showCompanionMessage({ text: '最後一步了！看看你能拿到什麼等級的獎勵 🎊', priority: 7 });
     }
   }
 
@@ -602,53 +647,6 @@ export default function SurveyRenderer({
         )}
       </AnimatePresence>
 
-      {/* ───── XP HUD (top-right) ───── */}
-      <div className="fixed top-3 right-3 z-[60] flex flex-col items-end gap-1">
-        <motion.div
-          className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold"
-          style={{
-            background: 'linear-gradient(135deg, #1a1a2e, #16213e)',
-            color: '#FFD700',
-            border: '1px solid #FFD70040',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
-          }}
-          initial={{ x: 100, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ delay: 0.5, ...springBounce }}
-        >
-          <span style={{ fontSize: '10px', color: '#aaa' }}>Lv.{currentLevel}</span>
-          <span>✨ {displayXp} XP</span>
-          {combo >= 3 && (
-            <motion.span
-              key={`mult-${combo}`}
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="text-[10px] px-1.5 py-0.5 rounded-full"
-              style={{ background: '#FF6B3520', color: '#FF6B35' }}
-            >
-              x2 XP!
-            </motion.span>
-          )}
-        </motion.div>
-
-        {/* Floating +XP text */}
-        <AnimatePresence>
-          {floatingXp && (
-            <motion.div
-              key={floatingXp.id}
-              className="text-sm font-bold pointer-events-none"
-              style={{ color: '#FFD700' }}
-              initial={{ opacity: 1, y: 0 }}
-              animate={{ opacity: 0, y: -40 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.8, ease: 'easeOut' }}
-            >
-              +{floatingXp.amount} XP
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
       {/* ───── Level Up overlay ───── */}
       <AnimatePresence>
         {levelUpVisible && (
@@ -668,7 +666,7 @@ export default function SurveyRenderer({
               animate={{ scale: [0.3, 1.4, 1], opacity: [0, 1, 1, 0] }}
               transition={{ duration: 2, times: [0, 0.2, 0.6, 1] }}
             >
-              LEVEL UP!
+              升級了！
             </motion.div>
           </motion.div>
         )}
@@ -808,16 +806,44 @@ export default function SurveyRenderer({
         )}
       </div>
 
-      {/* ───── Game HUD Progress Bar ───── */}
-      <div className="sticky top-0 z-50 px-4 pt-3 pb-2" style={{ background: colors.background }}>
-        {/* Main progress bar */}
-        <div className="relative">
-          <div className="h-3 rounded-full overflow-hidden relative" style={{ background: colors.border }}>
+      {/* ───── STICKY GAME HUD - always visible at top ───── */}
+      <div className="sticky top-0 z-50" style={{ background: colors.background }}>
+        {/* Main HUD bar */}
+        <div className="px-4 pt-2 pb-1">
+          {/* Top row: Level badge + Points counter + Tier indicator */}
+          <div className="flex items-center justify-between mb-1.5">
+            {/* Left: Level badge */}
+            <div className="flex items-center gap-2">
+              <span
+                className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
+                style={{ background: `linear-gradient(135deg, ${currentTier.color}, ${currentTier.colorDark})` }}
+              >
+                {currentTier.emoji} {currentTier.name}
+              </span>
+              <motion.span
+                className="text-xs font-mono font-bold"
+                style={{ color: colors.primary }}
+                key={displayXp}
+              >
+                {displayXp} 點
+              </motion.span>
+            </div>
+
+            {/* Right: Next tier hint */}
+            <div className="text-[10px]" style={{ color: colors.textLight }}>
+              {nextTier
+                ? `再 ${nextTier.min_xp - xp} 點 → ${nextTier.emoji} ${nextTier.name}`
+                : '最高等級！'}
+            </div>
+          </div>
+
+          {/* Progress bar with tier markers */}
+          <div className="relative h-2 rounded-full overflow-hidden" style={{ background: colors.border }}>
             <motion.div
               className="h-full rounded-full relative overflow-hidden"
               style={{ background: `linear-gradient(90deg, ${colors.primaryLight}, ${colors.primary}, #FFD700)` }}
               initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
+              animate={{ width: `${xpBarProgress}%` }}
               transition={{ duration: 0.5, ease: 'easeOut' }}
             >
               {/* Shimmer */}
@@ -829,59 +855,84 @@ export default function SurveyRenderer({
                 }}
               />
             </motion.div>
+            {/* Tier marker dots on the progress bar */}
+            {displayTiers.slice(1).map((tier, i) => {
+              const markerPos = Math.min(100, (tier.min_xp / maxXpForBar) * 100);
+              return (
+                <div
+                  key={i}
+                  className="absolute top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full"
+                  style={{
+                    left: `${markerPos}%`,
+                    background: xp >= tier.min_xp ? '#FFD700' : colors.textLight,
+                    border: `1px solid ${colors.background}`,
+                    transform: 'translate(-50%, -50%)',
+                  }}
+                  title={`${tier.emoji} ${tier.name}: ${tier.min_xp} 點`}
+                />
+              );
+            })}
           </div>
 
-          {/* Level badge on bar */}
-          <motion.div
-            className="absolute -top-1 -left-1 px-2 py-0.5 rounded-full text-[10px] font-black"
-            style={{
-              background: 'linear-gradient(135deg, #FFD700, #FFA000)',
-              color: '#1a1a2e',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
-            }}
-            animate={levelUpVisible ? { scale: [1, 1.3, 1] } : {}}
-            transition={springBounce}
-          >
-            Lv.{currentLevel}
-          </motion.div>
-        </div>
-
-        {/* Info row below bar */}
-        <div className="flex justify-between mt-2 text-xs" style={{ color: colors.textLight }}>
-          <span>{section.title}</span>
-          <div className="flex items-center gap-2">
-            {/* Enhanced Combo counter */}
-            <AnimatePresence>
-              {combo >= 2 && (
-                <motion.span
-                  key={combo}
-                  initial={{ scale: 0.5, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.5, opacity: 0 }}
-                  transition={springBounce}
-                  className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full font-bold"
-                  style={{
-                    background: combo >= 5
-                      ? 'linear-gradient(135deg, #FFD700, #FF6B35)'
-                      : combo >= 3
-                        ? 'linear-gradient(135deg, #FF6B35, #FF4444)'
+          {/* Combo indicator (only when active) + progress percentage */}
+          <div className="flex justify-between items-center mt-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px]" style={{ color: colors.textLight }}>
+                {section.title}
+              </span>
+              <AnimatePresence>
+                {combo >= 2 && (
+                  <motion.span
+                    key={combo}
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.5, opacity: 0 }}
+                    transition={springBounce}
+                    className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full font-bold"
+                    style={{
+                      background: combo >= 5
+                        ? 'linear-gradient(135deg, #FFD700, #FF6B35)'
                         : 'linear-gradient(135deg, #FF6B35, #FF4444)',
-                    color: 'white',
-                    fontSize: combo >= 7 ? '13px' : combo >= 5 ? '12px' : '10px',
-                    boxShadow: combo >= 5 ? '0 0 12px #FFD70060' : 'none',
-                  }}
+                      color: 'white',
+                      fontSize: combo >= 7 ? '11px' : combo >= 5 ? '10px' : '9px',
+                      boxShadow: combo >= 5 ? '0 0 12px #FFD70060' : 'none',
+                    }}
+                  >
+                    {combo >= 5 ? '👑' : '🔥'} x{combo}
+                    {combo >= 3 && <span className="ml-0.5 text-[8px]">點數x2</span>}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </div>
+            <span className="text-[10px]" style={{ color: colors.textLight }}>{progress}%</span>
+          </div>
+
+          {/* Floating +點 text */}
+          <div className="relative h-0">
+            <AnimatePresence>
+              {floatingXp && (
+                <motion.div
+                  key={floatingXp.id}
+                  className="absolute right-0 -top-2 text-sm font-bold pointer-events-none"
+                  style={{ color: '#FFD700' }}
+                  initial={{ opacity: 1, y: 0 }}
+                  animate={{ opacity: 0, y: -40 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.8, ease: 'easeOut' }}
                 >
-                  {combo >= 5 ? '👑' : combo >= 3 ? '🔥' : '🔥'} x{combo}
-                </motion.span>
+                  +{floatingXp.amount} 點
+                </motion.div>
               )}
             </AnimatePresence>
-            <span>{progress}%</span>
           </div>
         </div>
+
+        {/* Thin separator line */}
+        <div className="h-px" style={{ background: colors.border }} />
       </div>
 
       {/* ───── Section navigation tabs ───── */}
-      <div className="flex gap-1 px-4 pb-4 overflow-x-auto">
+      <div className="flex gap-1 px-4 pt-3 pb-4 overflow-x-auto">
         {sections.map((s, i) => (
           <motion.button
             key={i}
