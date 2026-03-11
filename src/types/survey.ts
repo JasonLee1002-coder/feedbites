@@ -24,6 +24,17 @@ export interface Question {
   subQuestions?: Question[];   // For dish-group: the questions within
 }
 
+export type DiscountMode = 'basic' | 'advanced';
+
+export interface DiscountTier {
+  name: string;           // "Bronze", "Silver", etc.
+  emoji: string;          // "🥉", "🥈", etc.
+  min_xp: number;         // inclusive lower bound
+  max_xp: number | null;  // null = no upper limit
+  discount_type: 'percentage' | 'fixed' | 'freebie' | 'custom_text';
+  discount_value: string;
+}
+
 export interface Survey {
   id: string;
   store_id: string;
@@ -36,6 +47,8 @@ export interface Survey {
   discount_value: string;
   discount_expiry_days: number;
   discount_enabled: boolean;
+  discount_mode: DiscountMode;
+  discount_tiers?: DiscountTier[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -46,6 +59,7 @@ export interface SurveyResponse {
   answers: Record<string, string | string[]>;
   respondent_name?: string;
   discount_code?: string;
+  xp_earned?: number | null;
   submitted_at: string;
 }
 

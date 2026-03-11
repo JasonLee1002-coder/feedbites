@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import type { Survey, ThemeColors, TemplateId } from '@/types/survey';
+import type { Survey, ThemeColors, TemplateId, DiscountTier } from '@/types/survey';
 import { getTemplate } from '@/lib/templates';
 import SurveyRenderer from '@/components/survey/SurveyRenderer';
 import DiscountCodeDisplay from '@/components/survey/DiscountCodeDisplay';
@@ -18,12 +18,16 @@ interface SurveyWithStore extends Survey {
 interface DiscountResult {
   code: string;
   expires_at: string;
+  discount_value: string;
+  tier_name?: string;
+  tier_emoji?: string;
 }
 
 export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
   const [step, setStep] = useState<SurveyStep>('survey');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
+  const [xpEarned, setXpEarned] = useState(0);
   const [phone, setPhone] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [discountResult, setDiscountResult] = useState<DiscountResult | null>(null);
@@ -34,17 +38,18 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
   const storeName = survey.stores?.store_name || '';
   const logoUrl = survey.stores?.logo_url || null;
 
-  const handleSurveySubmit = useCallback((surveyAnswers: Record<string, string | string[]>) => {
+  const handleSurveySubmit = useCallback((surveyAnswers: Record<string, string | string[]>, xp: number) => {
     setAnswers(surveyAnswers);
+    setXpEarned(xp);
     // If discount is enabled, collect phone first; otherwise submit directly
     if (survey.discount_enabled) {
       setStep('phone');
     } else {
-      submitResponse(surveyAnswers, '');
+      submitResponse(surveyAnswers, '', xp);
     }
   }, [survey.discount_enabled]);
 
-  async function submitResponse(finalAnswers: Record<string, string | string[]>, phoneNumber: string) {
+  async function submitResponse(finalAnswers: Record<string, string | string[]>, phoneNumber: string, xpScore?: number) {
     setIsSubmitting(true);
     setSubmitError('');
 
@@ -55,6 +60,7 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
         body: JSON.stringify({
           answers: finalAnswers,
           phone: phoneNumber || undefined,
+          xp_earned: xpScore ?? xpEarned,
         }),
       });
 
@@ -69,6 +75,9 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
         setDiscountResult({
           code: data.discount_code.code,
           expires_at: data.discount_code.expires_at,
+          discount_value: data.discount_code.discount_value || survey.discount_value,
+          tier_name: data.discount_code.tier_name,
+          tier_emoji: data.discount_code.tier_emoji,
         });
       }
 
@@ -87,11 +96,11 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
       return;
     }
     setPhoneError('');
-    submitResponse(answers, phone.replace(/[-\s]/g, ''));
+    submitResponse(answers, phone.replace(/[-\s]/g, ''), xpEarned);
   }
 
   function handleSkipPhone() {
-    submitResponse(answers, '');
+    submitResponse(answers, '', xpEarned);
   }
 
   // ─── Step: Survey ───
@@ -107,6 +116,8 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
         discountValue={survey.discount_value}
         onSubmit={handleSurveySubmit}
         isSubmitting={isSubmitting}
+        discountMode={survey.discount_mode || 'basic'}
+        discountTiers={survey.discount_tiers}
       />
     );
   }
@@ -241,10 +252,14 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
     return (
       <DiscountCodeDisplay
         code={discountResult.code}
-        discountValue={survey.discount_value}
+        discountValue={discountResult.discount_value || survey.discount_value}
         expiresAt={discountResult.expires_at}
         storeName={storeName}
         colors={colors}
+        discountMode={survey.discount_mode || 'basic'}
+        tierName={discountResult.tier_name}
+        tierEmoji={discountResult.tier_emoji}
+        xpEarned={xpEarned}
       />
     );
   }

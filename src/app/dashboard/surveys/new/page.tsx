@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { templateList } from '@/lib/templates';
 import { ArrowLeft, Check, ChevronUp, ChevronDown, X, Plus, GripVertical } from 'lucide-react';
-import type { TemplateId, Question } from '@/types/survey';
+import type { TemplateId, Question, DiscountTier } from '@/types/survey';
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -251,6 +251,13 @@ export default function NewSurveyPage() {
   const [discountType, setDiscountType] = useState<'percentage' | 'fixed' | 'freebie' | 'custom_text'>('percentage');
   const [discountValue, setDiscountValue] = useState('10');
   const [discountExpiryDays, setDiscountExpiryDays] = useState(7);
+  const [discountMode, setDiscountMode] = useState<'basic' | 'advanced'>('basic');
+  const [discountTiers, setDiscountTiers] = useState<DiscountTier[]>([
+    { name: '銅牌', emoji: '🥉', min_xp: 0, max_xp: 50, discount_type: 'percentage', discount_value: '95折' },
+    { name: '銀牌', emoji: '🥈', min_xp: 51, max_xp: 120, discount_type: 'percentage', discount_value: '9折' },
+    { name: '金牌', emoji: '🥇', min_xp: 121, max_xp: 200, discount_type: 'percentage', discount_value: '85折' },
+    { name: '鑽石', emoji: '💎', min_xp: 201, max_xp: null, discount_type: 'freebie', discount_value: '免費甜點' },
+  ]);
 
   // ---------------------------------------------------------------------------
   // Derived questions
@@ -377,9 +384,11 @@ export default function NewSurveyPage() {
         template_id: selectedTemplate,
         questions: getQuestions(),
         discount_enabled: discountEnabled,
+        discount_mode: discountMode,
         discount_type: discountType,
         discount_value: discountValue,
         discount_expiry_days: discountExpiryDays,
+        discount_tiers: discountMode === 'advanced' ? discountTiers : null,
       };
 
       const res = await fetch('/api/surveys', {
@@ -880,6 +889,27 @@ export default function NewSurveyPage() {
 
           {discountEnabled && (
             <div className="space-y-4">
+              {/* Mode selector */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-[#3A3A3A] mb-3">獎勵模式</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => setDiscountMode('basic')}
+                    className={`p-4 rounded-xl border-2 text-left transition-all ${discountMode === 'basic' ? 'border-[#C5A55A] bg-[#C5A55A]/5' : 'border-[#E8E2D8] hover:border-[#C5A55A]/50'}`}>
+                    <div className="text-2xl mb-2">🎁</div>
+                    <div className="font-bold text-sm text-[#3A3A3A]">基本款</div>
+                    <div className="text-xs text-[#8A8585] mt-1">單一折扣，簡單設定<br/>適合小店家快速上手</div>
+                  </button>
+                  <button onClick={() => setDiscountMode('advanced')}
+                    className={`p-4 rounded-xl border-2 text-left transition-all ${discountMode === 'advanced' ? 'border-[#C5A55A] bg-[#C5A55A]/5' : 'border-[#E8E2D8] hover:border-[#C5A55A]/50'}`}>
+                    <div className="text-2xl mb-2">🏆</div>
+                    <div className="font-bold text-sm text-[#3A3A3A]">進階款</div>
+                    <div className="text-xs text-[#8A8585] mt-1">依填答積分分級獎勵<br/>鼓勵顧客認真作答</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Basic mode: existing discount settings */}
+              {discountMode === 'basic' && (<>
               <div className="bg-white rounded-xl border border-[#E8E2D8] p-5">
                 <label className="block text-sm font-medium text-[#3A3A3A] mb-3">折扣類型</label>
                 <div className="grid grid-cols-2 gap-3">
@@ -945,6 +975,99 @@ export default function NewSurveyPage() {
                   <span className="text-sm text-[#8A8585]">天</span>
                 </div>
               </div>
+              </>)}
+
+              {/* Advanced mode: tier editor */}
+              {discountMode === 'advanced' && (
+              <div className="space-y-4">
+                <p className="text-xs text-[#8A8585]">顧客填答問卷會獲得 XP 積分，積分越高獎勵越好！</p>
+
+                {discountTiers.map((tier, idx) => (
+                  <div key={idx} className="p-4 rounded-xl border border-[#E8E2D8] bg-white space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{tier.emoji}</span>
+                        <input
+                          value={tier.name}
+                          onChange={e => {
+                            const next = [...discountTiers];
+                            next[idx] = { ...next[idx], name: e.target.value };
+                            setDiscountTiers(next);
+                          }}
+                          className="font-bold text-sm text-[#3A3A3A] bg-transparent border-b border-dashed border-[#E8E2D8] focus:border-[#C5A55A] outline-none w-20"
+                        />
+                      </div>
+                      {discountTiers.length > 1 && (
+                        <button onClick={() => setDiscountTiers(prev => prev.filter((_, i) => i !== idx))}
+                          className="text-xs text-red-400 hover:text-red-600">刪除</button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-[#8A8585]">最低 XP</label>
+                        <input type="number" value={tier.min_xp}
+                          onChange={e => {
+                            const next = [...discountTiers];
+                            next[idx] = { ...next[idx], min_xp: Number(e.target.value) };
+                            setDiscountTiers(next);
+                          }}
+                          className="w-full mt-1 px-3 py-2 rounded-lg border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-[#8A8585]">獎勵內容</label>
+                        <input value={tier.discount_value}
+                          onChange={e => {
+                            const next = [...discountTiers];
+                            next[idx] = { ...next[idx], discount_value: e.target.value };
+                            setDiscountTiers(next);
+                          }}
+                          placeholder="例：9折、免費甜點"
+                          className="w-full mt-1 px-3 py-2 rounded-lg border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A]"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-[#8A8585]">獎勵類型</label>
+                      <select value={tier.discount_type}
+                        onChange={e => {
+                          const next = [...discountTiers];
+                          next[idx] = { ...next[idx], discount_type: e.target.value as 'percentage' | 'fixed' | 'freebie' | 'custom_text' };
+                          setDiscountTiers(next);
+                        }}
+                        className="w-full mt-1 px-3 py-2 rounded-lg border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] bg-white">
+                        <option value="percentage">百分比折扣</option>
+                        <option value="fixed">固定金額</option>
+                        <option value="freebie">免費贈品</option>
+                        <option value="custom_text">自訂文字</option>
+                      </select>
+                    </div>
+                  </div>
+                ))}
+
+                <button onClick={() => setDiscountTiers(prev => [...prev, {
+                  name: `等級${prev.length + 1}`,
+                  emoji: '⭐',
+                  min_xp: (prev[prev.length - 1]?.max_xp || 200) + 1,
+                  max_xp: null,
+                  discount_type: 'percentage',
+                  discount_value: '',
+                }])}
+                  className="w-full py-2 rounded-xl border border-dashed border-[#C5A55A] text-[#C5A55A] text-sm hover:bg-[#C5A55A]/5 transition-colors">
+                  + 新增等級
+                </button>
+
+                <div>
+                  <label className="text-xs text-[#8A8585]">折扣碼有效天數</label>
+                  <input type="number" value={discountExpiryDays}
+                    onChange={e => setDiscountExpiryDays(Number(e.target.value) || 30)}
+                    className="w-full mt-1 px-3 py-2 rounded-lg border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A]"
+                  />
+                </div>
+              </div>
+              )}
             </div>
           )}
         </div>
@@ -995,13 +1118,20 @@ export default function NewSurveyPage() {
                   <span className="text-sm text-[#8A8585]">折扣獎勵</span>
                   <span className="text-sm text-[#3A3A3A] font-medium">
                     {discountEnabled ? (
-                      <>
-                        {discountType === 'percentage' && `${discountValue}% 折扣`}
-                        {discountType === 'fixed' && `NT$${discountValue} 折扣`}
-                        {discountType === 'freebie' && discountValue}
-                        {discountType === 'custom_text' && discountValue}
-                        <span className="text-xs text-[#8A8585] ml-2">（{discountExpiryDays} 天有效）</span>
-                      </>
+                      discountMode === 'advanced' ? (
+                        <>
+                          進階款（{discountTiers.length} 個等級）
+                          <span className="text-xs text-[#8A8585] ml-2">（{discountExpiryDays} 天有效）</span>
+                        </>
+                      ) : (
+                        <>
+                          {discountType === 'percentage' && `${discountValue}% 折扣`}
+                          {discountType === 'fixed' && `NT$${discountValue} 折扣`}
+                          {discountType === 'freebie' && discountValue}
+                          {discountType === 'custom_text' && discountValue}
+                          <span className="text-xs text-[#8A8585] ml-2">（{discountExpiryDays} 天有效）</span>
+                        </>
+                      )
                     ) : (
                       '未啟用'
                     )}
@@ -1009,6 +1139,26 @@ export default function NewSurveyPage() {
                 </div>
               </div>
             </div>
+
+            {/* Advanced tier preview */}
+            {discountEnabled && discountMode === 'advanced' && (
+              <div className="bg-white rounded-2xl border border-[#E8E2D8] p-6">
+                <h4 className="font-bold text-sm text-[#3A3A3A] mb-3">獎勵等級一覽</h4>
+                <div className="space-y-2">
+                  {discountTiers.map((tier, idx) => (
+                    <div key={idx} className="flex items-center justify-between py-2 px-3 bg-[#FAF7F2] rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{tier.emoji}</span>
+                        <span className="text-sm font-medium text-[#3A3A3A]">{tier.name}</span>
+                      </div>
+                      <div className="text-xs text-[#8A8585]">
+                        {tier.min_xp} ~ {tier.max_xp ?? '∞'} XP → <span className="text-[#3A3A3A] font-medium">{tier.discount_value}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Block structure preview */}
             <div className="bg-white rounded-2xl border border-[#E8E2D8] p-6">

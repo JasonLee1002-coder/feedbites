@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import type { Question, ThemeColors } from '@/types/survey';
+import type { Question, ThemeColors, DiscountTier } from '@/types/survey';
 
 const EMOJI_LABELS = ['😢', '😕', '😐', '😊', '😍'];
 const EMOJI_TEXTS = ['非常不滿意', '不滿意', '普通', '滿意', '非常滿意'];
@@ -16,13 +16,95 @@ interface SurveyRendererProps {
   logoUrl?: string | null;
   discountEnabled: boolean;
   discountValue: string;
-  onSubmit: (answers: Record<string, string | string[]>) => void;
+  onSubmit: (answers: Record<string, string | string[]>, xpEarned: number) => void;
   isSubmitting: boolean;
+  discountMode?: 'basic' | 'advanced';
+  discountTiers?: DiscountTier[] | null;
 }
 
 /* ───── spring presets ───── */
 const springBounce = { type: 'spring' as const, stiffness: 400, damping: 17 };
 const springSmooth = { type: 'spring' as const, stiffness: 300, damping: 24 };
+
+/* ───── XP config ───── */
+const XP_MAP: Record<string, number> = {
+  radio: 10,
+  checkbox: 10,
+  'radio-with-reason': 10,
+  rating: 15,
+  'rating-with-reason': 15,
+  'emoji-rating': 15,
+  text: 20,
+  textarea: 20,
+  number: 15,
+};
+
+const LEVEL_THRESHOLDS = [0, 50, 120, 200];
+function getLevel(xp: number) {
+  for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
+    if (xp >= LEVEL_THRESHOLDS[i]) return i + 1;
+  }
+  return 1;
+}
+function getLevelXpRange(level: number) {
+  const min = LEVEL_THRESHOLDS[level - 1] || 0;
+  const max = LEVEL_THRESHOLDS[level] || LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1] + 100;
+  return { min, max };
+}
+
+/* ───── Achievement definitions ───── */
+interface Achievement {
+  id: string;
+  icon: string;
+  title: string;
+  condition: string;
+}
+
+const ACHIEVEMENTS: Achievement[] = [
+  { id: 'streak3', icon: '🔥', title: '連答達人', condition: '連續快速回答 3 題' },
+  { id: 'speed5', icon: '⚡', title: '閃電手', condition: '30 秒內回答 5 題' },
+  { id: 'perfect', icon: '🎯', title: '精準評分', condition: '給出 5/5 滿分' },
+  { id: 'writer', icon: '📝', title: '認真回饋', condition: '文字回饋超過 20 字' },
+  { id: 'complete', icon: '🏆', title: '問卷達人', condition: '完成 100% 問卷' },
+];
+
+/* ───── AI Companion messages ───── */
+interface CompanionMessage {
+  text: string;
+  priority: number; // higher = more important
+}
+
+function miniConfetti(colors: ThemeColors) {
+  confetti({
+    particleCount: 40,
+    spread: 55,
+    origin: { y: 0.65 },
+    colors: [colors.primary, colors.primaryLight, colors.accent, '#FFD700'],
+  });
+}
+
+function megaConfetti(colors: ThemeColors) {
+  confetti({
+    particleCount: 150,
+    spread: 90,
+    origin: { y: 0.6 },
+    colors: [colors.primary, colors.primaryLight, colors.accent, '#FFD700', '#FF6B6B'],
+  });
+  setTimeout(() => {
+    confetti({
+      particleCount: 80,
+      spread: 120,
+      origin: { y: 0.5, x: 0.25 },
+      colors: [colors.primary, '#FFD700'],
+    });
+    confetti({
+      particleCount: 80,
+      spread: 120,
+      origin: { y: 0.5, x: 0.75 },
+      colors: [colors.primaryLight, '#FF6B6B'],
+    });
+  }, 250);
+}
 
 export default function SurveyRenderer({
   questions,
@@ -37,10 +119,45 @@ export default function SurveyRenderer({
 }: SurveyRendererProps) {
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [currentSection, setCurrentSection] = useState(0);
-  const [direction, setDirection] = useState(1); // 1 = forward, -1 = backward
+  const [direction, setDirection] = useState(1);
   const [combo, setCombo] = useState(0);
   const comboTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // XP system
+  const [xp, setXp] = useState(0);
+  const [displayXp, setDisplayXp] = useState(0);
+  const [floatingXp, setFloatingXp] = useState<{ amount: number; id: number } | null>(null);
+  const floatingIdRef = useRef(0);
+  const prevLevelRef = useRef(1);
+  const [levelUpVisible, setLevelUpVisible] = useState(false);
+
+  // AI Companion
+  const [companionMsg, setCompanionMsg] = useState<string>('嗨！我是小饗，今天來陪你填問卷 🎯');
+  const [companionVisible, setCompanionVisible] = useState(true);
+  const [companionTyped, setCompanionTyped] = useState('');
+  const companionTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const companionQueueRef = useRef<CompanionMessage[]>([]);
+  const companionBusyRef = useRef(false);
+
+  // Achievement system
+  const [earnedBadges, setEarnedBadges] = useState<Set<string>>(new Set());
+  const [toastBadge, setToastBadge] = useState<Achievement | null>(null);
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Speed tracking
+  const answerTimestamps = useRef<number[]>([]);
+  const sessionStartRef = useRef<number>(Date.now());
+
+  // Milestone tracking
+  const milestonesTriggered = useRef<Set<number>>(new Set());
+
+  // Combo glow
+  const [borderFlash, setBorderFlash] = useState(false);
+
+  // Card glow on answer
+  const [glowCardId, setGlowCardId] = useState<string | null>(null);
+
+  /* ───── Sections ───── */
   const sections = useMemo(() => {
     const sectionMap: Record<string, Question[]> = {};
     questions.forEach(q => {
@@ -51,7 +168,6 @@ export default function SurveyRenderer({
     return Object.entries(sectionMap).map(([title, qs]) => ({ title, questions: qs }));
   }, [questions]);
 
-  // Count actual answerable questions (exclude section-header, count dish-group subQuestions)
   const countAnswerable = (qs: Question[]): number =>
     qs.reduce((acc, q) => {
       if (q.type === 'section-header') return acc;
@@ -68,13 +184,189 @@ export default function SurveyRenderer({
   const progress = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
 
   const isLastSection = currentSection === sections.length - 1;
+  const currentLevel = getLevel(xp);
+  const { min: lvMin, max: lvMax } = getLevelXpRange(currentLevel);
+  const levelProgress = Math.min(100, ((xp - lvMin) / (lvMax - lvMin)) * 100);
 
-  const setAnswer = useCallback((id: string, value: string | string[]) => {
+  /* ───── Animate XP counter rolling up ───── */
+  useEffect(() => {
+    if (displayXp === xp) return;
+    const diff = xp - displayXp;
+    const step = Math.max(1, Math.ceil(diff / 15));
+    const timer = setTimeout(() => {
+      setDisplayXp(prev => Math.min(prev + step, xp));
+    }, 30);
+    return () => clearTimeout(timer);
+  }, [displayXp, xp]);
+
+  /* ───── Level-up detection ───── */
+  useEffect(() => {
+    const newLevel = getLevel(xp);
+    if (newLevel > prevLevelRef.current) {
+      prevLevelRef.current = newLevel;
+      setLevelUpVisible(true);
+      miniConfetti(colors);
+      setTimeout(() => setLevelUpVisible(false), 2000);
+    }
+  }, [xp, colors]);
+
+  /* ───── Companion typing effect ───── */
+  useEffect(() => {
+    if (!companionVisible || !companionMsg) {
+      setCompanionTyped('');
+      return;
+    }
+    setCompanionTyped('');
+    let i = 0;
+    const timer = setInterval(() => {
+      i++;
+      setCompanionTyped(companionMsg.slice(0, i));
+      if (i >= companionMsg.length) clearInterval(timer);
+    }, 40);
+    return () => clearInterval(timer);
+  }, [companionMsg, companionVisible]);
+
+  /* ───── Milestone checks ───── */
+  useEffect(() => {
+    const milestones = [25, 50, 75, 100];
+    for (const m of milestones) {
+      if (progress >= m && !milestonesTriggered.current.has(m)) {
+        milestonesTriggered.current.add(m);
+        if (m < 100) miniConfetti(colors);
+        if (m === 100) {
+          megaConfetti(colors);
+          triggerAchievement('complete');
+        }
+        const msgs: Record<number, string> = {
+          25: '已經完成四分之一了，你好棒！',
+          50: '一半了！快到了喔～加油！🔥',
+          75: '剩最後幾題了！衝刺！🚀',
+          100: '全部完成！太厲害了！🎉',
+        };
+        showCompanionMessage({ text: msgs[m], priority: 8 });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progress]);
+
+  /* ───── Companion message queue system ───── */
+  const showCompanionMessage = useCallback((msg: CompanionMessage) => {
+    // If companion is currently showing a message, queue if higher priority
+    if (companionBusyRef.current) {
+      companionQueueRef.current.push(msg);
+      companionQueueRef.current.sort((a, b) => b.priority - a.priority);
+      return;
+    }
+    companionBusyRef.current = true;
+    setCompanionMsg(msg.text);
+    setCompanionVisible(true);
+
+    if (companionTimerRef.current) clearTimeout(companionTimerRef.current);
+    companionTimerRef.current = setTimeout(() => {
+      setCompanionVisible(false);
+      companionBusyRef.current = false;
+      // Process queue
+      setTimeout(() => {
+        if (companionQueueRef.current.length > 0) {
+          const next = companionQueueRef.current.shift()!;
+          showCompanionMessage(next);
+        }
+      }, 500);
+    }, 4000);
+  }, []);
+
+  /* ───── Achievement trigger ───── */
+  const triggerAchievement = useCallback((id: string) => {
+    if (earnedBadges.has(id)) return;
+    setEarnedBadges(prev => new Set(prev).add(id));
+    const badge = ACHIEVEMENTS.find(a => a.id === id);
+    if (!badge) return;
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToastBadge(badge);
+    toastTimerRef.current = setTimeout(() => setToastBadge(null), 3500);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [earnedBadges]);
+
+  /* ───── Answer handler with XP, achievements, companion ───── */
+  const setAnswer = useCallback((id: string, value: string | string[], questionType?: string) => {
     setAnswers(prev => ({ ...prev, [id]: value }));
+
+    // Combo
     setCombo(prev => prev + 1);
     if (comboTimeoutRef.current) clearTimeout(comboTimeoutRef.current);
     comboTimeoutRef.current = setTimeout(() => setCombo(0), 3000);
-  }, []);
+
+    // XP
+    const qType = questionType || 'radio';
+    const baseXp = XP_MAP[qType] || 10;
+    const newCombo = combo + 1; // combo hasn't updated yet in state
+    const multiplier = newCombo >= 3 ? 2 : 1;
+    const earnedXp = baseXp * multiplier;
+    setXp(prev => prev + earnedXp);
+
+    // Floating XP
+    floatingIdRef.current += 1;
+    setFloatingXp({ amount: earnedXp, id: floatingIdRef.current });
+
+    // Card glow
+    setGlowCardId(id);
+    setTimeout(() => setGlowCardId(null), 600);
+
+    // Track timestamps for speed achievements
+    const now = Date.now();
+    answerTimestamps.current.push(now);
+
+    // Check streak3: last 3 answers each within 5s
+    const ts = answerTimestamps.current;
+    if (ts.length >= 3) {
+      const last3 = ts.slice(-3);
+      const allFast = last3.every((t, i) => i === 0 || t - last3[i - 1] < 5000);
+      if (allFast) triggerAchievement('streak3');
+    }
+
+    // Check speed5: 5 answers in under 30s total
+    if (ts.length >= 5) {
+      const last5 = ts.slice(-5);
+      if (last5[last5.length - 1] - last5[0] < 30000) {
+        triggerAchievement('speed5');
+      }
+    }
+
+    // Check perfect rating
+    if ((qType === 'rating' || qType === 'rating-with-reason' || qType === 'emoji-rating') && value === '5') {
+      triggerAchievement('perfect');
+    }
+
+    // Check writer
+    if ((qType === 'text' || qType === 'textarea') && typeof value === 'string' && value.length > 20) {
+      triggerAchievement('writer');
+    }
+
+    // Combo companion messages
+    if (newCombo === 3) {
+      showCompanionMessage({ text: `哇！連擊 x${newCombo}！好快 ⚡`, priority: 5 });
+    } else if (newCombo === 5) {
+      showCompanionMessage({ text: '太猛了！你是問卷之神！👑', priority: 6 });
+    }
+
+    // Combo 5+ border flash
+    if (newCombo >= 5) {
+      setBorderFlash(true);
+      setTimeout(() => setBorderFlash(false), 400);
+    }
+
+    // Combo 7+ mini confetti
+    if (newCombo >= 7 && newCombo % 2 === 1) {
+      miniConfetti(colors);
+    }
+
+    // First answer encouragement
+    if (Object.keys(answers).filter(k => !k.endsWith('_reason')).length === 0) {
+      setTimeout(() => {
+        showCompanionMessage({ text: '不錯喔！繼續保持～ 💪', priority: 3 });
+      }, 300);
+    }
+  }, [combo, answers, colors, triggerAchievement, showCompanionMessage]);
 
   function toggleCheckbox(id: string, option: string) {
     setAnswers(prev => {
@@ -87,37 +379,31 @@ export default function SurveyRenderer({
     setCombo(prev => prev + 1);
     if (comboTimeoutRef.current) clearTimeout(comboTimeoutRef.current);
     comboTimeoutRef.current = setTimeout(() => setCombo(0), 3000);
+
+    const baseXp = 10;
+    const newCombo = combo + 1;
+    const multiplier = newCombo >= 3 ? 2 : 1;
+    const earnedXp = baseXp * multiplier;
+    setXp(prev => prev + earnedXp);
+    floatingIdRef.current += 1;
+    setFloatingXp({ amount: earnedXp, id: floatingIdRef.current });
+    setGlowCardId(id);
+    setTimeout(() => setGlowCardId(null), 600);
+    answerTimestamps.current.push(Date.now());
   }
 
   function handleSubmit() {
-    // Fire confetti
-    confetti({
-      particleCount: 120,
-      spread: 80,
-      origin: { y: 0.7 },
-      colors: [colors.primary, colors.primaryLight, colors.accent, '#FFD700', '#FF6B6B'],
-    });
-    // Second burst
-    setTimeout(() => {
-      confetti({
-        particleCount: 60,
-        spread: 100,
-        origin: { y: 0.5, x: 0.3 },
-        colors: [colors.primary, colors.primaryLight, colors.accent],
-      });
-      confetti({
-        particleCount: 60,
-        spread: 100,
-        origin: { y: 0.5, x: 0.7 },
-        colors: [colors.primary, colors.primaryLight, colors.accent],
-      });
-    }, 200);
-    onSubmit(answers);
+    megaConfetti(colors);
+    onSubmit(answers, xp);
   }
 
   function goNext() {
     setDirection(1);
     setCurrentSection(prev => prev + 1);
+    // Last section companion message
+    if (currentSection + 1 === sections.length - 1) {
+      showCompanionMessage({ text: '最後一步了，加油加油！🎊', priority: 7 });
+    }
   }
 
   function goPrev() {
@@ -128,14 +414,14 @@ export default function SurveyRenderer({
   const section = sections[currentSection];
   if (!section) return null;
 
-  /* ───── slide variants for section transitions ───── */
+  /* ───── slide variants ───── */
   const slideVariants = {
     enter: (dir: number) => ({ x: dir > 0 ? 200 : -200, opacity: 0 }),
     center: { x: 0, opacity: 1 },
     exit: (dir: number) => ({ x: dir > 0 ? -200 : 200, opacity: 0 }),
   };
 
-  /* ───── helper: render a radio/checkbox pill ───── */
+  /* ───── helper: render pill ───── */
   const renderPill = (
     opt: string,
     isSelected: boolean,
@@ -167,7 +453,7 @@ export default function SurveyRenderer({
     </motion.button>
   );
 
-  /* ───── helper: render rating row ───── */
+  /* ───── helper: render rating ───── */
   const renderRating = (qId: string, compact = false) => (
     <div className="flex gap-0 rounded-xl overflow-hidden" style={{ border: `1px solid ${colors.border}` }}>
       {[1, 2, 3, 4, 5].map(n => {
@@ -175,13 +461,13 @@ export default function SurveyRenderer({
         return (
           <motion.button
             key={n}
-            onClick={() => setAnswer(qId, String(n))}
+            onClick={() => setAnswer(qId, String(n), 'rating')}
             whileTap={{ scale: 0.92 }}
             animate={{
               backgroundColor: selected ? `${colors.primary}20` : colors.background,
             }}
             transition={springSmooth}
-            className={`flex-1 ${compact ? 'py-2 text-sm' : 'py-3'} text-center transition-all`}
+            className={`flex-1 ${compact ? 'py-2 text-sm' : 'py-3'} text-center transition-all relative`}
             style={{
               background: selected ? `${colors.primary}20` : colors.background,
               color: selected ? colors.primary : colors.textLight,
@@ -191,13 +477,23 @@ export default function SurveyRenderer({
             }}
           >
             {n}
+            {/* Golden pulse for selected star */}
+            {selected && (
+              <motion.div
+                className="absolute inset-0 rounded-none"
+                initial={{ opacity: 0.6 }}
+                animate={{ opacity: 0 }}
+                transition={{ duration: 0.8 }}
+                style={{ background: '#FFD70030' }}
+              />
+            )}
           </motion.button>
         );
       })}
     </div>
   );
 
-  /* ───── helper: reason field with expand animation ───── */
+  /* ───── helper: reason field ───── */
   const renderReasonField = (qId: string, placeholder?: string) => (
     <AnimatePresence>
       {answers[qId] && (
@@ -212,7 +508,7 @@ export default function SurveyRenderer({
             <input
               type="text"
               value={(answers[`${qId}_reason`] as string) || ''}
-              onChange={e => setAnswer(`${qId}_reason`, e.target.value)}
+              onChange={e => setAnswer(`${qId}_reason`, e.target.value, 'text')}
               placeholder={placeholder || '原因（選填）'}
               className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
               style={{
@@ -228,8 +524,15 @@ export default function SurveyRenderer({
   );
 
   return (
-    <div className="min-h-screen relative overflow-hidden" style={{ background: colors.background, color: colors.text, fontFamily: "'Noto Sans TC', sans-serif" }}>
-      {/* Keyframe animations */}
+    <div
+      className="min-h-screen relative overflow-hidden"
+      style={{
+        background: colors.background,
+        color: colors.text,
+        fontFamily: "'Noto Sans TC', sans-serif",
+      }}
+    >
+      {/* ───── Keyframe animations ───── */}
       <style>{`
         @keyframes shimmer {
           0% { transform: translateX(-100%); }
@@ -249,10 +552,202 @@ export default function SurveyRenderer({
           50% { transform: scale(1.2); }
           100% { transform: scale(1); opacity: 1; }
         }
+        @keyframes xp-float {
+          0% { transform: translateY(0); opacity: 1; }
+          100% { transform: translateY(-50px); opacity: 0; }
+        }
+        @keyframes level-up-glow {
+          0% { transform: scale(0.5); opacity: 0; }
+          30% { transform: scale(1.3); opacity: 1; }
+          70% { transform: scale(1.1); opacity: 1; }
+          100% { transform: scale(1); opacity: 0; }
+        }
+        @keyframes border-flash {
+          0% { box-shadow: inset 0 0 0 3px #FFD700; }
+          100% { box-shadow: inset 0 0 0 0px transparent; }
+        }
+        @keyframes badge-pop {
+          0% { transform: translateX(120%) scale(0.8); }
+          15% { transform: translateX(0%) scale(1.05); }
+          25% { transform: translateX(0%) scale(1); }
+          85% { transform: translateX(0%) scale(1); }
+          100% { transform: translateX(120%) scale(0.8); }
+        }
+        @keyframes sparkle-border {
+          0%, 100% { border-color: ${colors.border}; }
+          50% { border-color: ${colors.primary}; box-shadow: 0 0 8px ${colors.primary}40; }
+        }
+        @keyframes card-glow {
+          0% { box-shadow: 0 0 0 0 ${colors.primary}40; }
+          50% { box-shadow: 0 0 20px 4px ${colors.primary}30; }
+          100% { box-shadow: 0 0 0 0 ${colors.primary}00; }
+        }
+        @keyframes gold-border-flash {
+          0% { box-shadow: inset 0 0 30px #FFD70060, 0 0 20px #FFD70040; }
+          100% { box-shadow: inset 0 0 0px transparent, 0 0 0px transparent; }
+        }
       `}</style>
 
-      {/* Header with floating particles */}
-      <div className="text-center pt-10 pb-6 px-6 relative overflow-hidden" style={{ background: `linear-gradient(160deg, ${colors.background}, ${colors.border})` }}>
+      {/* ───── Golden border flash on combo 5+ ───── */}
+      <AnimatePresence>
+        {borderFlash && (
+          <motion.div
+            className="fixed inset-0 pointer-events-none z-[100]"
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+            style={{ animation: 'gold-border-flash 0.4s ease-out forwards' }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ───── XP HUD (top-right) ───── */}
+      <div className="fixed top-3 right-3 z-[60] flex flex-col items-end gap-1">
+        <motion.div
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold"
+          style={{
+            background: 'linear-gradient(135deg, #1a1a2e, #16213e)',
+            color: '#FFD700',
+            border: '1px solid #FFD70040',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
+          }}
+          initial={{ x: 100, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ delay: 0.5, ...springBounce }}
+        >
+          <span style={{ fontSize: '10px', color: '#aaa' }}>Lv.{currentLevel}</span>
+          <span>✨ {displayXp} XP</span>
+          {combo >= 3 && (
+            <motion.span
+              key={`mult-${combo}`}
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="text-[10px] px-1.5 py-0.5 rounded-full"
+              style={{ background: '#FF6B3520', color: '#FF6B35' }}
+            >
+              x2 XP!
+            </motion.span>
+          )}
+        </motion.div>
+
+        {/* Floating +XP text */}
+        <AnimatePresence>
+          {floatingXp && (
+            <motion.div
+              key={floatingXp.id}
+              className="text-sm font-bold pointer-events-none"
+              style={{ color: '#FFD700' }}
+              initial={{ opacity: 1, y: 0 }}
+              animate={{ opacity: 0, y: -40 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+            >
+              +{floatingXp.amount} XP
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* ───── Level Up overlay ───── */}
+      <AnimatePresence>
+        {levelUpVisible && (
+          <motion.div
+            className="fixed inset-0 flex items-center justify-center z-[90] pointer-events-none"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="text-3xl font-black tracking-widest"
+              style={{
+                color: '#FFD700',
+                textShadow: '0 0 20px #FFD700, 0 0 40px #FFD70080',
+              }}
+              initial={{ scale: 0.3, opacity: 0 }}
+              animate={{ scale: [0.3, 1.4, 1], opacity: [0, 1, 1, 0] }}
+              transition={{ duration: 2, times: [0, 0.2, 0.6, 1] }}
+            >
+              LEVEL UP!
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ───── Achievement Toast ───── */}
+      <AnimatePresence>
+        {toastBadge && (
+          <motion.div
+            className="fixed top-14 left-1/2 z-[80] flex items-center gap-2 px-4 py-2.5 rounded-2xl"
+            style={{
+              background: 'linear-gradient(135deg, #1a1a2e, #16213e)',
+              border: '1px solid #FFD70050',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.4), 0 0 15px #FFD70020',
+              transform: 'translateX(-50%)',
+            }}
+            initial={{ y: -60, opacity: 0, x: '-50%' }}
+            animate={{ y: 0, opacity: 1, x: '-50%' }}
+            exit={{ y: -60, opacity: 0, x: '-50%' }}
+            transition={springBounce}
+          >
+            <span className="text-2xl">{toastBadge.icon}</span>
+            <div>
+              <div className="text-sm font-bold" style={{ color: '#FFD700' }}>
+                {toastBadge.title}
+              </div>
+              <div className="text-[10px]" style={{ color: '#aaa' }}>
+                {toastBadge.condition}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ───── AI Companion (bottom-left) ───── */}
+      <div className="fixed bottom-4 left-3 z-[60] flex items-end gap-2">
+        {/* Mascot */}
+        <motion.div
+          className="w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0"
+          style={{
+            background: 'linear-gradient(135deg, #fff3e0, #ffe0b2)',
+            border: '2px solid #FFB74D',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          }}
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ delay: 0.8, ...springBounce }}
+          whileHover={{ scale: 1.1 }}
+        >
+          🍽️
+        </motion.div>
+
+        {/* Chat bubble */}
+        <AnimatePresence>
+          {companionVisible && companionTyped && (
+            <motion.div
+              className="max-w-[200px] px-3 py-2 rounded-2xl rounded-bl-sm text-xs leading-relaxed"
+              style={{
+                background: colors.surface,
+                border: `1px solid ${colors.border}`,
+                color: colors.text,
+                boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
+              }}
+              initial={{ scale: 0.5, opacity: 0, originX: 0, originY: 1 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.5, opacity: 0 }}
+              transition={springSmooth}
+            >
+              {companionTyped}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* ───── Header ───── */}
+      <div
+        className="text-center pt-10 pb-6 px-6 relative overflow-hidden"
+        style={{ background: `linear-gradient(160deg, ${colors.background}, ${colors.border})` }}
+      >
         {/* Floating particles */}
         <div className="absolute inset-0 pointer-events-none" aria-hidden>
           {[...Array(8)].map((_, i) => (
@@ -313,30 +808,49 @@ export default function SurveyRenderer({
         )}
       </div>
 
-      {/* Progress bar with shimmer */}
+      {/* ───── Game HUD Progress Bar ───── */}
       <div className="sticky top-0 z-50 px-4 pt-3 pb-2" style={{ background: colors.background }}>
-        <div className="h-1.5 rounded-full overflow-hidden relative" style={{ background: colors.border }}>
+        {/* Main progress bar */}
+        <div className="relative">
+          <div className="h-3 rounded-full overflow-hidden relative" style={{ background: colors.border }}>
+            <motion.div
+              className="h-full rounded-full relative overflow-hidden"
+              style={{ background: `linear-gradient(90deg, ${colors.primaryLight}, ${colors.primary}, #FFD700)` }}
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+            >
+              {/* Shimmer */}
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)`,
+                  animation: 'shimmer 2s ease-in-out infinite',
+                }}
+              />
+            </motion.div>
+          </div>
+
+          {/* Level badge on bar */}
           <motion.div
-            className="h-full rounded-full relative overflow-hidden"
-            style={{ background: `linear-gradient(90deg, ${colors.primaryLight}, ${colors.primary})` }}
-            initial={{ width: 0 }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.5, ease: 'easeOut' }}
+            className="absolute -top-1 -left-1 px-2 py-0.5 rounded-full text-[10px] font-black"
+            style={{
+              background: 'linear-gradient(135deg, #FFD700, #FFA000)',
+              color: '#1a1a2e',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+            }}
+            animate={levelUpVisible ? { scale: [1, 1.3, 1] } : {}}
+            transition={springBounce}
           >
-            {/* Shimmer overlay */}
-            <div
-              className="absolute inset-0"
-              style={{
-                background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent)`,
-                animation: 'shimmer 2s ease-in-out infinite',
-              }}
-            />
+            Lv.{currentLevel}
           </motion.div>
         </div>
-        <div className="flex justify-between mt-1.5 text-xs" style={{ color: colors.textLight }}>
+
+        {/* Info row below bar */}
+        <div className="flex justify-between mt-2 text-xs" style={{ color: colors.textLight }}>
           <span>{section.title}</span>
           <div className="flex items-center gap-2">
-            {/* Combo counter */}
+            {/* Enhanced Combo counter */}
             <AnimatePresence>
               {combo >= 2 && (
                 <motion.span
@@ -345,13 +859,19 @@ export default function SurveyRenderer({
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0.5, opacity: 0 }}
                   transition={springBounce}
-                  className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                  className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full font-bold"
                   style={{
-                    background: `linear-gradient(135deg, #FF6B35, #FF4444)`,
+                    background: combo >= 5
+                      ? 'linear-gradient(135deg, #FFD700, #FF6B35)'
+                      : combo >= 3
+                        ? 'linear-gradient(135deg, #FF6B35, #FF4444)'
+                        : 'linear-gradient(135deg, #FF6B35, #FF4444)',
                     color: 'white',
+                    fontSize: combo >= 7 ? '13px' : combo >= 5 ? '12px' : '10px',
+                    boxShadow: combo >= 5 ? '0 0 12px #FFD70060' : 'none',
                   }}
                 >
-                  🔥 x{combo}
+                  {combo >= 5 ? '👑' : combo >= 3 ? '🔥' : '🔥'} x{combo}
                 </motion.span>
               )}
             </AnimatePresence>
@@ -360,7 +880,7 @@ export default function SurveyRenderer({
         </div>
       </div>
 
-      {/* Section navigation */}
+      {/* ───── Section navigation tabs ───── */}
       <div className="flex gap-1 px-4 pb-4 overflow-x-auto">
         {sections.map((s, i) => (
           <motion.button
@@ -381,7 +901,7 @@ export default function SurveyRenderer({
         ))}
       </div>
 
-      {/* Questions with section transition */}
+      {/* ───── Questions ───── */}
       <div className="px-4 pb-8 max-w-lg mx-auto">
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
@@ -394,7 +914,7 @@ export default function SurveyRenderer({
             transition={{ ...springSmooth, duration: 0.35 }}
           >
             {section.questions.map((q, index) => {
-              // Section header: visual divider, not a question card
+              // Section header
               if (q.type === 'section-header') {
                 return (
                   <motion.div
@@ -404,15 +924,22 @@ export default function SurveyRenderer({
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: index * 0.1, ...springSmooth }}
                   >
-                    <h2 className="text-lg font-bold tracking-wide" style={{ color: colors.primary, fontFamily: "'Noto Serif TC', serif" }}>
+                    <h2
+                      className="text-lg font-bold tracking-wide"
+                      style={{ color: colors.primary, fontFamily: "'Noto Serif TC', serif" }}
+                    >
                       {q.title || q.label}
                     </h2>
                     {q.description && (
-                      <p className="text-xs mt-1" style={{ color: colors.textLight }}>{q.description}</p>
+                      <p className="text-xs mt-1" style={{ color: colors.textLight }}>
+                        {q.description}
+                      </p>
                     )}
                     <motion.div
                       className="mt-2 h-0.5 rounded-full"
-                      style={{ background: `linear-gradient(90deg, ${colors.primary}, ${colors.primaryLight}, transparent)` }}
+                      style={{
+                        background: `linear-gradient(90deg, ${colors.primary}, ${colors.primaryLight}, transparent)`,
+                      }}
                       initial={{ scaleX: 0, originX: 0 }}
                       animate={{ scaleX: 1 }}
                       transition={{ delay: index * 0.1 + 0.2, duration: 0.6 }}
@@ -421,7 +948,7 @@ export default function SurveyRenderer({
                 );
               }
 
-              // Dish group: container for per-dish sub-questions
+              // Dish group
               if (q.type === 'dish-group') {
                 return (
                   <motion.div
@@ -430,21 +957,22 @@ export default function SurveyRenderer({
                     style={{
                       border: `1px solid ${colors.primary}40`,
                       borderLeft: `3px solid ${colors.primary}`,
+                      animation: glowCardId && glowCardId.startsWith(q.id) ? 'card-glow 0.6s ease-out' : 'none',
                     }}
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1, ...springSmooth }}
                   >
-                    {/* Dish name header */}
                     <div className="px-5 py-3" style={{ background: `${colors.primary}12` }}>
                       <h3 className="text-sm font-bold" style={{ color: colors.primary }}>
                         {q.dishName || q.title || q.label}
                       </h3>
                       {q.description && (
-                        <p className="text-xs mt-0.5" style={{ color: colors.textLight }}>{q.description}</p>
+                        <p className="text-xs mt-0.5" style={{ color: colors.textLight }}>
+                          {q.description}
+                        </p>
                       )}
                     </div>
-                    {/* Sub-questions */}
                     <div className="p-4 space-y-4" style={{ background: colors.surface }}>
                       {(q.subQuestions || []).map((subQ, subIdx) => {
                         const subKey = `${q.id}_${subQ.id}`;
@@ -458,22 +986,26 @@ export default function SurveyRenderer({
                           >
                             <label className="block text-sm font-medium mb-1" style={{ color: colors.text }}>
                               {subQ.title || subQ.label}
-                              {subQ.required && <span className="ml-1" style={{ color: '#D4A0A0' }}>*</span>}
+                              {subQ.required && (
+                                <span className="ml-1" style={{ color: '#D4A0A0' }}>
+                                  *
+                                </span>
+                              )}
                             </label>
                             {subQ.description && (
-                              <p className="text-xs mb-2" style={{ color: colors.textLight }}>{subQ.description}</p>
+                              <p className="text-xs mb-2" style={{ color: colors.textLight }}>
+                                {subQ.description}
+                              </p>
                             )}
-                            {/* Radio options for sub-question */}
                             {(subQ.type === 'radio' || subQ.type === 'radio-with-reason') && subQ.options && (
                               <div className="flex flex-wrap gap-2">
                                 {subQ.options.map(opt =>
-                                  renderPill(opt, answers[subKey] === opt, () => setAnswer(subKey, opt), 'sm')
+                                  renderPill(opt, answers[subKey] === opt, () => setAnswer(subKey, opt, subQ.type), 'sm'),
                                 )}
                               </div>
                             )}
-                            {/* Rating for sub-question */}
-                            {(subQ.type === 'rating' || subQ.type === 'rating-with-reason') && renderRating(subKey, true)}
-                            {/* Reason field for sub-questions with reason */}
+                            {(subQ.type === 'rating' || subQ.type === 'rating-with-reason') &&
+                              renderRating(subKey, true)}
                             {(subQ.type === 'radio-with-reason' || subQ.type === 'rating-with-reason') && (
                               <AnimatePresence>
                                 {answers[subKey] && (
@@ -488,7 +1020,7 @@ export default function SurveyRenderer({
                                       <input
                                         type="text"
                                         value={(answers[reasonKey] as string) || ''}
-                                        onChange={e => setAnswer(reasonKey, e.target.value)}
+                                        onChange={e => setAnswer(reasonKey, e.target.value, 'text')}
                                         placeholder={subQ.reasonPlaceholder || '原因（選填）'}
                                         className="w-full px-3 py-2 rounded-lg text-xs outline-none"
                                         style={{
@@ -511,18 +1043,27 @@ export default function SurveyRenderer({
               }
 
               // Standard question card
+              const isGlowing = glowCardId === q.id;
               return (
                 <motion.div
                   key={q.id}
                   className="mb-5 p-5 rounded-2xl"
-                  style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
+                  style={{
+                    background: colors.surface,
+                    border: `1px solid ${colors.border}`,
+                    animation: isGlowing ? 'card-glow 0.6s ease-out' : 'none',
+                  }}
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1, ...springSmooth }}
                 >
                   <label className="block text-sm font-medium mb-1" style={{ color: colors.text }}>
                     {q.title || q.label}
-                    {q.required && <span className="ml-1" style={{ color: '#D4A0A0' }}>*</span>}
+                    {q.required && (
+                      <span className="ml-1" style={{ color: '#D4A0A0' }}>
+                        *
+                      </span>
+                    )}
                   </label>
                   {q.description && (
                     <p className="text-xs mb-3" style={{ color: colors.textLight }}>
@@ -535,7 +1076,7 @@ export default function SurveyRenderer({
                   {q.type === 'radio' && q.options && (
                     <div className="flex flex-wrap gap-2">
                       {q.options.map(opt =>
-                        renderPill(opt, answers[q.id] === opt, () => setAnswer(q.id, opt))
+                        renderPill(opt, answers[q.id] === opt, () => setAnswer(q.id, opt, 'radio')),
                       )}
                     </div>
                   )}
@@ -545,7 +1086,7 @@ export default function SurveyRenderer({
                     <>
                       <div className="flex flex-wrap gap-2">
                         {q.options.map(opt =>
-                          renderPill(opt, answers[q.id] === opt, () => setAnswer(q.id, opt))
+                          renderPill(opt, answers[q.id] === opt, () => setAnswer(q.id, opt, 'radio-with-reason')),
                         )}
                       </div>
                       {renderReasonField(q.id, q.reasonPlaceholder)}
@@ -562,7 +1103,7 @@ export default function SurveyRenderer({
                     </div>
                   )}
 
-                  {/* Rating (1-5 scale) */}
+                  {/* Rating */}
                   {q.type === 'rating' && renderRating(q.id)}
 
                   {/* Rating with reason */}
@@ -582,7 +1123,7 @@ export default function SurveyRenderer({
                         return (
                           <motion.button
                             key={i}
-                            onClick={() => setAnswer(q.id, val)}
+                            onClick={() => setAnswer(q.id, val, 'emoji-rating')}
                             whileTap={{ scale: 0.9 }}
                             animate={{
                               scale: selected ? [1, 1.3, 1] : 1,
@@ -598,11 +1139,18 @@ export default function SurveyRenderer({
                             <motion.span
                               className="text-2xl"
                               animate={selected ? { scale: [1, 1.15, 1] } : {}}
-                              transition={{ repeat: selected ? Infinity : 0, duration: 2, ease: 'easeInOut' }}
+                              transition={{
+                                repeat: selected ? Infinity : 0,
+                                duration: 2,
+                                ease: 'easeInOut',
+                              }}
                             >
                               {emoji}
                             </motion.span>
-                            <span className="text-[10px]" style={{ color: selected ? colors.primary : colors.textLight }}>
+                            <span
+                              className="text-[10px]"
+                              style={{ color: selected ? colors.primary : colors.textLight }}
+                            >
                               {EMOJI_TEXTS[i]}
                             </span>
                           </motion.button>
@@ -616,13 +1164,15 @@ export default function SurveyRenderer({
                     <input
                       type="text"
                       value={(answers[q.id] as string) || ''}
-                      onChange={e => setAnswer(q.id, e.target.value)}
+                      onChange={e => setAnswer(q.id, e.target.value, 'text')}
                       placeholder={q.placeholder || ''}
                       className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
                       style={{
                         background: colors.background,
                         border: `1px solid ${colors.border}`,
                         color: colors.text,
+                        animation:
+                          (answers[q.id] as string)?.length > 0 ? 'sparkle-border 1.5s ease-in-out infinite' : 'none',
                       }}
                     />
                   )}
@@ -631,7 +1181,7 @@ export default function SurveyRenderer({
                   {q.type === 'textarea' && (
                     <textarea
                       value={(answers[q.id] as string) || ''}
-                      onChange={e => setAnswer(q.id, e.target.value)}
+                      onChange={e => setAnswer(q.id, e.target.value, 'textarea')}
                       placeholder={q.placeholder || ''}
                       rows={4}
                       className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-y transition-all"
@@ -639,6 +1189,8 @@ export default function SurveyRenderer({
                         background: colors.background,
                         border: `1px solid ${colors.border}`,
                         color: colors.text,
+                        animation:
+                          (answers[q.id] as string)?.length > 0 ? 'sparkle-border 1.5s ease-in-out infinite' : 'none',
                       }}
                     />
                   )}
@@ -646,11 +1198,13 @@ export default function SurveyRenderer({
                   {/* Number */}
                   {q.type === 'number' && (
                     <div className="flex items-center gap-2">
-                      <span className="text-sm" style={{ color: colors.textLight }}>NT$</span>
+                      <span className="text-sm" style={{ color: colors.textLight }}>
+                        NT$
+                      </span>
                       <input
                         type="number"
                         value={(answers[q.id] as string) || ''}
-                        onChange={e => setAnswer(q.id, e.target.value)}
+                        onChange={e => setAnswer(q.id, e.target.value, 'number')}
                         placeholder={q.placeholder || ''}
                         className="w-36 px-4 py-3 rounded-xl text-sm text-center outline-none"
                         style={{
@@ -665,7 +1219,7 @@ export default function SurveyRenderer({
               );
             })}
 
-            {/* Navigation */}
+            {/* ───── Navigation ───── */}
             <div className="flex gap-3 mt-6">
               {currentSection > 0 && (
                 <motion.button
@@ -684,7 +1238,9 @@ export default function SurveyRenderer({
                   whileTap={{ scale: 0.97 }}
                   whileHover={{ scale: 1.02 }}
                   className="flex-1 py-3 rounded-full text-sm font-semibold text-white transition-all"
-                  style={{ background: `linear-gradient(135deg, ${colors.primaryLight}, ${colors.primary})` }}
+                  style={{
+                    background: `linear-gradient(135deg, ${colors.primaryLight}, ${colors.primary})`,
+                  }}
                 >
                   下一步
                 </motion.button>
@@ -702,12 +1258,39 @@ export default function SurveyRenderer({
                     animation: !isSubmitting ? 'glow-pulse 2s ease-in-out infinite' : 'none',
                   }}
                 >
-                  {isSubmitting ? '提交中...' : '提交回饋'}
+                  {isSubmitting ? '提交中...' : '🎮 提交回饋'}
                 </motion.button>
               )}
             </div>
 
-            {/* FeedBites viral banner */}
+            {/* ───── Earned Badges Display ───── */}
+            {earnedBadges.size > 0 && (
+              <motion.div
+                className="mt-4 flex flex-wrap gap-2 justify-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                {ACHIEVEMENTS.filter(a => earnedBadges.has(a.id)).map(badge => (
+                  <motion.div
+                    key={badge.id}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium"
+                    style={{
+                      background: '#FFD70015',
+                      border: '1px solid #FFD70040',
+                      color: '#B8860B',
+                    }}
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={springBounce}
+                  >
+                    <span>{badge.icon}</span>
+                    <span>{badge.title}</span>
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+
+            {/* ───── FeedBites viral banner ───── */}
             <motion.div
               className="mt-8 p-5 rounded-2xl text-center"
               style={{ background: `${colors.primary}08`, border: `1px solid ${colors.border}` }}
@@ -719,7 +1302,8 @@ export default function SurveyRenderer({
                 ☕ 你也是餐飲業主嗎？
               </p>
               <p className="text-xs leading-relaxed mb-3" style={{ color: colors.textLight }}>
-                <strong style={{ color: colors.text }}>FeedBites</strong> 是由新加坡 MCS 推出的<br />
+                <strong style={{ color: colors.text }}>FeedBites</strong> 是由新加坡 MCS 推出的
+                <br />
                 全球免費餐飲問卷系統
               </p>
               <a
@@ -732,7 +1316,7 @@ export default function SurveyRenderer({
               </a>
             </motion.div>
 
-            {/* Footer */}
+            {/* ───── Footer ───── */}
             <div className="text-center mt-6 pb-8">
               <span className="text-xs" style={{ color: colors.textLight }}>
                 Powered by{' '}

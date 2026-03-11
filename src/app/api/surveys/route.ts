@@ -72,6 +72,8 @@ export async function POST(request: NextRequest) {
       discount_value = '10',
       discount_expiry_days = 30,
       discount_enabled = true,
+      discount_mode = 'basic',
+      discount_tiers = null,
     } = body;
 
     if (!title || !questions || !Array.isArray(questions)) {
@@ -91,6 +93,8 @@ export async function POST(request: NextRequest) {
         discount_value,
         discount_expiry_days,
         discount_enabled,
+        discount_mode,
+        discount_tiers,
       })
       .select()
       .single();

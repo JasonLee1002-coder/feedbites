@@ -11,7 +11,19 @@ interface DiscountCodeDisplayProps {
   expiresAt: string;
   storeName: string;
   colors: ThemeColors;
+  discountMode?: 'basic' | 'advanced';
+  tierName?: string;
+  tierEmoji?: string;
+  xpEarned?: number;
 }
+
+// Map tier names to confetti color palettes
+const TIER_CONFETTI_COLORS: Record<string, string[]> = {
+  Bronze: ['#CD7F32', '#B87333', '#A0522D'],
+  Silver: ['#C0C0C0', '#A8A9AD', '#808080'],
+  Gold: ['#FFD700', '#FFA500', '#DAA520'],
+  Diamond: ['#B9F2FF', '#7B68EE', '#9370DB'],
+};
 
 export default function DiscountCodeDisplay({
   code,
@@ -19,7 +31,16 @@ export default function DiscountCodeDisplay({
   expiresAt,
   storeName,
   colors,
+  discountMode,
+  tierName,
+  tierEmoji,
+  xpEarned,
 }: DiscountCodeDisplayProps) {
+  const isAdvanced = discountMode === 'advanced' && !!tierName;
+  const confettiColors = isAdvanced && tierName && TIER_CONFETTI_COLORS[tierName]
+    ? TIER_CONFETTI_COLORS[tierName]
+    : [colors.primary, colors.accent, '#FFD700', '#FFA500', '#FF6347'];
+
   const [revealed, setRevealed] = useState(false);
   const [copied, setCopied] = useState(false);
   const [visibleChars, setVisibleChars] = useState(0);
@@ -42,7 +63,7 @@ export default function DiscountCodeDisplay({
         particleCount: 80,
         spread: 70,
         origin: { x: 0.15, y: 0.6 },
-        colors: [colors.primary, colors.accent, '#FFD700', '#FFA500', '#FF6347'],
+        colors: confettiColors,
         ticks: 200,
         gravity: 0.8,
         scalar: 1.2,
@@ -52,7 +73,7 @@ export default function DiscountCodeDisplay({
         particleCount: 80,
         spread: 70,
         origin: { x: 0.85, y: 0.6 },
-        colors: [colors.primary, colors.accent, '#FFD700', '#FFA500', '#FF6347'],
+        colors: confettiColors,
         ticks: 200,
         gravity: 0.8,
         scalar: 1.2,
@@ -67,7 +88,7 @@ export default function DiscountCodeDisplay({
         particleCount: 50,
         spread: 100,
         origin: { x: 0.5, y: 0.4 },
-        colors: [colors.primary, '#FFD700', '#FFA500'],
+        colors: confettiColors,
         ticks: 150,
         gravity: 1,
         scalar: 0.9,
@@ -75,7 +96,7 @@ export default function DiscountCodeDisplay({
     }, 400);
 
     return () => clearTimeout(t2);
-  }, [colors.primary, colors.accent]);
+  }, [colors.primary, colors.accent, confettiColors]);
 
   // Slot-machine character reveal
   useEffect(() => {
@@ -177,12 +198,38 @@ export default function DiscountCodeDisplay({
           style={{ background: colors.background, transform: 'translateY(-50%)' }}
         />
 
-        <div className="text-sm font-medium mb-1" style={{ color: colors.primary }}>
-          您的專屬折扣
-        </div>
-        <div className="text-3xl font-bold mb-6" style={{ color: colors.text }}>
-          {discountValue}
-        </div>
+        {isAdvanced ? (
+          <div className="mb-4">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: [0, 1.4, 1] }}
+              transition={{ type: 'spring', stiffness: 300, damping: 12, delay: 0.2 }}
+              className="text-5xl mb-2"
+            >
+              {tierEmoji}
+            </motion.div>
+            <div className="text-sm font-bold mb-1" style={{ color: colors.primary }}>
+              恭喜達成 {tierEmoji} {tierName} 等級！
+            </div>
+            {xpEarned !== undefined && (
+              <div className="text-xs mb-2" style={{ color: colors.textLight }}>
+                您獲得了 {xpEarned} XP
+              </div>
+            )}
+            <div className="text-3xl font-bold mb-2" style={{ color: colors.text }}>
+              {discountValue}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="text-sm font-medium mb-1" style={{ color: colors.primary }}>
+              您的專屬折扣
+            </div>
+            <div className="text-3xl font-bold mb-6" style={{ color: colors.text }}>
+              {discountValue}
+            </div>
+          </>
+        )}
 
         {/* Code reveal */}
         <div className="mb-4">

@@ -76,7 +76,7 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { answers, respondent_name, phone } = body;
+    const { answers, respondent_name, phone, xp_earned } = body;
 
     if (!answers || typeof answers !== 'object') {
       return NextResponse.json({ error: '缺少回答內容' }, { status: 400 });
@@ -89,6 +89,7 @@ export async function POST(
         survey_id: id,
         answers,
         respondent_name: respondent_name || null,
+        xp_earned: typeof xp_earned === 'number' ? xp_earned : null,
       })
       .select()
       .single();
@@ -100,6 +101,23 @@ export async function POST(
     // Generate discount code if enabled
     let discountCode = null;
     if (survey.discount_enabled) {
+      // Determine discount based on mode
+      let selectedDiscountType = survey.discount_type;
+      let selectedDiscountValue = survey.discount_value;
+      let tierName: string | null = null;
+      let tierEmoji: string | null = null;
+
+      if (survey.discount_mode === 'advanced' && Array.isArray(survey.discount_tiers) && survey.discount_tiers.length > 0) {
+        // Resolve tier from XP — pick the highest tier the user qualifies for
+        const xp = typeof xp_earned === 'number' ? xp_earned : 0;
+        const sorted = [...survey.discount_tiers].sort((a: { min_xp: number }, b: { min_xp: number }) => b.min_xp - a.min_xp);
+        const tier = sorted.find((t: { min_xp: number }) => xp >= t.min_xp) || survey.discount_tiers[0];
+        selectedDiscountType = tier.discount_type;
+        selectedDiscountValue = tier.discount_value;
+        tierName = tier.name;
+        tierEmoji = tier.emoji;
+      }
+
       const code = createDiscountCode();
       const expiresAt = getExpiryDate(survey.discount_expiry_days);
 
@@ -119,21 +137,26 @@ export async function POST(
         console.error('Failed to create discount code:', codeError);
       } else {
         discountCode = codeData;
-
-        // Discount code is linked via response_id in discount_codes table
       }
+
+      return NextResponse.json({
+        response,
+        discount_code: discountCode
+          ? {
+              code: discountCode.code,
+              discount_type: selectedDiscountType,
+              discount_value: selectedDiscountValue,
+              expires_at: discountCode.expires_at,
+              tier_name: tierName,
+              tier_emoji: tierEmoji,
+            }
+          : null,
+      }, { status: 201 });
     }
 
     return NextResponse.json({
       response,
-      discount_code: discountCode
-        ? {
-            code: discountCode.code,
-            discount_type: survey.discount_type,
-            discount_value: survey.discount_value,
-            expires_at: discountCode.expires_at,
-          }
-        : null,
+      discount_code: null,
     }, { status: 201 });
   } catch {
     return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 });
