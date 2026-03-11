@@ -1,4 +1,10 @@
-export type QuestionType = 'radio' | 'checkbox' | 'rating' | 'text' | 'textarea' | 'number' | 'emoji-rating';
+export type QuestionType =
+  | 'radio' | 'checkbox' | 'rating' | 'text' | 'textarea' | 'number'
+  | 'emoji-rating'
+  | 'radio-with-reason'    // radio selection + follow-up text "原因"
+  | 'rating-with-reason'   // 1-5 rating + follow-up text
+  | 'section-header'       // visual section divider (not a real question)
+  | 'dish-group';          // container for per-dish evaluation questions
 
 export interface Question {
   id: string;
@@ -12,6 +18,10 @@ export interface Question {
   max?: number;
   placeholder?: string;
   section?: string;
+  showReason?: boolean;        // For radio/rating: show "原因" text field after selection
+  reasonPlaceholder?: string;  // Placeholder for the reason field
+  dishName?: string;           // For dish-group: the dish this group belongs to
+  subQuestions?: Question[];   // For dish-group: the questions within
 }
 
 export interface Survey {

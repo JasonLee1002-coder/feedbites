@@ -42,8 +42,18 @@ export default function SurveyRenderer({
     return Object.entries(sectionMap).map(([title, qs]) => ({ title, questions: qs }));
   }, [questions]);
 
-  const totalQuestions = questions.length;
+  // Count actual answerable questions (exclude section-header, count dish-group subQuestions)
+  const countAnswerable = (qs: Question[]): number =>
+    qs.reduce((acc, q) => {
+      if (q.type === 'section-header') return acc;
+      if (q.type === 'dish-group' && q.subQuestions) return acc + q.subQuestions.length;
+      return acc + 1;
+    }, 0);
+
+  const totalQuestions = countAnswerable(questions);
   const answeredCount = Object.keys(answers).filter(k => {
+    // Skip reason keys from the count
+    if (k.endsWith('_reason')) return false;
     const v = answers[k];
     return v && (Array.isArray(v) ? v.length > 0 : v.trim() !== '');
   }).length;
@@ -125,7 +135,121 @@ export default function SurveyRenderer({
 
       {/* Questions */}
       <div className="px-4 pb-8 max-w-lg mx-auto">
-        {section.questions.map(q => (
+        {section.questions.map(q => {
+          // Section header: visual divider, not a question card
+          if (q.type === 'section-header') {
+            return (
+              <div key={q.id} className="mb-4 mt-6">
+                <h2 className="text-lg font-bold tracking-wide" style={{ color: colors.primary, fontFamily: "'Noto Serif TC', serif" }}>
+                  {q.title || q.label}
+                </h2>
+                {q.description && (
+                  <p className="text-xs mt-1" style={{ color: colors.textLight }}>{q.description}</p>
+                )}
+                <div className="mt-2 h-px" style={{ background: `linear-gradient(90deg, ${colors.primary}, transparent)` }} />
+              </div>
+            );
+          }
+
+          // Dish group: container for per-dish sub-questions
+          if (q.type === 'dish-group') {
+            return (
+              <div
+                key={q.id}
+                className="mb-5 rounded-2xl overflow-hidden"
+                style={{ border: `1px solid ${colors.primary}40` }}
+              >
+                {/* Dish name header */}
+                <div className="px-5 py-3" style={{ background: `${colors.primary}12` }}>
+                  <h3 className="text-sm font-bold" style={{ color: colors.primary }}>
+                    {q.dishName || q.title || q.label}
+                  </h3>
+                  {q.description && (
+                    <p className="text-xs mt-0.5" style={{ color: colors.textLight }}>{q.description}</p>
+                  )}
+                </div>
+                {/* Sub-questions */}
+                <div className="p-4 space-y-4" style={{ background: colors.surface }}>
+                  {(q.subQuestions || []).map(subQ => {
+                    const subKey = `${q.id}_${subQ.id}`;
+                    const reasonKey = `${subKey}_reason`;
+                    return (
+                      <div key={subQ.id}>
+                        <label className="block text-sm font-medium mb-1" style={{ color: colors.text }}>
+                          {subQ.title || subQ.label}
+                          {subQ.required && <span className="ml-1" style={{ color: '#D4A0A0' }}>*</span>}
+                        </label>
+                        {subQ.description && (
+                          <p className="text-xs mb-2" style={{ color: colors.textLight }}>{subQ.description}</p>
+                        )}
+                        {/* Radio options for sub-question */}
+                        {(subQ.type === 'radio' || subQ.type === 'radio-with-reason') && subQ.options && (
+                          <div className="flex flex-wrap gap-2">
+                            {subQ.options.map(opt => (
+                              <button
+                                key={opt}
+                                onClick={() => setAnswer(subKey, opt)}
+                                className="px-3 py-1.5 rounded-full text-xs transition-all"
+                                style={{
+                                  background: answers[subKey] === opt
+                                    ? `linear-gradient(135deg, ${colors.primaryLight}, ${colors.primary})`
+                                    : colors.background,
+                                  color: answers[subKey] === opt ? 'white' : colors.text,
+                                  border: `1px solid ${answers[subKey] === opt ? colors.primary : colors.border}`,
+                                }}
+                              >
+                                {opt}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {/* Rating for sub-question */}
+                        {(subQ.type === 'rating' || subQ.type === 'rating-with-reason') && (
+                          <div className="flex gap-0 rounded-xl overflow-hidden" style={{ border: `1px solid ${colors.border}` }}>
+                            {[1, 2, 3, 4, 5].map(n => (
+                              <button
+                                key={n}
+                                onClick={() => setAnswer(subKey, String(n))}
+                                className="flex-1 py-2 text-center transition-all text-sm"
+                                style={{
+                                  background: answers[subKey] === String(n) ? `${colors.primary}20` : colors.background,
+                                  color: answers[subKey] === String(n) ? colors.primary : colors.textLight,
+                                  fontWeight: answers[subKey] === String(n) ? 700 : 400,
+                                  borderRight: n < 5 ? `1px solid ${colors.border}` : 'none',
+                                }}
+                              >
+                                {n}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {/* Reason field for sub-questions with reason */}
+                        {(subQ.type === 'radio-with-reason' || subQ.type === 'rating-with-reason') && answers[subKey] && (
+                          <div className="mt-2">
+                            <input
+                              type="text"
+                              value={(answers[reasonKey] as string) || ''}
+                              onChange={e => setAnswer(reasonKey, e.target.value)}
+                              placeholder={subQ.reasonPlaceholder || '原因（選填）'}
+                              className="w-full px-3 py-2 rounded-lg text-xs outline-none"
+                              style={{
+                                background: colors.background,
+                                border: `1px solid ${colors.border}`,
+                                color: colors.text,
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          }
+
+          // Standard question card
+          return (
           <div
             key={q.id}
             className="mb-5 p-5 rounded-2xl"
@@ -162,6 +286,46 @@ export default function SurveyRenderer({
                   </button>
                 ))}
               </div>
+            )}
+
+            {/* Radio with reason */}
+            {q.type === 'radio-with-reason' && q.options && (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  {q.options.map(opt => (
+                    <button
+                      key={opt}
+                      onClick={() => setAnswer(q.id, opt)}
+                      className="px-4 py-2 rounded-full text-sm transition-all"
+                      style={{
+                        background: answers[q.id] === opt
+                          ? `linear-gradient(135deg, ${colors.primaryLight}, ${colors.primary})`
+                          : colors.background,
+                        color: answers[q.id] === opt ? 'white' : colors.text,
+                        border: `1px solid ${answers[q.id] === opt ? colors.primary : colors.border}`,
+                      }}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+                {answers[q.id] && (
+                  <div className="mt-3">
+                    <input
+                      type="text"
+                      value={(answers[`${q.id}_reason`] as string) || ''}
+                      onChange={e => setAnswer(`${q.id}_reason`, e.target.value)}
+                      placeholder={q.reasonPlaceholder || '原因（選填）'}
+                      className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
+                      style={{
+                        background: colors.background,
+                        border: `1px solid ${colors.border}`,
+                        color: colors.text,
+                      }}
+                    />
+                  </div>
+                )}
+              </>
             )}
 
             {/* Checkbox */}
@@ -209,6 +373,46 @@ export default function SurveyRenderer({
                   </button>
                 ))}
               </div>
+            )}
+
+            {/* Rating with reason */}
+            {q.type === 'rating-with-reason' && (
+              <>
+                <div className="flex gap-0 rounded-xl overflow-hidden" style={{ border: `1px solid ${colors.border}` }}>
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <button
+                      key={n}
+                      onClick={() => setAnswer(q.id, String(n))}
+                      className="flex-1 py-3 text-center transition-all"
+                      style={{
+                        background: answers[q.id] === String(n) ? `${colors.primary}20` : colors.background,
+                        color: answers[q.id] === String(n) ? colors.primary : colors.textLight,
+                        fontWeight: answers[q.id] === String(n) ? 700 : 400,
+                        fontSize: '18px',
+                        borderRight: n < 5 ? `1px solid ${colors.border}` : 'none',
+                      }}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+                {answers[q.id] && (
+                  <div className="mt-3">
+                    <input
+                      type="text"
+                      value={(answers[`${q.id}_reason`] as string) || ''}
+                      onChange={e => setAnswer(`${q.id}_reason`, e.target.value)}
+                      placeholder={q.reasonPlaceholder || '原因（選填）'}
+                      className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
+                      style={{
+                        background: colors.background,
+                        border: `1px solid ${colors.border}`,
+                        color: colors.text,
+                      }}
+                    />
+                  </div>
+                )}
+              </>
             )}
 
             {/* Emoji rating */}
@@ -289,7 +493,8 @@ export default function SurveyRenderer({
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
 
         {/* Navigation */}
         <div className="flex gap-3 mt-6">
