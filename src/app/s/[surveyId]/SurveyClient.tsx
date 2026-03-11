@@ -49,7 +49,7 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
     }
   }, [survey.discount_enabled]);
 
-  async function submitResponse(finalAnswers: Record<string, string | string[]>, phoneNumber: string, xpScore?: number) {
+  async function submitResponse(finalAnswers: Record<string, string | string[]>, phoneNumber: string, xpScore?: number, skipDiscount?: boolean) {
     setIsSubmitting(true);
     setSubmitError('');
 
@@ -61,6 +61,7 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
           answers: finalAnswers,
           phone: phoneNumber || undefined,
           xp_earned: xpScore ?? xpEarned,
+          skip_discount: skipDiscount || false,
         }),
       });
 
@@ -100,7 +101,7 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
   }
 
   function handleSkipPhone() {
-    submitResponse(answers, '', xpEarned);
+    submitResponse(answers, '', xpEarned, true);
   }
 
   // ─── Step: Survey ───

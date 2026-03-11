@@ -76,7 +76,7 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { answers, respondent_name, phone, xp_earned } = body;
+    const { answers, respondent_name, phone, xp_earned, skip_discount } = body;
 
     if (!answers || typeof answers !== 'object') {
       return NextResponse.json({ error: '缺少回答內容' }, { status: 400 });
@@ -98,9 +98,9 @@ export async function POST(
       return NextResponse.json({ error: responseError.message }, { status: 500 });
     }
 
-    // Generate discount code if enabled
+    // Generate discount code if enabled (and user didn't skip)
     let discountCode = null;
-    if (survey.discount_enabled) {
+    if (survey.discount_enabled && !skip_discount) {
       // Determine discount based on mode
       let selectedDiscountType = survey.discount_type;
       let selectedDiscountValue = survey.discount_value;
