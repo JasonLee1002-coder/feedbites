@@ -1,4 +1,4 @@
-import { createServerSupabase } from '@/lib/supabase/server';
+import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
@@ -11,7 +11,7 @@ export async function POST(request: Request) {
 
     const supabase = await createServerSupabase();
 
-    // Register user
+    // Register user via auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
@@ -24,9 +24,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: authError.message }, { status: 400 });
     }
 
-    // Create store record
+    // Create store record using service role (server-side only)
     if (authData.user) {
-      const { error: storeError } = await supabase.from('stores').insert({
+      const adminDb = createServiceSupabase();
+      const { error: storeError } = await adminDb.from('stores').insert({
         user_id: authData.user.id,
         email,
         store_name: storeName,

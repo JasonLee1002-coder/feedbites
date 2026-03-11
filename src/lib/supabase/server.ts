@@ -1,6 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
+// Authenticated user client (with cookies/session)
 export async function createServerSupabase() {
   const cookieStore = await cookies();
 
@@ -23,5 +25,13 @@ export async function createServerSupabase() {
         },
       },
     }
+  );
+}
+
+// Admin client for server-side DB operations (bypasses RLS)
+export function createServiceSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 }
