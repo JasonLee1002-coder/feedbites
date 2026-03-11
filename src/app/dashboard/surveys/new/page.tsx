@@ -50,12 +50,12 @@ interface SurveyBlock {
 // Block definitions (catalog)
 // ---------------------------------------------------------------------------
 const blockCatalog: { type: BlockType; icon: string; name: string; desc: string }[] = [
-  { type: 'demographics', icon: '\uD83D\uDCCB', name: '\u57FA\u672C\u8CC7\u6599', desc: '\u6027\u5225\u3001\u5E74\u9F61\u3001\u662F\u5426\u9996\u6B21\u4F86\u5E97' },
-  { type: 'dish-evaluation', icon: '\uD83C\uDF7D\uFE0F', name: '\u83DC\u54C1\u8A55\u9452', desc: '\u8F38\u5165\u83DC\u540D\uFF0C\u81EA\u52D5\u751F\u6210\u8A55\u9452\u554F\u984C' },
-  { type: 'impression', icon: '\uD83D\uDC41\uFE0F', name: '\u6574\u9AD4\u5370\u8C61', desc: '\u7B2C\u4E00\u5370\u8C61\u3001\u64FA\u76E4\u3001\u4EFD\u91CF\u611F\u53D7' },
-  { type: 'market', icon: '\uD83D\uDCB0', name: '\u5E02\u5834\u5B9A\u50F9', desc: '\u6700\u5370\u8C61\u6DF1\u523B\u83DC\u8272\u3001\u50F9\u683C\u5EFA\u8B70\u3001\u56DE\u8CFC\u610F\u9858' },
-  { type: 'feedback', icon: '\uD83D\uDCAC', name: '\u958B\u653E\u56DE\u994B', desc: '\u7D66\u4E3B\u5EDA/\u8001\u95C6\u7684\u81EA\u7531\u6587\u5B57\u56DE\u994B' },
-  { type: 'custom', icon: '\u2795', name: '\u81EA\u8A02\u554F\u984C', desc: '\u65B0\u589E\u55AE\u9805\u81EA\u8A02\u554F\u984C' },
+  { type: 'demographics', icon: '📋', name: '基本資料', desc: '性別、年齡、是否首次來店' },
+  { type: 'dish-evaluation', icon: '🍽️', name: '菜品評鑒', desc: '輸入菜名，自動生成評鑒問題' },
+  { type: 'impression', icon: '👁️', name: '整體印象', desc: '第一印象、擺盤、份量感受' },
+  { type: 'market', icon: '💰', name: '市場定價', desc: '最印象深刻菜色、價格建議、回購意願' },
+  { type: 'feedback', icon: '💬', name: '開放回饋', desc: '給主廚/老闆的自由文字回饋' },
+  { type: 'custom', icon: '➕', name: '自訂問題', desc: '新增單項自訂問題' },
 ];
 
 const defaultDishConfig = (): DishEvalConfig => ({
@@ -89,44 +89,44 @@ const nextBlockId = () => `block_${++blockCounter}`;
 // ---------------------------------------------------------------------------
 function generateDemographicsQuestions(): Question[] {
   return [
-    { id: 'demo_header', type: 'section-header', title: '\u57FA\u672C\u8CC7\u6599', label: '\u57FA\u672C\u8CC7\u6599', required: false },
-    { id: 'demo_gender', type: 'radio', label: '\u6027\u5225', required: true, options: ['\u7537', '\u5973', '\u5176\u4ED6'] },
-    { id: 'demo_age', type: 'radio', label: '\u5E74\u9F61\u5C64', required: true, options: ['18\u6B72\u4EE5\u4E0B', '18-25\u6B72', '26-35\u6B72', '36-45\u6B72', '46\u6B72\u4EE5\u4E0A'] },
-    { id: 'demo_first_visit', type: 'radio', label: '\u662F\u5426\u7B2C\u4E00\u6B21\u4F86\u672C\u5E97', required: true, options: ['\u662F', '\u5426'] },
+    { id: 'demo_header', type: 'section-header', title: '基本資料', label: '基本資料', required: false },
+    { id: 'demo_gender', type: 'radio', label: '性別', required: true, options: ['男', '女', '其他'] },
+    { id: 'demo_age', type: 'radio', label: '年齡層', required: true, options: ['18歲以下', '18-25歲', '26-35歲', '36-45歲', '46歲以上'] },
+    { id: 'demo_first_visit', type: 'radio', label: '是否第一次來本店', required: true, options: ['是', '否'] },
   ];
 }
 
 function generateImpressionQuestions(): Question[] {
   return [
-    { id: 'impression_header', type: 'section-header', title: '\u6574\u9AD4\u5370\u8C61', label: '\u6574\u9AD4\u5370\u8C61', required: false },
-    { id: 'impression_first', type: 'rating', label: '\u7B2C\u4E00\u773C\u5370\u8C61\u8A55\u5206', required: true, min: 1, max: 5 },
-    { id: 'impression_plating', type: 'rating', label: '\u64FA\u76E4\u7CBE\u7DFB\u5EA6', required: true, min: 1, max: 5 },
-    { id: 'impression_portion', type: 'radio', label: '\u4EFD\u91CF\u611F\u53D7', required: false, options: ['\u525B\u597D', '\u7A0D\u5FAE\u504F\u5C11', '\u592A\u591A\uFF08\u9069\u5408\u5206\u4EAB\uFF09'] },
+    { id: 'impression_header', type: 'section-header', title: '整體印象', label: '整體印象', required: false },
+    { id: 'impression_first', type: 'rating', label: '第一眼印象評分', required: true, min: 1, max: 5 },
+    { id: 'impression_plating', type: 'rating', label: '擺盤精緻度', required: true, min: 1, max: 5 },
+    { id: 'impression_portion', type: 'radio', label: '份量感受', required: false, options: ['剛好', '稍微偏少', '太多（適合分享）'] },
   ];
 }
 
 function generateDishQuestions(config: DishEvalConfig): Question[] {
   const questions: Question[] = [
-    { id: 'dish_header', type: 'section-header', title: '\u83DC\u54C1\u8A55\u9452', label: '\u83DC\u54C1\u8A55\u9452', required: false },
+    { id: 'dish_header', type: 'section-header', title: '菜品評鑒', label: '菜品評鑒', required: false },
   ];
 
   const aspectDefs: { key: keyof DishEvalConfig['aspects']; label: string; idSuffix: string }[] = [
-    { key: 'appearance', label: '\u5916\u89C0\u8CE3\u76F8', idSuffix: 'appearance' },
-    { key: 'aroma', label: '\u9999\u6C23', idSuffix: 'aroma' },
-    { key: 'taste', label: '\u53E3\u5473', idSuffix: 'taste' },
-    { key: 'portion', label: '\u4EFD\u91CF', idSuffix: 'portion' },
-    { key: 'overall', label: '\u6574\u9AD4\u6EFF\u610F\u5EA6', idSuffix: 'overall' },
-    { key: 'texture', label: '\u53E3\u611F\u63CF\u8FF0', idSuffix: 'texture' },
+    { key: 'appearance', label: '外觀賣相', idSuffix: 'appearance' },
+    { key: 'aroma', label: '香氣', idSuffix: 'aroma' },
+    { key: 'taste', label: '口味', idSuffix: 'taste' },
+    { key: 'portion', label: '份量', idSuffix: 'portion' },
+    { key: 'overall', label: '整體滿意度', idSuffix: 'overall' },
+    { key: 'texture', label: '口感描述', idSuffix: 'texture' },
   ];
 
   config.dishes.forEach((dish, di) => {
-    const dishName = dish.trim() || `\u83DC\u54C1 ${di + 1}`;
+    const dishName = dish.trim() || `菜品 ${di + 1}`;
     questions.push({
       id: `dish_${di}_header`,
       type: 'section-header',
       title: dishName,
       label: dishName,
-      description: `\u8ACB\u8A55\u50F9\u300C${dishName}\u300D`,
+      description: `請評價「${dishName}」`,
       required: false,
     });
 
@@ -137,9 +137,9 @@ function generateDishQuestions(config: DishEvalConfig): Question[] {
         type: 'radio-with-reason',
         label: `${label}`,
         required: true,
-        options: ['\u975E\u5E38\u6EFF\u610F', '\u6EFF\u610F', '\u666E\u901A', '\u4E0D\u592A\u6EFF\u610F', '\u4E0D\u6EFF\u610F'],
+        options: ['非常滿意', '滿意', '普通', '不太滿意', '不滿意'],
         showReason: true,
-        reasonPlaceholder: '\u8ACB\u8AAA\u660E\u539F\u56E0',
+        reasonPlaceholder: '請說明原因',
         dishName,
       });
     });
@@ -150,9 +150,9 @@ function generateDishQuestions(config: DishEvalConfig): Question[] {
         type: 'radio-with-reason',
         label: config.customAspectLabel.trim(),
         required: false,
-        options: ['\u975E\u5E38\u6EFF\u610F', '\u6EFF\u610F', '\u666E\u901A', '\u4E0D\u592A\u6EFF\u610F', '\u4E0D\u6EFF\u610F'],
+        options: ['非常滿意', '滿意', '普通', '不太滿意', '不滿意'],
         showReason: true,
-        reasonPlaceholder: '\u8ACB\u8AAA\u660E\u539F\u56E0',
+        reasonPlaceholder: '請說明原因',
         dishName,
       });
     }
@@ -163,18 +163,18 @@ function generateDishQuestions(config: DishEvalConfig): Question[] {
 
 function generateMarketQuestions(): Question[] {
   return [
-    { id: 'market_header', type: 'section-header', title: '\u5E02\u5834\u5B9A\u50F9', label: '\u5E02\u5834\u5B9A\u50F9', required: false },
-    { id: 'market_best_dish', type: 'text', label: '\u6700\u5370\u8C61\u6DF1\u523B\u7684\u662F\u54EA\u4E00\u9053\uFF1F', required: false, placeholder: '\u8ACB\u8F38\u5165\u83DC\u540D' },
-    { id: 'market_price', type: 'number', label: '\u5408\u7406\u7684\u5B9A\u50F9\u5EFA\u8B70\uFF08NT$\uFF09', required: false, placeholder: '\u8F38\u5165\u91D1\u984D' },
-    { id: 'market_repurchase', type: 'rating', label: '\u56DE\u8CFC\u610F\u9858', required: true, min: 1, max: 5 },
-    { id: 'market_occasion', type: 'checkbox', label: '\u6700\u9069\u5408\u7684\u6D88\u8CBB\u60C5\u5883', required: false, options: ['\u670B\u53CB\u805A\u9910\u4E0B\u9152', '\u7D04\u6703\u6176\u795D', '\u5BB6\u5EAD\u805A\u6703', '\u5546\u52D9\u5BA4\u9910', '\u7368\u81EA\u7528\u9910'] },
+    { id: 'market_header', type: 'section-header', title: '市場定價', label: '市場定價', required: false },
+    { id: 'market_best_dish', type: 'text', label: '最印象深刻的是哪一道？', required: false, placeholder: '請輸入菜名' },
+    { id: 'market_price', type: 'number', label: '合理的定價建議（NT$）', required: false, placeholder: '輸入金額' },
+    { id: 'market_repurchase', type: 'rating', label: '回購意願', required: true, min: 1, max: 5 },
+    { id: 'market_occasion', type: 'checkbox', label: '最適合的消費情境', required: false, options: ['朋友聚餐下酒', '約會慶祝', '家庭聚會', '商務室餐', '獨自用餐'] },
   ];
 }
 
 function generateFeedbackQuestions(): Question[] {
   return [
-    { id: 'feedback_header', type: 'section-header', title: '\u958B\u653E\u56DE\u994B', label: '\u958B\u653E\u56DE\u994B', required: false },
-    { id: 'feedback_chef', type: 'textarea', label: '\u7D66\u4E3B\u5EDA/\u8001\u95C6\u7684\u60C4\u60C4\u8A71', required: false, placeholder: '\u5982\u679C\u53EF\u4EE5\u8ABF\u6574\u4E00\u500B\u7D30\u7BC0\u8B93\u9019\u9053\u83DC\u66F4\u5B8C\u7F8E\uFF0C\u60A8\u7684\u5EFA\u8B70\u662F\uFF1F' },
+    { id: 'feedback_header', type: 'section-header', title: '開放回饋', label: '開放回饋', required: false },
+    { id: 'feedback_chef', type: 'textarea', label: '給主廚/老闆的惄惄話', required: false, placeholder: '如果可以調整一個細節讓這道菜更完美，您的建議是？' },
   ];
 }
 
@@ -196,7 +196,7 @@ function generateCustomBlockQuestions(items: CustomQuestionItem[]): Question[] {
       if (q.placeholder) base.placeholder = q.placeholder;
       if (q.type === 'radio-with-reason' || q.type === 'rating-with-reason') {
         base.showReason = true;
-        base.reasonPlaceholder = '\u8ACB\u8AAA\u660E\u539F\u56E0';
+        base.reasonPlaceholder = '請說明原因';
       }
       return base;
     });
@@ -390,18 +390,18 @@ export default function NewSurveyPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || '\u5EFA\u7ACB\u554F\u5377\u5931\u6557');
+        throw new Error(data.error || '建立問卷失敗');
       }
 
       const data = await res.json();
       router.push(`/dashboard/surveys/${data.id}`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : '\u767C\u751F\u932F\u8AA4');
+      setError(err instanceof Error ? err.message : '發生錯誤');
       setSubmitting(false);
     }
   };
 
-  const stepLabels = ['\u9078\u64C7\u6A21\u677F', '\u8A2D\u5B9A\u554F\u5377', '\u6298\u6263\u8A2D\u5B9A', '\u9810\u89BD\u767C\u5E03'];
+  const stepLabels = ['選擇模板', '設定問卷', '折扣設定', '預覽發布'];
 
   // Questions for preview
   const allQuestions = getQuestions();
@@ -414,11 +414,11 @@ export default function NewSurveyPage() {
         className="inline-flex items-center gap-1.5 text-sm text-[#8A8585] hover:text-[#A08735] mb-6 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
-        \u8FD4\u56DE\u554F\u5377\u5217\u8868
+        返回問卷列表
       </Link>
 
-      <h1 className="text-2xl font-bold text-[#3A3A3A] font-serif mb-2">\u5EFA\u7ACB\u65B0\u554F\u5377</h1>
-      <p className="text-sm text-[#8A8585] mb-8">\u6309\u6B65\u9A5F\u5B8C\u6210\u554F\u5377\u8A2D\u5B9A</p>
+      <h1 className="text-2xl font-bold text-[#3A3A3A] font-serif mb-2">建立新問卷</h1>
+      <p className="text-sm text-[#8A8585] mb-8">按步驟完成問卷設定</p>
 
       {/* Step Indicator */}
       <div className="flex items-center justify-center gap-2 mb-10">
@@ -455,8 +455,8 @@ export default function NewSurveyPage() {
       {/* ================================================================== */}
       {step === 1 && (
         <div>
-          <h2 className="text-lg font-bold text-[#3A3A3A] font-serif mb-2">\u9078\u64C7\u554F\u5377\u6A21\u677F</h2>
-          <p className="text-sm text-[#8A8585] mb-6">\u9078\u64C7\u4E00\u500B\u98A8\u683C\u6A21\u677F\uFF0C\u6C7A\u5B9A\u554F\u5377\u7684\u8996\u89BA\u5916\u89C0</p>
+          <h2 className="text-lg font-bold text-[#3A3A3A] font-serif mb-2">選擇問卷模板</h2>
+          <p className="text-sm text-[#8A8585] mb-6">選擇一個風格模板，決定問卷的視覺外觀</p>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {templateList.map((tmpl) => {
@@ -490,7 +490,7 @@ export default function NewSurveyPage() {
                   {isSelected && (
                     <div className="mt-3 text-xs font-medium text-[#C5A55A] flex items-center gap-1">
                       <Check className="w-3.5 h-3.5" />
-                      \u5DF2\u9078\u64C7
+                      已選擇
                     </div>
                   )}
                 </button>
@@ -505,17 +505,17 @@ export default function NewSurveyPage() {
       {/* ================================================================== */}
       {step === 2 && (
         <div>
-          <h2 className="text-lg font-bold text-[#3A3A3A] font-serif mb-2">\u8A2D\u5B9A\u554F\u5377\u5167\u5BB9</h2>
-          <p className="text-sm text-[#8A8585] mb-6">\u8A2D\u5B9A\u6A19\u984C\u4E26\u7D44\u5408\u554F\u5377\u5340\u584A</p>
+          <h2 className="text-lg font-bold text-[#3A3A3A] font-serif mb-2">設定問卷內容</h2>
+          <p className="text-sm text-[#8A8585] mb-6">設定標題並組合問卷區塊</p>
 
           {/* Title */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-[#3A3A3A] mb-2">\u554F\u5377\u6A19\u984C</label>
+            <label className="block text-sm font-medium text-[#3A3A3A] mb-2">問卷標題</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="\u4F8B\u5982\uFF1A\u7528\u9910\u6EFF\u610F\u5EA6\u8ABF\u67E5"
+              placeholder="例如：用餐滿意度調查"
               className="w-full px-4 py-3 rounded-xl border border-[#E8E2D8] bg-white text-[#3A3A3A] text-sm focus:outline-none focus:border-[#C5A55A] focus:ring-2 focus:ring-[#C5A55A]/20 placeholder:text-[#8A8585]/60"
             />
           </div>
@@ -525,14 +525,14 @@ export default function NewSurveyPage() {
             {/* Left: current blocks */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-3">
-                <label className="block text-sm font-medium text-[#3A3A3A]">\u554F\u5377\u7D50\u69CB</label>
-                <span className="text-xs text-[#8A8585]">{allQuestions.filter((q) => q.type !== 'section-header').length} \u984C</span>
+                <label className="block text-sm font-medium text-[#3A3A3A]">問卷結構</label>
+                <span className="text-xs text-[#8A8585]">{allQuestions.filter((q) => q.type !== 'section-header').length} 題</span>
               </div>
 
               {blocks.length === 0 && (
                 <div className="border-2 border-dashed border-[#E8E2D8] rounded-2xl p-8 text-center text-[#8A8585]">
-                  <p className="text-sm mb-2">\u5C1A\u672A\u65B0\u589E\u4EFB\u4F55\u5340\u584A</p>
-                  <p className="text-xs">\u9EDE\u64CA\u53F3\u5074\u300C\u65B0\u589E\u5340\u584A\u300D\u4F86\u7D44\u5408\u554F\u5377\u5167\u5BB9</p>
+                  <p className="text-sm mb-2">尚未新增任何區塊</p>
+                  <p className="text-xs">點擊右側「新增區塊」來組合問卷內容</p>
                 </div>
               )}
 
@@ -549,7 +549,7 @@ export default function NewSurveyPage() {
                           onClick={() => moveBlock(index, -1)}
                           disabled={index === 0}
                           className="p-1 text-[#8A8585] hover:text-[#C5A55A] disabled:opacity-30 transition-colors"
-                          title="\u4E0A\u79FB"
+                          title="上移"
                         >
                           <ChevronUp className="w-4 h-4" />
                         </button>
@@ -557,14 +557,14 @@ export default function NewSurveyPage() {
                           onClick={() => moveBlock(index, 1)}
                           disabled={index === blocks.length - 1}
                           className="p-1 text-[#8A8585] hover:text-[#C5A55A] disabled:opacity-30 transition-colors"
-                          title="\u4E0B\u79FB"
+                          title="下移"
                         >
                           <ChevronDown className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => removeBlock(block.id)}
                           className="p-1 text-[#8A8585] hover:text-red-500 transition-colors"
-                          title="\u79FB\u9664\u5340\u584A"
+                          title="移除區塊"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -576,32 +576,32 @@ export default function NewSurveyPage() {
                       {/* Demographics preview */}
                       {block.type === 'demographics' && (
                         <div className="space-y-1 text-xs text-[#8A8585]">
-                          <p>\u2713 \u6027\u5225\u3001\u5E74\u9F61\u5C64\u3001\u662F\u5426\u7B2C\u4E00\u6B21\u4F86\u5E97</p>
-                          <p className="text-[10px]">\u4EE5\u4E0A\u70BA\u9810\u8A2D\u554F\u984C\uFF0C\u7121\u9700\u984D\u5916\u8A2D\u5B9A</p>
+                          <p>✓ 性別、年齡層、是否第一次來店</p>
+                          <p className="text-[10px]">以上為預設問題，無需額外設定</p>
                         </div>
                       )}
 
                       {/* Impression preview */}
                       {block.type === 'impression' && (
                         <div className="space-y-1 text-xs text-[#8A8585]">
-                          <p>\u2713 \u7B2C\u4E00\u773C\u5370\u8C61\u8A55\u5206\u3001\u64FA\u76E4\u7CBE\u7DFB\u5EA6\u3001\u4EFD\u91CF\u611F\u53D7</p>
-                          <p className="text-[10px]">\u4EE5\u4E0A\u70BA\u9810\u8A2D\u554F\u984C\uFF0C\u7121\u9700\u984D\u5916\u8A2D\u5B9A</p>
+                          <p>✓ 第一眼印象評分、擺盤精緻度、份量感受</p>
+                          <p className="text-[10px]">以上為預設問題，無需額外設定</p>
                         </div>
                       )}
 
                       {/* Market preview */}
                       {block.type === 'market' && (
                         <div className="space-y-1 text-xs text-[#8A8585]">
-                          <p>\u2713 \u6700\u5370\u8C61\u6DF1\u523B\u83DC\u8272\u3001\u5B9A\u50F9\u5EFA\u8B70\u3001\u56DE\u8CFC\u610F\u9858\u3001\u6D88\u8CBB\u60C5\u5883</p>
-                          <p className="text-[10px]">\u4EE5\u4E0A\u70BA\u9810\u8A2D\u554F\u984C\uFF0C\u7121\u9700\u984D\u5916\u8A2D\u5B9A</p>
+                          <p>✓ 最印象深刻菜色、定價建議、回購意願、消費情境</p>
+                          <p className="text-[10px]">以上為預設問題，無需額外設定</p>
                         </div>
                       )}
 
                       {/* Feedback preview */}
                       {block.type === 'feedback' && (
                         <div className="space-y-1 text-xs text-[#8A8585]">
-                          <p>\u2713 \u7D66\u4E3B\u5EDA/\u8001\u95C6\u7684\u81EA\u7531\u6587\u5B57\u56DE\u994B</p>
-                          <p className="text-[10px]">\u4EE5\u4E0A\u70BA\u9810\u8A2D\u554F\u984C\uFF0C\u7121\u9700\u984D\u5916\u8A2D\u5B9A</p>
+                          <p>✓ 給主廚/老闆的自由文字回饋</p>
+                          <p className="text-[10px]">以上為預設問題，無需額外設定</p>
                         </div>
                       )}
 
@@ -612,12 +612,12 @@ export default function NewSurveyPage() {
                           <div className="space-y-2">
                             {block.dishConfig.dishes.map((dish, di) => (
                               <div key={di} className="flex items-center gap-2">
-                                <span className="text-xs text-[#8A8585] shrink-0 w-16">\u83DC\u54C1 {di + 1}:</span>
+                                <span className="text-xs text-[#8A8585] shrink-0 w-16">菜品 {di + 1}:</span>
                                 <input
                                   type="text"
                                   value={dish}
                                   onChange={(e) => updateDish(block.id, di, e.target.value)}
-                                  placeholder="\u8F38\u5165\u83DC\u540D..."
+                                  placeholder="輸入菜名..."
                                   className="flex-1 px-3 py-2 rounded-lg border border-[#E8E2D8] text-sm text-[#3A3A3A] focus:outline-none focus:border-[#C5A55A] placeholder:text-[#8A8585]/60"
                                 />
                                 <button
@@ -634,21 +634,21 @@ export default function NewSurveyPage() {
                               className="flex items-center gap-1 text-xs text-[#C5A55A] hover:text-[#A08735] transition-colors ml-16"
                             >
                               <Plus className="w-3.5 h-3.5" />
-                              \u65B0\u589E\u83DC\u54C1
+                              新增菜品
                             </button>
                           </div>
 
                           {/* Aspect toggles */}
                           <div className="pt-3 border-t border-[#E8E2D8]">
-                            <p className="text-xs text-[#8A8585] mb-2">\u6BCF\u9053\u83DC\u81EA\u52D5\u5305\u542B\uFF1A</p>
+                            <p className="text-xs text-[#8A8585] mb-2">每道菜自動包含：</p>
                             <div className="flex flex-wrap gap-x-4 gap-y-1.5">
                               {([
-                                ['appearance', '\u5916\u89C0\u8CE3\u76F8'],
-                                ['aroma', '\u9999\u6C23'],
-                                ['taste', '\u53E3\u5473'],
-                                ['portion', '\u4EFD\u91CF'],
-                                ['overall', '\u6574\u9AD4\u6EFF\u610F\u5EA6'],
-                                ['texture', '\u53E3\u611F\u63CF\u8FF0'],
+                                ['appearance', '外觀賣相'],
+                                ['aroma', '香氣'],
+                                ['taste', '口味'],
+                                ['portion', '份量'],
+                                ['overall', '整體滿意度'],
+                                ['texture', '口感描述'],
                               ] as [keyof DishEvalConfig['aspects'], string][]).map(([key, label]) => (
                                 <label key={key} className="flex items-center gap-1.5 text-xs text-[#3A3A3A] cursor-pointer">
                                   <input
@@ -667,7 +667,7 @@ export default function NewSurveyPage() {
                                   onChange={() => toggleAspect(block.id, 'custom')}
                                   className="accent-[#C5A55A] w-3.5 h-3.5"
                                 />
-                                \u7279\u6B8A\u554F\u984C(\u81EA\u8A02)
+                                特殊問題(自訂)
                               </label>
                             </div>
                             {block.dishConfig.aspects.custom && (
@@ -679,7 +679,7 @@ export default function NewSurveyPage() {
                                     dishConfig: { ...block.dishConfig!, customAspectLabel: e.target.value },
                                   })
                                 }
-                                placeholder="\u81EA\u8A02\u554F\u984C\u6A19\u984C..."
+                                placeholder="自訂問題標題..."
                                 className="mt-2 w-full px-3 py-2 rounded-lg border border-[#E8E2D8] text-xs text-[#3A3A3A] focus:outline-none focus:border-[#C5A55A] placeholder:text-[#8A8585]/60"
                               />
                             )}
@@ -700,7 +700,7 @@ export default function NewSurveyPage() {
                                   type="text"
                                   value={q.label}
                                   onChange={(e) => updateCustomQuestion(block.id, qi, { label: e.target.value })}
-                                  placeholder="\u8F38\u5165\u554F\u984C..."
+                                  placeholder="輸入問題..."
                                   className="w-full px-3 py-2 rounded-lg border border-[#E8E2D8] text-sm text-[#3A3A3A] focus:outline-none focus:border-[#C5A55A] placeholder:text-[#8A8585]/60"
                                 />
                                 <div className="flex items-center gap-3">
@@ -711,15 +711,15 @@ export default function NewSurveyPage() {
                                     }
                                     className="px-3 py-1.5 rounded-lg border border-[#E8E2D8] text-xs text-[#3A3A3A] bg-white focus:outline-none focus:border-[#C5A55A]"
                                   >
-                                    <option value="emoji-rating">\u8868\u60C5\u8A55\u5206</option>
-                                    <option value="rating">\u661F\u7D1A\u8A55\u5206</option>
-                                    <option value="radio">\u55AE\u9078</option>
-                                    <option value="checkbox">\u591A\u9078</option>
-                                    <option value="radio-with-reason">\u55AE\u9078+\u539F\u56E0</option>
-                                    <option value="rating-with-reason">\u8A55\u5206+\u539F\u56E0</option>
-                                    <option value="text">\u7C21\u7B54</option>
-                                    <option value="textarea">\u9577\u7B54</option>
-                                    <option value="number">\u6578\u5B57</option>
+                                    <option value="emoji-rating">表情評分</option>
+                                    <option value="rating">星級評分</option>
+                                    <option value="radio">單選</option>
+                                    <option value="checkbox">多選</option>
+                                    <option value="radio-with-reason">單選+原因</option>
+                                    <option value="rating-with-reason">評分+原因</option>
+                                    <option value="text">簡答</option>
+                                    <option value="textarea">長答</option>
+                                    <option value="number">數字</option>
                                   </select>
                                   <label className="flex items-center gap-1.5 text-xs text-[#8A8585]">
                                     <input
@@ -730,7 +730,7 @@ export default function NewSurveyPage() {
                                       }
                                       className="accent-[#C5A55A]"
                                     />
-                                    \u5FC5\u586B
+                                    必填
                                   </label>
                                 </div>
                                 {(q.type === 'radio' || q.type === 'checkbox' || q.type === 'radio-with-reason') && (
@@ -745,7 +745,7 @@ export default function NewSurveyPage() {
                                           .filter(Boolean),
                                       })
                                     }
-                                    placeholder="\u9078\u9805\uFF08\u7528\u9017\u865F\u5206\u9694\uFF09"
+                                    placeholder="選項（用逗號分隔）"
                                     className="w-full px-3 py-2 rounded-lg border border-[#E8E2D8] text-xs text-[#3A3A3A] focus:outline-none focus:border-[#C5A55A] placeholder:text-[#8A8585]/60"
                                   />
                                 )}
@@ -763,7 +763,7 @@ export default function NewSurveyPage() {
                             onClick={() => addCustomQuestion(block.id)}
                             className="w-full py-2 border-2 border-dashed border-[#E8E2D8] rounded-xl text-xs text-[#8A8585] hover:border-[#C5A55A] hover:text-[#A08735] transition-colors"
                           >
-                            + \u65B0\u589E\u554F\u984C
+                            + 新增問題
                           </button>
                         </div>
                       )}
@@ -777,7 +777,7 @@ export default function NewSurveyPage() {
                 onClick={() => setShowBlockPicker(!showBlockPicker)}
                 className="w-full mt-4 py-3 border-2 border-dashed border-[#E8E2D8] rounded-2xl text-sm text-[#8A8585] hover:border-[#C5A55A] hover:text-[#A08735] transition-colors lg:hidden"
               >
-                + \u65B0\u589E\u5340\u584A
+                + 新增區塊
               </button>
 
               {/* Block picker (mobile dropdown) */}
@@ -801,7 +801,7 @@ export default function NewSurveyPage() {
                         <span className="text-xl">{cat.icon}</span>
                         <div>
                           <span className="text-sm font-medium text-[#3A3A3A]">{cat.name}</span>
-                          {alreadyAdded && <span className="text-xs text-[#8A8585] ml-2">\u5DF2\u65B0\u589E</span>}
+                          {alreadyAdded && <span className="text-xs text-[#8A8585] ml-2">已新增</span>}
                           <p className="text-xs text-[#8A8585]">{cat.desc}</p>
                         </div>
                       </button>
@@ -813,7 +813,7 @@ export default function NewSurveyPage() {
 
             {/* Right: block catalog (desktop sidebar) */}
             <div className="hidden lg:block w-64 shrink-0">
-              <label className="block text-sm font-medium text-[#3A3A3A] mb-3">\u65B0\u589E\u5340\u584A</label>
+              <label className="block text-sm font-medium text-[#3A3A3A] mb-3">新增區塊</label>
               <div className="space-y-2">
                 {blockCatalog.map((cat) => {
                   const alreadyAdded =
@@ -834,7 +834,7 @@ export default function NewSurveyPage() {
                         <span className="text-lg">{cat.icon}</span>
                         <div>
                           <span className="text-sm font-medium text-[#3A3A3A]">{cat.name}</span>
-                          {alreadyAdded && <span className="text-xs text-[#8A8585] ml-1">\u2713</span>}
+                          {alreadyAdded && <span className="text-xs text-[#8A8585] ml-1">✓</span>}
                           <p className="text-xs text-[#8A8585] leading-tight">{cat.desc}</p>
                         </div>
                       </div>
@@ -852,15 +852,15 @@ export default function NewSurveyPage() {
       {/* ================================================================== */}
       {step === 3 && (
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-lg font-bold text-[#3A3A3A] font-serif mb-2">\u6298\u6263\u8A2D\u5B9A</h2>
-          <p className="text-sm text-[#8A8585] mb-6">\u8A2D\u5B9A\u5B8C\u6210\u554F\u5377\u5F8C\u7684\u6298\u6263\u734E\u52F5</p>
+          <h2 className="text-lg font-bold text-[#3A3A3A] font-serif mb-2">折扣設定</h2>
+          <p className="text-sm text-[#8A8585] mb-6">設定完成問卷後的折扣獎勵</p>
 
           {/* Enable/Disable */}
           <div className="bg-white rounded-xl border border-[#E8E2D8] p-5 mb-4">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="font-bold text-sm text-[#3A3A3A]">\u555F\u7528\u6298\u6263\u734E\u52F5</h4>
-                <p className="text-xs text-[#8A8585] mt-0.5">\u9867\u5BA2\u5B8C\u6210\u554F\u5377\u5F8C\u6703\u6536\u5230\u6298\u6263\u78BC</p>
+                <h4 className="font-bold text-sm text-[#3A3A3A]">啟用折扣獎勵</h4>
+                <p className="text-xs text-[#8A8585] mt-0.5">顧客完成問卷後會收到折扣碼</p>
               </div>
               <button
                 type="button"
@@ -881,13 +881,13 @@ export default function NewSurveyPage() {
           {discountEnabled && (
             <div className="space-y-4">
               <div className="bg-white rounded-xl border border-[#E8E2D8] p-5">
-                <label className="block text-sm font-medium text-[#3A3A3A] mb-3">\u6298\u6263\u985E\u578B</label>
+                <label className="block text-sm font-medium text-[#3A3A3A] mb-3">折扣類型</label>
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { value: 'percentage', label: '\u767E\u5206\u6BD4\u6298\u6263', desc: '\u4F8B\u5982\uFF1A\u62539\u6298' },
-                    { value: 'fixed', label: '\u56FA\u5B9A\u91D1\u984D', desc: '\u4F8B\u5982\uFF1A\u627250\u5143' },
-                    { value: 'freebie', label: '\u514D\u8CBB\u8D08\u54C1', desc: '\u4F8B\u5982\uFF1A\u9001\u5C0F\u83DC\u4E00\u4EFD' },
-                    { value: 'custom_text', label: '\u81EA\u8A02\u6587\u5B57', desc: '\u81EA\u7531\u8F38\u5165\u512A\u60E0\u5167\u5BB9' },
+                    { value: 'percentage', label: '百分比折扣', desc: '例如：打9折' },
+                    { value: 'fixed', label: '固定金額', desc: '例如：扲50元' },
+                    { value: 'freebie', label: '免費贈品', desc: '例如：送小菜一份' },
+                    { value: 'custom_text', label: '自訂文字', desc: '自由輸入優惠內容' },
                   ].map((opt) => (
                     <button
                       key={opt.value}
@@ -908,10 +908,10 @@ export default function NewSurveyPage() {
               <div className="bg-white rounded-xl border border-[#E8E2D8] p-5">
                 <label className="block text-sm font-medium text-[#3A3A3A] mb-2">
                   {discountType === 'percentage'
-                    ? '\u6298\u6263\u767E\u5206\u6BD4'
+                    ? '折扣百分比'
                     : discountType === 'fixed'
-                    ? '\u6298\u6263\u91D1\u984D\uFF08NT$\uFF09'
-                    : '\u512A\u60E0\u5167\u5BB9'}
+                    ? '折扣金額（NT$）'
+                    : '優惠內容'}
                 </label>
                 <input
                   type="text"
@@ -922,17 +922,17 @@ export default function NewSurveyPage() {
                       ? '10'
                       : discountType === 'fixed'
                       ? '50'
-                      : '\u514D\u8CBB\u8D08\u9001\u5C0F\u83DC\u4E00\u4EFD'
+                      : '免費贈送小菜一份'
                   }
                   className="w-full px-4 py-3 rounded-xl border border-[#E8E2D8] bg-white text-[#3A3A3A] text-sm focus:outline-none focus:border-[#C5A55A] focus:ring-2 focus:ring-[#C5A55A]/20 placeholder:text-[#8A8585]/60"
                 />
                 {discountType === 'percentage' && (
-                  <p className="text-xs text-[#8A8585] mt-1.5">\u8F38\u5165\u6298\u6263\u767E\u5206\u6BD4\uFF0C\u4F8B\u5982 10 \u4EE3\u8868\u62539\u6298</p>
+                  <p className="text-xs text-[#8A8585] mt-1.5">輸入折扣百分比，例如 10 代表打9折</p>
                 )}
               </div>
 
               <div className="bg-white rounded-xl border border-[#E8E2D8] p-5">
-                <label className="block text-sm font-medium text-[#3A3A3A] mb-2">\u6298\u6263\u78BC\u6709\u6548\u5929\u6578</label>
+                <label className="block text-sm font-medium text-[#3A3A3A] mb-2">折扣碼有效天數</label>
                 <div className="flex items-center gap-3">
                   <input
                     type="number"
@@ -942,7 +942,7 @@ export default function NewSurveyPage() {
                     max={365}
                     className="w-24 px-4 py-3 rounded-xl border border-[#E8E2D8] bg-white text-[#3A3A3A] text-sm focus:outline-none focus:border-[#C5A55A] focus:ring-2 focus:ring-[#C5A55A]/20"
                   />
-                  <span className="text-sm text-[#8A8585]">\u5929</span>
+                  <span className="text-sm text-[#8A8585]">天</span>
                 </div>
               </div>
             </div>
@@ -955,8 +955,8 @@ export default function NewSurveyPage() {
       {/* ================================================================== */}
       {step === 4 && (
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-lg font-bold text-[#3A3A3A] font-serif mb-2">\u9810\u89BD\u78BA\u8A8D</h2>
-          <p className="text-sm text-[#8A8585] mb-6">\u78BA\u8A8D\u8A2D\u5B9A\u7121\u8AA4\u5F8C\u767C\u5E03\u554F\u5377</p>
+          <h2 className="text-lg font-bold text-[#3A3A3A] font-serif mb-2">預覽確認</h2>
+          <p className="text-sm text-[#8A8585] mb-6">確認設定無誤後發布問卷</p>
 
           <div className="space-y-4">
             {/* Summary Card */}
@@ -965,7 +965,7 @@ export default function NewSurveyPage() {
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between py-2 border-b border-[#E8E2D8]">
-                  <span className="text-sm text-[#8A8585]">\u8996\u89BA\u6A21\u677F</span>
+                  <span className="text-sm text-[#8A8585]">視覺模板</span>
                   <span className="text-sm text-[#3A3A3A] font-medium flex items-center gap-2">
                     {selectedTemplate && (
                       <span
@@ -980,30 +980,30 @@ export default function NewSurveyPage() {
                 </div>
 
                 <div className="flex items-center justify-between py-2 border-b border-[#E8E2D8]">
-                  <span className="text-sm text-[#8A8585]">\u5340\u584A\u6578\u91CF</span>
-                  <span className="text-sm text-[#3A3A3A] font-medium">{blocks.length} \u500B\u5340\u584A</span>
+                  <span className="text-sm text-[#8A8585]">區塊數量</span>
+                  <span className="text-sm text-[#3A3A3A] font-medium">{blocks.length} 個區塊</span>
                 </div>
 
                 <div className="flex items-center justify-between py-2 border-b border-[#E8E2D8]">
-                  <span className="text-sm text-[#8A8585]">\u554F\u984C\u6578\u91CF</span>
+                  <span className="text-sm text-[#8A8585]">問題數量</span>
                   <span className="text-sm text-[#3A3A3A] font-medium">
-                    {allQuestions.filter((q) => q.type !== 'section-header').length} \u984C
+                    {allQuestions.filter((q) => q.type !== 'section-header').length} 題
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between py-2 border-b border-[#E8E2D8]">
-                  <span className="text-sm text-[#8A8585]">\u6298\u6263\u734E\u52F5</span>
+                  <span className="text-sm text-[#8A8585]">折扣獎勵</span>
                   <span className="text-sm text-[#3A3A3A] font-medium">
                     {discountEnabled ? (
                       <>
-                        {discountType === 'percentage' && `${discountValue}% \u6298\u6263`}
-                        {discountType === 'fixed' && `NT$${discountValue} \u6298\u6263`}
+                        {discountType === 'percentage' && `${discountValue}% 折扣`}
+                        {discountType === 'fixed' && `NT$${discountValue} 折扣`}
                         {discountType === 'freebie' && discountValue}
                         {discountType === 'custom_text' && discountValue}
-                        <span className="text-xs text-[#8A8585] ml-2">\uFF08{discountExpiryDays} \u5929\u6709\u6548\uFF09</span>
+                        <span className="text-xs text-[#8A8585] ml-2">（{discountExpiryDays} 天有效）</span>
                       </>
                     ) : (
-                      '\u672A\u555F\u7528'
+                      '未啟用'
                     )}
                   </span>
                 </div>
@@ -1012,7 +1012,7 @@ export default function NewSurveyPage() {
 
             {/* Block structure preview */}
             <div className="bg-white rounded-2xl border border-[#E8E2D8] p-6">
-              <h4 className="font-bold text-sm text-[#3A3A3A] mb-3">\u5340\u584A\u7D50\u69CB</h4>
+              <h4 className="font-bold text-sm text-[#3A3A3A] mb-3">區塊結構</h4>
               <div className="space-y-2">
                 {blocks.map((block) => (
                   <div key={block.id} className="flex items-center gap-2 py-1.5 px-3 bg-[#FAF7F2] rounded-lg">
@@ -1020,12 +1020,12 @@ export default function NewSurveyPage() {
                     <span className="text-sm text-[#3A3A3A] font-medium">{blockLabel(block.type)}</span>
                     {block.type === 'dish-evaluation' && block.dishConfig && (
                       <span className="text-xs text-[#8A8585] ml-auto">
-                        {block.dishConfig.dishes.filter((d) => d.trim()).length} \u9053\u83DC
+                        {block.dishConfig.dishes.filter((d) => d.trim()).length} 道菜
                       </span>
                     )}
                     {block.type === 'custom' && block.customQuestions && (
                       <span className="text-xs text-[#8A8585] ml-auto">
-                        {block.customQuestions.filter((q) => q.label.trim()).length} \u984C
+                        {block.customQuestions.filter((q) => q.label.trim()).length} 題
                       </span>
                     )}
                   </div>
@@ -1035,7 +1035,7 @@ export default function NewSurveyPage() {
 
             {/* Questions Preview */}
             <div className="bg-white rounded-2xl border border-[#E8E2D8] p-6">
-              <h4 className="font-bold text-sm text-[#3A3A3A] mb-3">\u554F\u984C\u6E05\u55AE</h4>
+              <h4 className="font-bold text-sm text-[#3A3A3A] mb-3">問題清單</h4>
               <div className="space-y-1.5">
                 {(() => {
                   let qNum = 0;
@@ -1065,7 +1065,7 @@ export default function NewSurveyPage() {
                         </span>
                         {q.required && (
                           <span className="text-[10px] px-1.5 py-0.5 bg-red-50 text-red-500 rounded-full shrink-0">
-                            \u5FC5\u586B
+                            必填
                           </span>
                         )}
                       </div>
@@ -1096,7 +1096,7 @@ export default function NewSurveyPage() {
           }}
           className="px-5 py-2.5 border border-[#E8E2D8] rounded-xl text-sm text-[#8A8585] hover:border-[#C5A55A] hover:text-[#A08735] transition-colors"
         >
-          {step === 1 ? '\u53D6\u6D88' : '\u4E0A\u4E00\u6B65'}
+          {step === 1 ? '取消' : '上一步'}
         </button>
 
         {step < 4 ? (
@@ -1105,7 +1105,7 @@ export default function NewSurveyPage() {
             disabled={!canProceed()}
             className="px-6 py-2.5 bg-[#C5A55A] text-white text-sm font-medium rounded-xl hover:bg-[#A08735] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            \u4E0B\u4E00\u6B65
+            下一步
           </button>
         ) : (
           <button
@@ -1113,7 +1113,7 @@ export default function NewSurveyPage() {
             disabled={submitting}
             className="px-6 py-2.5 bg-[#C5A55A] text-white text-sm font-medium rounded-xl hover:bg-[#A08735] transition-colors disabled:opacity-60"
           >
-            {submitting ? '\u767C\u5E03\u4E2D...' : '\u767C\u5E03\u554F\u5377'}
+            {submitting ? '發布中...' : '發布問卷'}
           </button>
         )}
       </div>
