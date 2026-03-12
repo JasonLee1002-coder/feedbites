@@ -6,12 +6,13 @@ import { getTemplate } from '@/lib/templates';
 import SurveyRenderer from '@/components/survey/SurveyRenderer';
 import DiscountCodeDisplay from '@/components/survey/DiscountCodeDisplay';
 
-type SurveyStep = 'survey' | 'phone' | 'discount';
+type SurveyStep = 'survey' | 'submitting' | 'discount' | 'phone-prompt';
 
 interface SurveyWithStore extends Survey {
   stores: {
     store_name: string;
     logo_url: string | null;
+    frame_id?: string | null;
   };
 }
 
@@ -37,21 +38,20 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
   const colors: ThemeColors = survey.custom_colors || template.colors;
   const storeName = survey.stores?.store_name || '';
   const logoUrl = survey.stores?.logo_url || null;
+  const frameId = survey.stores?.frame_id || null;
 
+  // Submit survey immediately — discount is ALWAYS given if enabled (no phone gating)
   const handleSurveySubmit = useCallback((surveyAnswers: Record<string, string | string[]>, xp: number) => {
     setAnswers(surveyAnswers);
     setXpEarned(xp);
-    // If discount is enabled, collect phone first; otherwise submit directly
-    if (survey.discount_enabled) {
-      setStep('phone');
-    } else {
-      submitResponse(surveyAnswers, '', xp);
-    }
-  }, [survey.discount_enabled]);
+    submitResponse(surveyAnswers, xp);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  async function submitResponse(finalAnswers: Record<string, string | string[]>, phoneNumber: string, xpScore?: number, skipDiscount?: boolean) {
+  async function submitResponse(finalAnswers: Record<string, string | string[]>, xpScore: number, phoneNumber?: string) {
     setIsSubmitting(true);
     setSubmitError('');
+    if (!phoneNumber) setStep('submitting');
 
     try {
       const res = await fetch(`/api/surveys/${survey.id}/responses`, {
@@ -60,8 +60,8 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
         body: JSON.stringify({
           answers: finalAnswers,
           phone: phoneNumber || undefined,
-          xp_earned: xpScore ?? xpEarned,
-          skip_discount: skipDiscount || false,
+          xp_earned: xpScore,
+          skip_discount: false,
         }),
       });
 
@@ -85,23 +85,34 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
       setStep('discount');
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : '提交失敗，請稍後再試');
+      setStep('survey'); // Go back to survey on error
     } finally {
       setIsSubmitting(false);
     }
   }
 
   function handlePhoneSubmit() {
-    // Validate phone if entered
     if (phone && !/^09\d{8}$/.test(phone.replace(/[-\s]/g, ''))) {
       setPhoneError('請輸入正確的手機號碼格式（09xxxxxxxx）');
       return;
     }
     setPhoneError('');
-    submitResponse(answers, phone.replace(/[-\s]/g, ''), xpEarned);
+    // Save phone via a lightweight update (response already submitted)
+    fetch(`/api/surveys/${survey.id}/responses`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        answers,
+        phone: phone.replace(/[-\s]/g, ''),
+        xp_earned: xpEarned,
+        skip_discount: true, // Already has discount, just updating phone
+      }),
+    }).catch(() => {}); // Best effort
+    setStep('discount');
   }
 
   function handleSkipPhone() {
-    submitResponse(answers, '', xpEarned, true);
+    setStep('discount');
   }
 
   // ─── Step: Survey ───
@@ -113,6 +124,7 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
         storeName={storeName}
         surveyTitle={survey.title}
         logoUrl={logoUrl}
+        frameId={frameId}
         discountEnabled={survey.discount_enabled}
         discountValue={survey.discount_value}
         onSubmit={handleSurveySubmit}
@@ -123,121 +135,33 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
     );
   }
 
-  // ─── Step: Phone Collection ───
-  if (step === 'phone') {
+  // ─── Step: Submitting (loading) ───
+  if (step === 'submitting') {
     return (
       <div
         className="min-h-screen flex flex-col items-center justify-center px-6"
         style={{ background: colors.background, fontFamily: "'Noto Sans TC', sans-serif" }}
       >
-        <div className="w-full max-w-sm">
-          {/* Animation container */}
-          <div className="text-center mb-8" style={{ animation: 'slideUp 0.5s ease forwards' }}>
-            <div className="text-5xl mb-4">🎊</div>
-            <h2
-              className="text-xl font-bold mb-2"
-              style={{ fontFamily: "'Noto Serif TC', serif", color: colors.text }}
-            >
-              差一步就完成了！
-            </h2>
-            <p className="text-sm leading-relaxed" style={{ color: colors.textLight }}>
-              輸入手機號碼領取折扣碼
-            </p>
-          </div>
-
-          {/* Phone input card */}
-          <div
-            className="p-6 rounded-2xl mb-4"
-            style={{
-              background: colors.surface,
-              border: `1px solid ${colors.border}`,
-              boxShadow: `0 4px 24px ${colors.primary}10`,
-            }}
+        <div className="text-center" style={{ animation: 'slideUp 0.5s ease forwards' }}>
+          <div className="text-5xl mb-4">🎊</div>
+          <h2
+            className="text-xl font-bold mb-2"
+            style={{ fontFamily: "'Noto Serif TC', serif", color: colors.text }}
           >
-            <label className="block text-sm font-medium mb-3" style={{ color: colors.text }}>
-              手機號碼
-            </label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={e => {
-                setPhone(e.target.value);
-                setPhoneError('');
-              }}
-              placeholder="0912345678"
-              autoFocus
-              inputMode="numeric"
-              className="w-full px-4 py-3.5 rounded-xl text-base outline-none transition-all"
-              style={{
-                background: colors.background,
-                border: `1.5px solid ${phoneError ? '#D4605A' : colors.border}`,
-                color: colors.text,
-                fontSize: '18px',
-                letterSpacing: '0.1em',
-              }}
-              onFocus={e => {
-                e.target.style.borderColor = colors.primary;
-              }}
-              onBlur={e => {
-                e.target.style.borderColor = phoneError ? '#D4605A' : colors.border;
-              }}
-            />
-            {phoneError && (
-              <p className="text-xs mt-2" style={{ color: '#D4605A' }}>
-                {phoneError}
-              </p>
-            )}
-            <p className="text-xs mt-3 leading-relaxed" style={{ color: colors.textLight }}>
-              我們會妥善保管您的資料，僅用於未來優惠通知。
-            </p>
-          </div>
-
+            正在提交...
+          </h2>
+          <p className="text-sm" style={{ color: colors.textLight }}>
+            請稍候
+          </p>
           {submitError && (
             <div
-              className="p-3 rounded-xl mb-4 text-center text-sm"
+              className="p-3 rounded-xl mt-4 text-center text-sm"
               style={{ background: '#D4605A15', color: '#D4605A' }}
             >
               {submitError}
             </div>
           )}
-
-          {/* Submit button */}
-          <button
-            onClick={handlePhoneSubmit}
-            disabled={isSubmitting}
-            className="w-full py-3.5 rounded-full text-sm font-semibold text-white transition-all disabled:opacity-50"
-            style={{
-              background: `linear-gradient(135deg, ${colors.primaryLight}, ${colors.primary})`,
-              boxShadow: `0 4px 16px ${colors.primary}40`,
-            }}
-          >
-            {isSubmitting ? '提交中...' : '領取折扣碼'}
-          </button>
-
-          {/* Skip button */}
-          <button
-            onClick={handleSkipPhone}
-            disabled={isSubmitting}
-            className="w-full py-3 mt-3 text-sm transition-all disabled:opacity-50"
-            style={{ color: colors.textLight }}
-          >
-            跳過，不需要折扣碼
-          </button>
-
-          {/* Footer */}
-          <div className="text-center mt-10">
-            <span className="text-xs" style={{ color: colors.textLight }}>
-              Powered by{' '}
-              <a href="/" target="_blank" className="font-medium" style={{ color: colors.primary }}>
-                FeedBites
-              </a>
-            </span>
-            <div className="text-[10px] mt-0.5" style={{ color: colors.textLight }}>
-              Bite. Rate. Save.
-            </div>
-          </div>
         </div>
-
         <style jsx>{`
           @keyframes slideUp {
             from { opacity: 0; transform: translateY(24px); }
@@ -261,6 +185,19 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
         tierName={discountResult.tier_name}
         tierEmoji={discountResult.tier_emoji}
         xpEarned={xpEarned}
+        onPhoneSubmit={(phoneNumber) => {
+          // Best-effort save phone to the response
+          fetch(`/api/surveys/${survey.id}/responses`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              answers,
+              phone: phoneNumber,
+              xp_earned: xpEarned,
+              skip_discount: true,
+            }),
+          }).catch(() => {});
+        }}
       />
     );
   }
@@ -284,7 +221,28 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
         </p>
       </div>
 
-      <div className="mt-10 text-center">
+      {/* Viral banner */}
+      <div
+        className="mt-8 w-full max-w-sm p-5 rounded-2xl text-center"
+        style={{ background: `${colors.primary}08`, border: `1px solid ${colors.border}`, animation: 'slideUp 0.5s ease 0.3s both' }}
+      >
+        <p className="text-xs mb-2" style={{ color: colors.textLight }}>
+          你也是餐飲業主嗎？
+        </p>
+        <p className="text-xs leading-relaxed mb-3" style={{ color: colors.textLight }}>
+          <strong style={{ color: colors.text }}>FeedBites</strong> — 全球免費餐飲問卷系統
+        </p>
+        <a
+          href="/"
+          target="_blank"
+          className="inline-block px-5 py-2 rounded-full text-xs font-medium transition-all hover:opacity-80"
+          style={{ background: colors.primary, color: 'white' }}
+        >
+          免費開通我的餐廳問卷 →
+        </a>
+      </div>
+
+      <div className="mt-6 text-center">
         <a href="/" target="_blank" className="text-xs font-medium" style={{ color: colors.primary }}>
           FeedBites
         </a>

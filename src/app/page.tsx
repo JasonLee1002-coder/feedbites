@@ -10,17 +10,12 @@ export default function LandingPage() {
             Feed<span className="text-[#C5A55A]">Bites</span>
           </span>
         </div>
-        <div className="flex items-center gap-3">
-          <Link href="/login" className="text-sm text-[#8A8585] hover:text-[#3A3A3A] transition-colors">
-            登入
-          </Link>
-          <Link
-            href="/register"
-            className="text-sm px-5 py-2 bg-[#C5A55A] text-white rounded-full hover:bg-[#A08735] transition-colors"
-          >
-            免費開通
-          </Link>
-        </div>
+        <Link
+          href="/login"
+          className="text-sm px-5 py-2 bg-[#C5A55A] text-white rounded-full hover:bg-[#A08735] transition-colors"
+        >
+          登入
+        </Link>
       </nav>
 
       {/* Hero */}
@@ -121,15 +116,16 @@ export default function LandingPage() {
         </p>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
-            { name: '奶油金', en: 'Elegant', bg: '#FAF7F2', primary: '#C5A55A', suited: '西餐 Fine Dining' },
-            { name: '和風', en: 'Zen', bg: '#F5F0E8', primary: '#8B7355', suited: '日料 壽司' },
-            { name: '工業風', en: 'Industrial', bg: '#1A1A1A', primary: '#D4A14A', suited: '酒吧 燒烤', dark: true },
-            { name: '清新', en: 'Fresh', bg: '#F8FAF5', primary: '#6B9B76', suited: '咖啡廳 輕食' },
-            { name: '古典紅', en: 'Heritage', bg: '#FFF8F0', primary: '#B22222', suited: '中餐 火鍋' },
+            { name: '奶油金', en: 'Elegant', bg: '#FAF7F2', primary: '#C5A55A', suited: '西餐 Fine Dining', id: 'fine-dining' },
+            { name: '和風', en: 'Zen', bg: '#F5F0E8', primary: '#8B7355', suited: '日料 壽司', id: 'japanese' },
+            { name: '工業風', en: 'Industrial', bg: '#1A1A1A', primary: '#D4A14A', suited: '酒吧 燒烤', dark: true, id: 'industrial' },
+            { name: '清新', en: 'Fresh', bg: '#F8FAF5', primary: '#6B9B76', suited: '咖啡廳 輕食', id: 'cafe' },
+            { name: '古典紅', en: 'Heritage', bg: '#FFF8F0', primary: '#B22222', suited: '中餐 火鍋', id: 'chinese-classic' },
           ].map((t, i) => (
-            <div
+            <Link
               key={i}
-              className="rounded-2xl overflow-hidden border border-[#E8E2D8] shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 cursor-pointer"
+              href={`/register?template=${t.id}`}
+              className="block rounded-2xl overflow-hidden border border-[#E8E2D8] shadow-sm hover:shadow-lg transition-all hover:-translate-y-1"
               style={{ background: t.bg }}
             >
               <div className="p-6 text-center" style={{ minHeight: 160 }}>
@@ -146,8 +142,11 @@ export default function LandingPage() {
                 <div className="text-xs" style={{ color: t.primary }}>
                   {t.suited}
                 </div>
+                <div className="mt-3 text-xs font-medium px-3 py-1 rounded-full inline-block" style={{ background: `${t.primary}15`, color: t.primary }}>
+                  使用此模板 →
+                </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </section>

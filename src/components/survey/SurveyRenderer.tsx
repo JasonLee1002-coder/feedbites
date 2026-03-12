@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import type { Question, ThemeColors, DiscountTier } from '@/types/survey';
+import { getFrame } from '@/lib/qr-frames';
 
 const EMOJI_LABELS = ['😫', '😕', '😐', '😊', '🤩'];
 const EMOJI_TEXTS = ['不太行', '還好', '普通', '不錯', '超讚！'];
@@ -19,6 +20,7 @@ interface SurveyRendererProps {
   storeName: string;
   surveyTitle: string;
   logoUrl?: string | null;
+  frameId?: string | null;
   discountEnabled: boolean;
   discountValue: string;
   onSubmit: (answers: Record<string, string | string[]>, xpEarned: number) => void;
@@ -146,6 +148,7 @@ export default function SurveyRenderer({
   storeName,
   surveyTitle,
   logoUrl,
+  frameId,
   discountEnabled,
   discountValue,
   onSubmit,
@@ -167,8 +170,11 @@ export default function SurveyRenderer({
   const prevLevelRef = useRef(1);
   const [levelUpVisible, setLevelUpVisible] = useState(false);
 
+  // Track which questions already awarded XP (prevents text input giving XP per keystroke)
+  const xpAwardedRef = useRef<Set<string>>(new Set());
+
   // AI Companion
-  const [companionMsg, setCompanionMsg] = useState<string>('嗨！我是小饗，每答一題都會累積折扣點數喔 🪙');
+  const [companionMsg, setCompanionMsg] = useState<string>('嗨！完成問卷就能獲得折扣碼喔 🪙');
   const [companionVisible, setCompanionVisible] = useState(true);
   const [companionTyped, setCompanionTyped] = useState('');
   const companionTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -192,6 +198,12 @@ export default function SurveyRenderer({
 
   // Card glow on answer
   const [glowCardId, setGlowCardId] = useState<string | null>(null);
+
+  // Validation
+  const [showValidation, setShowValidation] = useState(false);
+
+  // Ref for scrolling to next question
+  const questionRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
   /* ───── Display tiers ───── */
   const displayTiers = useMemo(
@@ -272,7 +284,7 @@ export default function SurveyRenderer({
       i++;
       setCompanionTyped(companionMsg.slice(0, i));
       if (i >= companionMsg.length) clearInterval(timer);
-    }, 40);
+    }, 20);
     return () => clearInterval(timer);
   }, [companionMsg, companionVisible]);
 
@@ -282,15 +294,15 @@ export default function SurveyRenderer({
     for (const m of milestones) {
       if (progress >= m && !milestonesTriggered.current.has(m)) {
         milestonesTriggered.current.add(m);
-        if (m < 100) miniConfetti(colors);
+        // Only confetti at 100% — less is more
         if (m === 100) {
-          megaConfetti(colors);
+          miniConfetti(colors);
           triggerAchievement('complete');
         }
         const msgs: Record<number, string> = {
-          25: '已經四分之一了！點數越多折扣越好喔！',
-          50: '一半了！你的點數快要升級了～加油！🔥',
-          75: '剩最後幾題！衝刺拿更好的獎勵！🚀',
+          25: '四分之一了，繼續加油！',
+          50: '一半了！快到了～',
+          75: '剩最後幾題了！',
           100: '全部完成！太厲害了！🎉',
         };
         showCompanionMessage({ text: msgs[m], priority: 8 });
@@ -321,8 +333,8 @@ export default function SurveyRenderer({
           const next = companionQueueRef.current.shift()!;
           showCompanionMessage(next);
         }
-      }, 500);
-    }, 4000);
+      }, 400);
+    }, 2500);
   }, []);
 
   /* ───── Achievement trigger ───── */
@@ -337,86 +349,126 @@ export default function SurveyRenderer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [earnedBadges]);
 
+  /* ───── Auto-scroll helper ───── */
+  const scrollToNextQuestion = useCallback((currentId: string) => {
+    const currentQuestions = sections[currentSection]?.questions || [];
+    const flatIds: string[] = [];
+    currentQuestions.forEach(q => {
+      if (q.type === 'section-header') return;
+      if (q.type === 'dish-group' && q.subQuestions) {
+        q.subQuestions.forEach(sub => flatIds.push(`${q.id}_${sub.id}`));
+      } else {
+        flatIds.push(q.id);
+      }
+    });
+    const idx = flatIds.indexOf(currentId);
+    if (idx >= 0 && idx < flatIds.length - 1) {
+      const nextId = flatIds[idx + 1];
+      // Find the parent card (the q.id part before any sub)
+      const parentId = nextId.includes('_') ? nextId.split('_')[0] + '_' + nextId.split('_')[1] : nextId;
+      setTimeout(() => {
+        const el = questionRefs.current.get(parentId) || questionRefs.current.get(nextId);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 200);
+    }
+  }, [sections, currentSection]);
+
   /* ───── Answer handler with XP, achievements, companion ───── */
   const setAnswer = useCallback((id: string, value: string | string[], questionType?: string) => {
     setAnswers(prev => ({ ...prev, [id]: value }));
 
-    // Combo
-    setCombo(prev => prev + 1);
-    if (comboTimeoutRef.current) clearTimeout(comboTimeoutRef.current);
-    comboTimeoutRef.current = setTimeout(() => setCombo(0), 3000);
-
-    // XP
     const qType = questionType || 'radio';
-    const baseXp = XP_MAP[qType] || 10;
-    const newCombo = combo + 1; // combo hasn't updated yet in state
-    const multiplier = newCombo >= 3 ? 2 : 1;
-    const earnedXp = baseXp * multiplier;
-    setXp(prev => prev + earnedXp);
+    const isTextType = qType === 'text' || qType === 'textarea';
 
-    // Floating 點數
-    floatingIdRef.current += 1;
-    setFloatingXp({ amount: earnedXp, id: floatingIdRef.current });
+    // For text inputs: only award XP once (not per keystroke!)
+    // For reason fields (ending with _reason): never award XP
+    const isReasonField = id.endsWith('_reason');
+    const alreadyAwarded = xpAwardedRef.current.has(id);
 
-    // Card glow
-    setGlowCardId(id);
-    setTimeout(() => setGlowCardId(null), 600);
+    if (!isReasonField && !alreadyAwarded) {
+      // For text: award XP on first non-empty input, then mark as awarded
+      if (isTextType && (!value || (typeof value === 'string' && value.trim() === ''))) {
+        // Don't award for empty text
+      } else {
+        xpAwardedRef.current.add(id);
 
-    // Track timestamps for speed achievements
-    const now = Date.now();
-    answerTimestamps.current.push(now);
+        // Combo (relaxed: 6s timeout instead of 3s to not punish thoughtfulness)
+        setCombo(prev => prev + 1);
+        if (comboTimeoutRef.current) clearTimeout(comboTimeoutRef.current);
+        comboTimeoutRef.current = setTimeout(() => setCombo(0), 6000);
 
-    // Check streak3: last 3 answers each within 5s
-    const ts = answerTimestamps.current;
-    if (ts.length >= 3) {
-      const last3 = ts.slice(-3);
-      const allFast = last3.every((t, i) => i === 0 || t - last3[i - 1] < 5000);
-      if (allFast) triggerAchievement('streak3');
-    }
+        // XP
+        const baseXp = XP_MAP[qType] || 10;
+        const newCombo = combo + 1;
+        const multiplier = newCombo >= 3 ? 2 : 1;
+        const earnedXp = baseXp * multiplier;
+        setXp(prev => prev + earnedXp);
 
-    // Check speed5: 5 answers in under 30s total
-    if (ts.length >= 5) {
-      const last5 = ts.slice(-5);
-      if (last5[last5.length - 1] - last5[0] < 30000) {
-        triggerAchievement('speed5');
+        // Floating 點數
+        floatingIdRef.current += 1;
+        setFloatingXp({ amount: earnedXp, id: floatingIdRef.current });
+
+        // Card glow
+        setGlowCardId(id);
+        setTimeout(() => setGlowCardId(null), 600);
+
+        // Track timestamps for speed achievements
+        const now = Date.now();
+        answerTimestamps.current.push(now);
+
+        // Check streak3
+        const ts = answerTimestamps.current;
+        if (ts.length >= 3) {
+          const last3 = ts.slice(-3);
+          const allFast = last3.every((t, i) => i === 0 || t - last3[i - 1] < 5000);
+          if (allFast) triggerAchievement('streak3');
+        }
+
+        // Check speed5
+        if (ts.length >= 5) {
+          const last5 = ts.slice(-5);
+          if (last5[last5.length - 1] - last5[0] < 30000) {
+            triggerAchievement('speed5');
+          }
+        }
+
+        // Check perfect rating
+        if ((qType === 'rating' || qType === 'rating-with-reason' || qType === 'emoji-rating') && value === '5') {
+          triggerAchievement('perfect');
+        }
+
+        // Combo companion messages (less aggressive)
+        if (newCombo === 5) {
+          showCompanionMessage({ text: '太棒了！持續累積點數中 ⚡', priority: 5 });
+        }
+
+        // Combo 5+ border flash
+        if (newCombo >= 5) {
+          setBorderFlash(true);
+          setTimeout(() => setBorderFlash(false), 400);
+        }
+
+        // First answer encouragement
+        if (Object.keys(answers).filter(k => !k.endsWith('_reason')).length === 0) {
+          setTimeout(() => {
+            showCompanionMessage({ text: '不錯喔！已經開始累積點數了～ 💪', priority: 3 });
+          }, 300);
+        }
+
+        // Auto-scroll to next question (only for non-text types — text needs continued typing)
+        if (!isTextType) {
+          scrollToNextQuestion(id);
+        }
       }
     }
 
-    // Check perfect rating
-    if ((qType === 'rating' || qType === 'rating-with-reason' || qType === 'emoji-rating') && value === '5') {
-      triggerAchievement('perfect');
-    }
-
-    // Check writer
-    if ((qType === 'text' || qType === 'textarea') && typeof value === 'string' && value.length > 20) {
+    // Check writer achievement (can fire even after XP is already awarded)
+    if (isTextType && typeof value === 'string' && value.length > 20) {
       triggerAchievement('writer');
     }
-
-    // Combo companion messages
-    if (newCombo === 3) {
-      showCompanionMessage({ text: `哇！連擊 x${newCombo}！點數加倍中 ⚡`, priority: 5 });
-    } else if (newCombo === 5) {
-      showCompanionMessage({ text: '太猛了！你是問卷之神！👑', priority: 6 });
-    }
-
-    // Combo 5+ border flash
-    if (newCombo >= 5) {
-      setBorderFlash(true);
-      setTimeout(() => setBorderFlash(false), 400);
-    }
-
-    // Combo 7+ mini confetti
-    if (newCombo >= 7 && newCombo % 2 === 1) {
-      miniConfetti(colors);
-    }
-
-    // First answer encouragement
-    if (Object.keys(answers).filter(k => !k.endsWith('_reason')).length === 0) {
-      setTimeout(() => {
-        showCompanionMessage({ text: '不錯喔！已經開始累積點數了～ 💪', priority: 3 });
-      }, 300);
-    }
-  }, [combo, answers, colors, triggerAchievement, showCompanionMessage]);
+  }, [combo, answers, triggerAchievement, showCompanionMessage, scrollToNextQuestion]);
 
   function toggleCheckbox(id: string, option: string) {
     setAnswers(prev => {
@@ -426,23 +478,69 @@ export default function SurveyRenderer({
         : [...current, option];
       return { ...prev, [id]: next };
     });
-    setCombo(prev => prev + 1);
-    if (comboTimeoutRef.current) clearTimeout(comboTimeoutRef.current);
-    comboTimeoutRef.current = setTimeout(() => setCombo(0), 3000);
 
-    const baseXp = 10;
-    const newCombo = combo + 1;
-    const multiplier = newCombo >= 3 ? 2 : 1;
-    const earnedXp = baseXp * multiplier;
-    setXp(prev => prev + earnedXp);
-    floatingIdRef.current += 1;
-    setFloatingXp({ amount: earnedXp, id: floatingIdRef.current });
+    // Only award XP on first checkbox interaction for this question
+    if (!xpAwardedRef.current.has(id)) {
+      xpAwardedRef.current.add(id);
+
+      setCombo(prev => prev + 1);
+      if (comboTimeoutRef.current) clearTimeout(comboTimeoutRef.current);
+      comboTimeoutRef.current = setTimeout(() => setCombo(0), 6000);
+
+      const baseXp = 10;
+      const newCombo = combo + 1;
+      const multiplier = newCombo >= 3 ? 2 : 1;
+      const earnedXp = baseXp * multiplier;
+      setXp(prev => prev + earnedXp);
+      floatingIdRef.current += 1;
+      setFloatingXp({ amount: earnedXp, id: floatingIdRef.current });
+    }
+
     setGlowCardId(id);
     setTimeout(() => setGlowCardId(null), 600);
     answerTimestamps.current.push(Date.now());
   }
 
+  function getRequiredUnanswered(): { sectionIndex: number; questionId: string; label: string }[] {
+    const missing: { sectionIndex: number; questionId: string; label: string }[] = [];
+    sections.forEach((sec, sIdx) => {
+      sec.questions.forEach(q => {
+        if (q.type === 'section-header') return;
+        if (q.type === 'dish-group' && q.subQuestions) {
+          q.subQuestions.forEach(sub => {
+            if (sub.required) {
+              const key = `${q.id}_${sub.id}`;
+              const val = answers[key];
+              if (!val || (Array.isArray(val) ? val.length === 0 : val.trim() === '')) {
+                missing.push({ sectionIndex: sIdx, questionId: key, label: sub.title || sub.label || '' });
+              }
+            }
+          });
+        } else if (q.required) {
+          const val = answers[q.id];
+          if (!val || (Array.isArray(val) ? val.length === 0 : val.trim() === '')) {
+            missing.push({ sectionIndex: sIdx, questionId: q.id, label: q.title || q.label || '' });
+          }
+        }
+      });
+    });
+    return missing;
+  }
+
   function handleSubmit() {
+    const missing = getRequiredUnanswered();
+    if (missing.length > 0) {
+      setShowValidation(true);
+      // Navigate to the section of the first missing question
+      const first = missing[0];
+      if (first.sectionIndex !== currentSection) {
+        setDirection(first.sectionIndex > currentSection ? 1 : -1);
+        setCurrentSection(first.sectionIndex);
+      }
+      showCompanionMessage({ text: `還有 ${missing.length} 題必填題要完成喔！`, priority: 9 });
+      return;
+    }
+    setShowValidation(false);
     megaConfetti(colors);
     onSubmit(answers, xp);
   }
@@ -578,7 +676,7 @@ export default function SurveyRenderer({
 
   return (
     <div
-      className="min-h-screen relative overflow-hidden"
+      className="min-h-screen relative overflow-x-hidden"
       style={{
         background: colors.background,
         color: colors.text,
@@ -655,27 +753,25 @@ export default function SurveyRenderer({
         )}
       </AnimatePresence>
 
-      {/* ───── Level Up overlay ───── */}
+      {/* ───── Level Up toast (non-blocking) ───── */}
       <AnimatePresence>
         {levelUpVisible && (
           <motion.div
-            className="fixed inset-0 flex items-center justify-center z-[90] pointer-events-none"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            className="fixed top-2 left-1/2 z-[90] pointer-events-none flex items-center gap-2 px-4 py-2 rounded-2xl"
+            style={{
+              background: 'linear-gradient(135deg, #FFD700, #FFA500)',
+              boxShadow: '0 4px 20px rgba(255,215,0,0.4)',
+              transform: 'translateX(-50%)',
+            }}
+            initial={{ y: -50, opacity: 0, x: '-50%' }}
+            animate={{ y: 0, opacity: 1, x: '-50%' }}
+            exit={{ y: -50, opacity: 0, x: '-50%' }}
+            transition={springBounce}
           >
-            <motion.div
-              className="text-3xl font-black tracking-widest"
-              style={{
-                color: '#FFD700',
-                textShadow: '0 0 20px #FFD700, 0 0 40px #FFD70080',
-              }}
-              initial={{ scale: 0.3, opacity: 0 }}
-              animate={{ scale: [0.3, 1.4, 1], opacity: [0, 1, 1, 0] }}
-              transition={{ duration: 2, times: [0, 0.2, 0.6, 1] }}
-            >
-              升級了！
-            </motion.div>
+            <span className="text-lg">{currentTier.emoji}</span>
+            <span className="text-sm font-bold text-white">
+              升級到 {currentTier.name}！
+            </span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -709,110 +805,118 @@ export default function SurveyRenderer({
         )}
       </AnimatePresence>
 
-      {/* ───── AI Companion (bottom-left) ───── */}
-      <div className="fixed bottom-4 left-3 z-[60] flex items-end gap-2">
-        {/* Mascot */}
-        <motion.div
-          className="w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0"
-          style={{
-            background: 'linear-gradient(135deg, #fff3e0, #ffe0b2)',
-            border: '2px solid #FFB74D',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-          }}
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.8, ...springBounce }}
-          whileHover={{ scale: 1.1 }}
-        >
-          🍽️
-        </motion.div>
-
-        {/* Chat bubble */}
-        <AnimatePresence>
-          {companionVisible && companionTyped && (
-            <motion.div
-              className="max-w-[200px] px-3 py-2 rounded-2xl rounded-bl-sm text-xs leading-relaxed"
+      {/* ───── AI Companion (bottom-left, compact) ───── */}
+      <AnimatePresence>
+        {companionVisible && companionTyped && (
+          <motion.div
+            className="fixed bottom-20 left-3 z-[60] flex items-end gap-1.5"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 10, opacity: 0 }}
+            transition={springSmooth}
+          >
+            <span className="text-base">🍽️</span>
+            <div
+              className="max-w-[180px] px-2.5 py-1.5 rounded-xl rounded-bl-sm text-[11px] leading-relaxed"
               style={{
                 background: colors.surface,
                 border: `1px solid ${colors.border}`,
-                color: colors.text,
-                boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
+                color: colors.textLight,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
               }}
-              initial={{ scale: 0.5, opacity: 0, originX: 0, originY: 1 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.5, opacity: 0 }}
-              transition={springSmooth}
             >
               {companionTyped}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* ───── Header ───── */}
-      <div
-        className="text-center pt-10 pb-6 px-6 relative overflow-hidden"
-        style={{ background: `linear-gradient(160deg, ${colors.background}, ${colors.border})` }}
-      >
-        {/* Floating particles */}
-        <div className="absolute inset-0 pointer-events-none" aria-hidden>
-          {[...Array(8)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute rounded-full"
-              style={{
-                width: `${4 + (i % 3) * 3}px`,
-                height: `${4 + (i % 3) * 3}px`,
-                background: `${colors.primary}${30 + (i % 3) * 10}`,
-                left: `${10 + i * 11}%`,
-                bottom: `-5px`,
-                animation: `float-up ${4 + (i % 3) * 2}s ease-in-out infinite`,
-                animationDelay: `${i * 0.7}s`,
-              }}
-            />
-          ))}
-        </div>
-
-        {logoUrl && (
-          <motion.img
-            src={logoUrl}
-            alt={storeName}
-            className="h-12 mx-auto mb-3 object-contain"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          />
-        )}
-        <motion.h1
-          className="text-2xl font-bold tracking-wider mb-1"
-          style={{ fontFamily: "'Noto Serif TC', serif", color: colors.text }}
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-        >
-          {surveyTitle}
-        </motion.h1>
-        <motion.p
-          className="text-xs tracking-widest"
-          style={{ color: colors.textLight }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.4, delay: 0.25 }}
-        >
-          {storeName}
-        </motion.p>
-        {discountEnabled && (
-          <motion.div
-            className="mt-3 inline-block px-4 py-1.5 rounded-full text-xs font-medium"
-            style={{ background: `${colors.primary}15`, color: colors.primary }}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
-          >
-            🎁 完成問卷即可獲得 {discountValue}
+            </div>
           </motion.div>
         )}
-      </div>
+      </AnimatePresence>
+
+      {/* ───── Header with frame decoration ───── */}
+      {(() => {
+        const frame = frameId ? getFrame(frameId) : null;
+        const accentColor = frame?.accentColor || colors.primary;
+        const headerBg = frame
+          ? frame.previewGradient
+          : `linear-gradient(160deg, ${colors.background}, ${colors.border})`;
+        const headerTextColor = frame?.textColor || colors.text;
+        const headerSubColor = frame ? (frame.textColor + '80') : colors.textLight;
+
+        return (
+          <div
+            className="text-center pt-6 pb-4 px-6 relative overflow-hidden"
+            style={{ background: headerBg }}
+          >
+            {/* Frame corner ornaments */}
+            {frame && (
+              <>
+                <div className="absolute top-2 left-2 w-8 h-8" style={{ borderTop: `2px solid ${accentColor}50`, borderLeft: `2px solid ${accentColor}50` }} />
+                <div className="absolute top-2 right-2 w-8 h-8" style={{ borderTop: `2px solid ${accentColor}50`, borderRight: `2px solid ${accentColor}50` }} />
+                <div className="absolute bottom-2 left-2 w-8 h-8" style={{ borderBottom: `2px solid ${accentColor}50`, borderLeft: `2px solid ${accentColor}50` }} />
+                <div className="absolute bottom-2 right-2 w-8 h-8" style={{ borderBottom: `2px solid ${accentColor}50`, borderRight: `2px solid ${accentColor}50` }} />
+                {/* Top center ornament */}
+                <svg className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-4" viewBox="0 0 64 16" fill="none">
+                  <path d="M8 14 Q20 2 32 2 Q44 2 56 14" stroke={accentColor} strokeWidth="1" opacity="0.3" fill="none" />
+                  <circle cx="32" cy="2" r="2" fill={accentColor} opacity="0.2" />
+                </svg>
+              </>
+            )}
+
+            <div className="flex items-center justify-center gap-3 mb-1 relative z-10">
+              {logoUrl && (
+                <motion.img
+                  src={logoUrl}
+                  alt={storeName}
+                  className="h-12 object-contain"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.4 }}
+                />
+              )}
+              <div>
+                <motion.h1
+                  className="text-xl font-bold tracking-wider"
+                  style={{ fontFamily: "'Noto Serif TC', serif", color: headerTextColor }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.4 }}
+                >
+                  {surveyTitle}
+                </motion.h1>
+                <motion.p
+                  className="text-xs tracking-widest"
+                  style={{ color: headerSubColor }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3, delay: 0.1 }}
+                >
+                  {storeName}
+                </motion.p>
+              </div>
+            </div>
+
+            {/* Decorative divider */}
+            {frame && (
+              <svg className="w-24 h-3 mx-auto mt-1" viewBox="0 0 100 12" fill="none">
+                <line x1="0" y1="6" x2="40" y2="6" stroke={accentColor} strokeWidth="0.5" opacity="0.3" />
+                <path d="M43 6 L50 2 L57 6 L50 10 Z" fill={accentColor} opacity="0.15" />
+                <line x1="60" y1="6" x2="100" y2="6" stroke={accentColor} strokeWidth="0.5" opacity="0.3" />
+              </svg>
+            )}
+
+            {discountEnabled && (
+              <motion.div
+                className="mt-2 inline-block px-4 py-1.5 rounded-full text-xs font-medium"
+                style={{ background: `${accentColor}15`, color: accentColor }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                完成問卷即可獲得 {discountValue}
+              </motion.div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ───── STICKY GAME HUD - always visible at top ───── */}
       <div className="sticky top-0 z-50" style={{ background: colors.background }}>
@@ -882,14 +986,14 @@ export default function SurveyRenderer({
             })}
           </div>
 
-          {/* Combo indicator (only when active) + progress percentage */}
+          {/* Question counter + combo indicator */}
           <div className="flex justify-between items-center mt-1">
             <div className="flex items-center gap-2">
               <span className="text-[10px]" style={{ color: colors.textLight }}>
-                {section.title}
+                已完成 {answeredCount}/{totalQuestions} 題
               </span>
               <AnimatePresence>
-                {combo >= 2 && (
+                {combo >= 3 && (
                   <motion.span
                     key={combo}
                     initial={{ scale: 0.5, opacity: 0 }}
@@ -902,12 +1006,11 @@ export default function SurveyRenderer({
                         ? 'linear-gradient(135deg, #FFD700, #FF6B35)'
                         : 'linear-gradient(135deg, #FF6B35, #FF4444)',
                       color: 'white',
-                      fontSize: combo >= 7 ? '11px' : combo >= 5 ? '10px' : '9px',
+                      fontSize: '9px',
                       boxShadow: combo >= 5 ? '0 0 12px #FFD70060' : 'none',
                     }}
                   >
-                    {combo >= 5 ? '👑' : '🔥'} x{combo}
-                    {combo >= 3 && <span className="ml-0.5 text-[8px]">點數x2</span>}
+                    {combo >= 5 ? '👑' : '🔥'} x{combo} 點數x2
                   </motion.span>
                 )}
               </AnimatePresence>
@@ -941,23 +1044,43 @@ export default function SurveyRenderer({
 
       {/* ───── Section navigation tabs ───── */}
       <div className="flex gap-1 px-4 pt-3 pb-4 overflow-x-auto">
-        {sections.map((s, i) => (
-          <motion.button
-            key={i}
-            onClick={() => {
-              setDirection(i > currentSection ? 1 : -1);
-              setCurrentSection(i);
-            }}
-            whileTap={{ scale: 0.95 }}
-            className="px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-all"
-            style={{
-              background: i === currentSection ? colors.primary : colors.border,
-              color: i === currentSection ? 'white' : colors.textLight,
-            }}
-          >
-            {s.title}
-          </motion.button>
-        ))}
+        {sections.map((s, i) => {
+          // Check if section is complete (all answerable questions answered)
+          const sectionAnswered = s.questions.reduce((acc, q) => {
+            if (q.type === 'section-header') return acc;
+            if (q.type === 'dish-group' && q.subQuestions) {
+              return acc + q.subQuestions.filter(sub => {
+                const key = `${q.id}_${sub.id}`;
+                const val = answers[key];
+                return val && (Array.isArray(val) ? val.length > 0 : val.trim() !== '');
+              }).length;
+            }
+            const val = answers[q.id];
+            return acc + (val && (Array.isArray(val) ? val.length > 0 : typeof val === 'string' ? val.trim() !== '' : true) ? 1 : 0);
+          }, 0);
+          const sectionTotal = countAnswerable(s.questions);
+          const isSectionDone = sectionTotal > 0 && sectionAnswered >= sectionTotal;
+
+          return (
+            <motion.button
+              key={i}
+              onClick={() => {
+                setDirection(i > currentSection ? 1 : -1);
+                setCurrentSection(i);
+              }}
+              whileTap={{ scale: 0.95 }}
+              className="px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-all flex items-center gap-1"
+              style={{
+                background: i === currentSection ? colors.primary : isSectionDone ? `${colors.primary}20` : colors.border,
+                color: i === currentSection ? 'white' : isSectionDone ? colors.primary : colors.textLight,
+                border: isSectionDone && i !== currentSection ? `1px solid ${colors.primary}40` : 'none',
+              }}
+            >
+              {isSectionDone && i !== currentSection && <span className="text-[10px]">✓</span>}
+              {s.title}
+            </motion.button>
+          );
+        })}
       </div>
 
       {/* ───── Questions ───── */}
@@ -1046,7 +1169,7 @@ export default function SurveyRenderer({
                             <label className="block text-sm font-medium mb-1" style={{ color: colors.text }}>
                               {subQ.title || subQ.label}
                               {subQ.required && (
-                                <span className="ml-1" style={{ color: '#D4A0A0' }}>
+                                <span className="ml-1" style={{ color: '#E05050' }}>
                                   *
                                 </span>
                               )}
@@ -1103,13 +1226,15 @@ export default function SurveyRenderer({
 
               // Standard question card
               const isGlowing = glowCardId === q.id;
+              const isUnanswered = showValidation && q.required && (!answers[q.id] || (Array.isArray(answers[q.id]) ? (answers[q.id] as string[]).length === 0 : (answers[q.id] as string).trim() === ''));
               return (
                 <motion.div
                   key={q.id}
+                  ref={el => { questionRefs.current.set(q.id, el); }}
                   className="mb-5 p-5 rounded-2xl"
                   style={{
                     background: colors.surface,
-                    border: `1px solid ${colors.border}`,
+                    border: isUnanswered ? '2px solid #D4605A' : `1px solid ${colors.border}`,
                     animation: isGlowing ? 'card-glow 0.6s ease-out' : 'none',
                   }}
                   initial={{ opacity: 0, y: 30 }}
@@ -1119,7 +1244,7 @@ export default function SurveyRenderer({
                   <label className="block text-sm font-medium mb-1" style={{ color: colors.text }}>
                     {q.title || q.label}
                     {q.required && (
-                      <span className="ml-1" style={{ color: '#D4A0A0' }}>
+                      <span className="ml-1" style={{ color: '#E05050' }}>
                         *
                       </span>
                     )}
@@ -1266,9 +1391,11 @@ export default function SurveyRenderer({
                   {/* Number */}
                   {q.type === 'number' && (
                     <div className="flex items-center gap-2">
-                      <span className="text-sm" style={{ color: colors.textLight }}>
-                        NT$
-                      </span>
+                      {q.numberPrefix && (
+                        <span className="text-sm" style={{ color: colors.textLight }}>
+                          {q.numberPrefix}
+                        </span>
+                      )}
                       <input
                         type="number"
                         value={(answers[q.id] as string) || ''}
@@ -1326,7 +1453,7 @@ export default function SurveyRenderer({
                     animation: !isSubmitting ? 'glow-pulse 2s ease-in-out infinite' : 'none',
                   }}
                 >
-                  {isSubmitting ? '提交中...' : '🎮 提交回饋'}
+                  {isSubmitting ? '提交中...' : '提交回饋 ✨'}
                 </motion.button>
               )}
             </div>
@@ -1357,32 +1484,6 @@ export default function SurveyRenderer({
                 ))}
               </motion.div>
             )}
-
-            {/* ───── FeedBites viral banner ───── */}
-            <motion.div
-              className="mt-8 p-5 rounded-2xl text-center"
-              style={{ background: `${colors.primary}08`, border: `1px solid ${colors.border}` }}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              <p className="text-xs mb-2" style={{ color: colors.textLight }}>
-                ☕ 你也是餐飲業主嗎？
-              </p>
-              <p className="text-xs leading-relaxed mb-3" style={{ color: colors.textLight }}>
-                <strong style={{ color: colors.text }}>FeedBites</strong> 是由新加坡 MCS 推出的
-                <br />
-                全球免費餐飲問卷系統
-              </p>
-              <a
-                href="/"
-                target="_blank"
-                className="inline-block px-5 py-2 rounded-full text-xs font-medium transition-all hover:opacity-80"
-                style={{ background: colors.primary, color: 'white' }}
-              >
-                免費開通我的餐廳問卷 →
-              </a>
-            </motion.div>
 
             {/* ───── Footer ───── */}
             <div className="text-center mt-6 pb-8">

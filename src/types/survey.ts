@@ -22,6 +22,7 @@ export interface Question {
   reasonPlaceholder?: string;  // Placeholder for the reason field
   dishName?: string;           // For dish-group: the dish this group belongs to
   subQuestions?: Question[];   // For dish-group: the questions within
+  numberPrefix?: string;       // For number: prefix label (e.g. "NT$", "分鐘")
 }
 
 export type DiscountMode = 'basic' | 'advanced';

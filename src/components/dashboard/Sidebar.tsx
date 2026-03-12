@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, ClipboardList, Ticket, LogOut, Menu } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Ticket, LogOut, Menu, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -15,6 +15,7 @@ const navItems = [
   { href: '/dashboard', label: '總覽', icon: LayoutDashboard },
   { href: '/dashboard/surveys', label: '問卷管理', icon: ClipboardList },
   { href: '/dashboard/discounts', label: '折扣碼', icon: Ticket },
+  { href: '/dashboard/settings', label: '店家設定', icon: Settings },
 ];
 
 export default function Sidebar({ storeName }: SidebarProps) {
@@ -25,7 +26,8 @@ export default function Sidebar({ storeName }: SidebarProps) {
   const handleLogout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push('/login');
+    router.refresh(); // Clear server-side cache first
+    window.location.href = '/login'; // Hard redirect to ensure session is cleared
   };
 
   const isActive = (href: string) => {

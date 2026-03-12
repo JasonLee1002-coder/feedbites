@@ -15,6 +15,7 @@ interface DiscountCodeDisplayProps {
   tierName?: string;
   tierEmoji?: string;
   xpEarned?: number;
+  onPhoneSubmit?: (phone: string) => void;
 }
 
 // Map tier names to confetti color palettes
@@ -213,6 +214,80 @@ function ScratchCard({
   );
 }
 
+// ---------- Phone Collection (soft, post-reward) ----------
+function PhoneCollect({
+  colors,
+  storeName,
+  onSubmit,
+}: {
+  colors: ThemeColors;
+  storeName: string;
+  onSubmit: (phone: string) => void;
+}) {
+  const [phone, setPhone] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState('');
+
+  if (submitted) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="mt-6 w-full max-w-sm text-center"
+      >
+        <div className="text-xs" style={{ color: colors.primary }}>
+          ✓ 已收到！下次有優惠會通知你
+        </div>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 1.0, duration: 0.5 }}
+      className="mt-6 w-full max-w-sm p-4 rounded-2xl"
+      style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
+    >
+      <p className="text-xs text-center mb-3" style={{ color: colors.textLight }}>
+        留下手機號碼，{storeName} 下次有優惠直接通知你
+      </p>
+      <div className="flex gap-2">
+        <input
+          type="tel"
+          value={phone}
+          onChange={e => { setPhone(e.target.value); setError(''); }}
+          placeholder="0912345678"
+          inputMode="numeric"
+          className="flex-1 px-3 py-2.5 rounded-xl text-sm outline-none"
+          style={{
+            background: colors.background,
+            border: `1px solid ${error ? '#D4605A' : colors.border}`,
+            color: colors.text,
+          }}
+        />
+        <button
+          onClick={() => {
+            const cleaned = phone.replace(/[-\s]/g, '');
+            if (!/^09\d{8}$/.test(cleaned)) {
+              setError('格式不對');
+              return;
+            }
+            onSubmit(cleaned);
+            setSubmitted(true);
+          }}
+          className="px-4 py-2.5 rounded-xl text-xs font-medium text-white"
+          style={{ background: colors.primary }}
+        >
+          送出
+        </button>
+      </div>
+      {error && <p className="text-[10px] mt-1" style={{ color: '#D4605A' }}>{error}</p>}
+    </motion.div>
+  );
+}
+
 // ---------- Main Component ----------
 export default function DiscountCodeDisplay({
   code,
@@ -224,6 +299,7 @@ export default function DiscountCodeDisplay({
   tierName,
   tierEmoji,
   xpEarned,
+  onPhoneSubmit,
 }: DiscountCodeDisplayProps) {
   const isAdvanced = discountMode === 'advanced' && !!tierName;
   const confettiColors =
@@ -414,53 +490,62 @@ export default function DiscountCodeDisplay({
           </div>
         )}
 
-        {/* Discount value */}
-        {!isAdvanced && (
-          <div
-            className="text-sm font-medium mb-1"
-            style={{ color: colors.primary }}
-          >
-            您的專屬折扣
-          </div>
-        )}
-        <div
-          className="text-3xl font-bold mb-6"
-          style={{ color: colors.text }}
-        >
-          {discountValue}
-        </div>
-
-        {/* ---- Scratch Card Area ---- */}
+        {/* ---- Scratch Card Area — hide discount value until revealed ---- */}
         <div className="mb-4">
-          <div
-            className="text-xs mb-3"
-            style={{ color: colors.textLight }}
-          >
-            用手指刮開查看你的獎勵
-          </div>
-
           {!scratched ? (
-            <div className="flex justify-center">
-              <ScratchCard
-                width={300}
-                height={150}
-                coverColor={colors.primary}
-                onReveal={handleReveal}
+            <>
+              <div
+                className="text-sm font-medium mb-2"
+                style={{ color: colors.primary }}
               >
-                <div
-                  className="text-3xl font-mono font-bold tracking-[0.3em] select-none"
-                  style={{ color: colors.primary }}
+                你的獎勵藏在下面
+              </div>
+              <div
+                className="text-xs mb-3"
+                style={{ color: colors.textLight }}
+              >
+                用手指刮開揭曉！
+              </div>
+              <div className="flex justify-center">
+                <ScratchCard
+                  width={300}
+                  height={150}
+                  coverColor={colors.primary}
+                  onReveal={handleReveal}
                 >
-                  {code}
-                </div>
-              </ScratchCard>
-            </div>
+                  <div className="text-center select-none">
+                    <div
+                      className="text-xl font-bold mb-1"
+                      style={{ color: colors.text }}
+                    >
+                      {discountValue}
+                    </div>
+                    <div
+                      className="text-2xl font-mono font-bold tracking-[0.3em]"
+                      style={{ color: colors.primary }}
+                    >
+                      {code}
+                    </div>
+                  </div>
+                </ScratchCard>
+              </div>
+            </>
           ) : (
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring', stiffness: 250, damping: 18 }}
+              className="text-center"
             >
+              {/* Revealed discount value */}
+              <div
+                className="text-3xl font-bold mb-3"
+                style={{ color: colors.text }}
+              >
+                {discountValue}
+              </div>
+
+              {/* Copyable code */}
               <button
                 onClick={copyCode}
                 className="px-8 py-4 rounded-2xl text-3xl font-mono font-bold tracking-[0.3em] transition-all hover:scale-105 relative inline-flex items-center justify-center gap-2"
@@ -534,12 +619,41 @@ export default function DiscountCodeDisplay({
         </div>
       </motion.div>
 
+      {/* ---- Optional phone collection (soft ask, after reward) ---- */}
+      {onPhoneSubmit && (
+        <PhoneCollect colors={colors} storeName={storeName} onSubmit={onPhoneSubmit} />
+      )}
+
+      {/* ---- FeedBites viral banner (post-completion, not during survey) ---- */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.2, duration: 0.6 }}
+        className="mt-8 w-full max-w-sm p-5 rounded-2xl text-center"
+        style={{ background: `${colors.primary}08`, border: `1px solid ${colors.border}` }}
+      >
+        <p className="text-xs mb-2" style={{ color: colors.textLight }}>
+          你也是餐飲業主嗎？
+        </p>
+        <p className="text-xs leading-relaxed mb-3" style={{ color: colors.textLight }}>
+          <strong style={{ color: colors.text }}>FeedBites</strong> — 全球免費餐飲問卷系統
+        </p>
+        <a
+          href="/"
+          target="_blank"
+          className="inline-block px-5 py-2 rounded-full text-xs font-medium transition-all hover:opacity-80"
+          style={{ background: colors.primary, color: 'white' }}
+        >
+          免費開通我的餐廳問卷 →
+        </a>
+      </motion.div>
+
       {/* ---- FeedBites Branding ---- */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.8, duration: 0.6 }}
-        className="mt-8 text-center"
+        className="mt-6 text-center"
       >
         <a
           href="/"
