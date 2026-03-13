@@ -85,6 +85,7 @@ export async function POST(
         survey_id: id,
         answers,
         respondent_name: respondent_name || null,
+        phone: phone || null,
         xp_earned: typeof xp_earned === 'number' ? xp_earned : null,
       })
       .select()
@@ -154,6 +155,37 @@ export async function POST(
       response,
       discount_code: null,
     }, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 });
+  }
+}
+
+// PATCH: Update phone on an existing response (public, best-effort)
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const adminDb = createServiceSupabase();
+    const body = await request.json();
+    const { response_id, phone } = body;
+
+    if (!response_id || !phone) {
+      return NextResponse.json({ error: '缺少參數' }, { status: 400 });
+    }
+
+    const { error } = await adminDb
+      .from('responses')
+      .update({ phone })
+      .eq('id', response_id)
+      .eq('survey_id', id);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 });
   }

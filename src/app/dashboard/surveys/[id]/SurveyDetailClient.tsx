@@ -2,16 +2,19 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Download, Copy } from 'lucide-react';
 
 interface Props {
   surveyId: string;
   isActive: boolean;
+  hasResponses?: boolean;
 }
 
-export default function SurveyDetailClient({ surveyId, isActive: initialActive }: Props) {
+export default function SurveyDetailClient({ surveyId, isActive: initialActive, hasResponses }: Props) {
   const router = useRouter();
   const [isActive, setIsActive] = useState(initialActive);
   const [toggling, setToggling] = useState(false);
+  const [cloning, setCloning] = useState(false);
 
   const handleToggle = async () => {
     if (toggling) return;
@@ -35,8 +38,32 @@ export default function SurveyDetailClient({ surveyId, isActive: initialActive }
     }
   };
 
+  const handleClone = async () => {
+    if (cloning) return;
+    setCloning(true);
+
+    try {
+      const res = await fetch(`/api/surveys/${surveyId}/clone`, {
+        method: 'POST',
+      });
+
+      if (res.ok) {
+        const clone = await res.json();
+        router.push(`/dashboard/surveys/${clone.id}`);
+      }
+    } catch {
+      // Silently fail
+    } finally {
+      setCloning(false);
+    }
+  };
+
+  const handleExport = () => {
+    window.open(`/api/surveys/${surveyId}/export`, '_blank');
+  };
+
   return (
-    <div className="flex items-center gap-3 shrink-0">
+    <div className="flex items-center gap-2 shrink-0 flex-wrap">
       {/* Status Toggle */}
       <button
         onClick={handleToggle}
@@ -49,6 +76,27 @@ export default function SurveyDetailClient({ surveyId, isActive: initialActive }
       >
         <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-green-500' : 'bg-gray-400'}`} />
         {toggling ? '切換中...' : isActive ? '啟用中' : '已停用'}
+      </button>
+
+      {/* Export CSV */}
+      {hasResponses && (
+        <button
+          onClick={handleExport}
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-white/80 bg-white/10 border border-white/20 rounded-full hover:bg-white/20 transition-colors"
+        >
+          <Download className="w-3.5 h-3.5" />
+          匯出
+        </button>
+      )}
+
+      {/* Clone */}
+      <button
+        onClick={handleClone}
+        disabled={cloning}
+        className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-white/80 bg-white/10 border border-white/20 rounded-full hover:bg-white/20 transition-colors disabled:opacity-50"
+      >
+        <Copy className="w-3.5 h-3.5" />
+        {cloning ? '複製中...' : '複製'}
       </button>
 
       {/* Edit Button */}

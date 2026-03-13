@@ -22,6 +22,7 @@ interface DiscountResult {
   discount_value: string;
   tier_name?: string;
   tier_emoji?: string;
+  response_id?: string;
 }
 
 export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
@@ -32,6 +33,7 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
   const [phone, setPhone] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [discountResult, setDiscountResult] = useState<DiscountResult | null>(null);
+  const [responseId, setResponseId] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState('');
 
   const template = getTemplate(survey.template_id as TemplateId);
@@ -72,6 +74,10 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
 
       const data = await res.json();
 
+      if (data.response?.id) {
+        setResponseId(data.response.id);
+      }
+
       if (data.discount_code) {
         setDiscountResult({
           code: data.discount_code.code,
@@ -79,6 +85,7 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
           discount_value: data.discount_code.discount_value || survey.discount_value,
           tier_name: data.discount_code.tier_name,
           tier_emoji: data.discount_code.tier_emoji,
+          response_id: data.response?.id,
         });
       }
 
@@ -97,17 +104,17 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
       return;
     }
     setPhoneError('');
-    // Save phone via a lightweight update (response already submitted)
-    fetch(`/api/surveys/${survey.id}/responses`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        answers,
-        phone: phone.replace(/[-\s]/g, ''),
-        xp_earned: xpEarned,
-        skip_discount: true, // Already has discount, just updating phone
-      }),
-    }).catch(() => {}); // Best effort
+    // Update phone on existing response via PATCH
+    if (responseId) {
+      fetch(`/api/surveys/${survey.id}/responses`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          response_id: responseId,
+          phone: phone.replace(/[-\s]/g, ''),
+        }),
+      }).catch(() => {}); // Best effort
+    }
     setStep('discount');
   }
 
@@ -186,17 +193,17 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
         tierEmoji={discountResult.tier_emoji}
         xpEarned={xpEarned}
         onPhoneSubmit={(phoneNumber) => {
-          // Best-effort save phone to the response
-          fetch(`/api/surveys/${survey.id}/responses`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              answers,
-              phone: phoneNumber,
-              xp_earned: xpEarned,
-              skip_discount: true,
-            }),
-          }).catch(() => {});
+          // Update phone on existing response via PATCH
+          if (responseId) {
+            fetch(`/api/surveys/${survey.id}/responses`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                response_id: responseId,
+                phone: phoneNumber,
+              }),
+            }).catch(() => {});
+          }
         }}
       />
     );

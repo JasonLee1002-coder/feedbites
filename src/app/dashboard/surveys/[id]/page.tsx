@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect, notFound } from 'next/navigation';
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
 import { templates } from '@/lib/templates';
-import { ArrowLeft, TrendingUp, TrendingDown, Flame, Zap, Crown, Target, BarChart3, MessageCircle, Printer } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Flame, Zap, Crown, Target, BarChart3, MessageCircle, Printer, Download, Copy } from 'lucide-react';
 import type { TemplateId, Question, SurveyResponse, DiscountTier } from '@/types/survey';
 import SurveyDetailClient from './SurveyDetailClient';
 import { getSelectedStore } from '@/lib/store-context';
@@ -229,7 +229,11 @@ export default async function SurveyDetailPage({ params }: PageProps) {
               </div>
             )}
           </div>
-          <SurveyDetailClient surveyId={survey.id} isActive={survey.is_active} />
+          <SurveyDetailClient
+            surveyId={survey.id}
+            isActive={survey.is_active}
+            hasResponses={totalResponses > 0}
+          />
         </div>
       </div>
 

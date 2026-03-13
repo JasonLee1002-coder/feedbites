@@ -88,6 +88,8 @@ export async function PUT(
       discount_value,
       discount_expiry_days,
       discount_enabled,
+      discount_mode,
+      discount_tiers,
     } = body;
 
     const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -100,6 +102,8 @@ export async function PUT(
     if (discount_value !== undefined) updateData.discount_value = discount_value;
     if (discount_expiry_days !== undefined) updateData.discount_expiry_days = discount_expiry_days;
     if (discount_enabled !== undefined) updateData.discount_enabled = discount_enabled;
+    if (discount_mode !== undefined) updateData.discount_mode = discount_mode;
+    if (discount_tiers !== undefined) updateData.discount_tiers = discount_tiers;
 
     const { data: survey, error: updateError } = await adminDb
       .from('surveys')
