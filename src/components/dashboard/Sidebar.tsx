@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, ClipboardList, Ticket, LogOut, Menu, Settings, ChevronDown, Plus, Store } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Ticket, LogOut, Menu, Settings, ChevronDown, Plus, Store, UtensilsCrossed } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -21,6 +21,7 @@ interface SidebarProps {
 
 const navItems = [
   { href: '/dashboard', label: '總覽', icon: LayoutDashboard },
+  { href: '/dashboard/menu', label: '菜單管理', icon: UtensilsCrossed },
   { href: '/dashboard/surveys', label: '問卷管理', icon: ClipboardList },
   { href: '/dashboard/discounts', label: '折扣碼', icon: Ticket },
   { href: '/dashboard/settings', label: '店家設定', icon: Settings },
