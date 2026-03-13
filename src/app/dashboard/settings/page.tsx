@@ -1,21 +1,15 @@
 import { redirect } from 'next/navigation';
-import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
+import { createServerSupabase } from '@/lib/supabase/server';
 import StoreSettingsClient from './StoreSettingsClient';
+import { getSelectedStore } from '@/lib/store-context';
 
 export default async function SettingsPage() {
   const supabase = await createServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const adminDb = createServiceSupabase();
-
-  const { data: store } = await adminDb
-    .from('stores')
-    .select('*')
-    .eq('user_id', user.id)
-    .single();
-
-  if (!store) redirect('/register');
+  const store = await getSelectedStore(user.id);
+  if (!store) redirect('/register?setup=true');
 
   return (
     <StoreSettingsClient

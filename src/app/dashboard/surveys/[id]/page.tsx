@@ -5,6 +5,7 @@ import { templates } from '@/lib/templates';
 import { ArrowLeft, TrendingUp, TrendingDown, Flame, Zap, Crown, Target, BarChart3, MessageCircle, Printer } from 'lucide-react';
 import type { TemplateId, Question, SurveyResponse, DiscountTier } from '@/types/survey';
 import SurveyDetailClient from './SurveyDetailClient';
+import { getSelectedStore } from '@/lib/store-context';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -28,13 +29,8 @@ export default async function SurveyDetailPage({ params }: PageProps) {
 
   const adminDb = createServiceSupabase();
 
-  const { data: store } = await adminDb
-    .from('stores')
-    .select('id, store_name')
-    .eq('user_id', user.id)
-    .single();
-
-  if (!store) redirect('/register');
+  const store = await getSelectedStore(user.id);
+  if (!store) redirect('/register?setup=true');
 
   const { data: survey } = await adminDb
     .from('surveys')

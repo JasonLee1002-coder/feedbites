@@ -5,6 +5,7 @@ import {
   ClipboardList, MessageSquare, Ticket, Plus, Star,
   TrendingUp, TrendingDown, Minus, Users, CalendarDays,
 } from 'lucide-react';
+import { getSelectedStore } from '@/lib/store-context';
 
 export default async function DashboardPage() {
   const supabase = await createServerSupabase();
@@ -13,14 +14,11 @@ export default async function DashboardPage() {
 
   const adminDb = createServiceSupabase();
 
-  const { data: store } = await adminDb
-    .from('stores')
-    .select('*')
-    .eq('user_id', user.id)
-    .single();
+  const store = await getSelectedStore(user.id);
+  if (!store) redirect('/register?setup=true');
 
-  const storeName = store?.store_name || '我的店家';
-  const storeId = store?.id;
+  const storeName = store.store_name || '我的店家';
+  const storeId = store.id;
 
   // ── Data fetch ──
   let surveyCount = 0;

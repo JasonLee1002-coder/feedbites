@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
+import { getSelectedStore } from '@/lib/store-context';
 
 // GET: Get single survey (public if active, or owner)
 export async function GET(
@@ -32,11 +33,7 @@ export async function GET(
       return NextResponse.json({ error: '未授權' }, { status: 401 });
     }
 
-    const { data: store } = await adminDb
-      .from('stores')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
+    const store = await getSelectedStore(user.id);
 
     if (!store || survey.store_id !== store.id) {
       return NextResponse.json({ error: '未授權' }, { status: 403 });
@@ -64,11 +61,7 @@ export async function PUT(
     const adminDb = createServiceSupabase();
 
     // Verify ownership
-    const { data: store } = await adminDb
-      .from('stores')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
+    const store = await getSelectedStore(user.id);
 
     if (!store) {
       return NextResponse.json({ error: '找不到店家' }, { status: 404 });
@@ -141,11 +134,7 @@ export async function PATCH(
     const adminDb = createServiceSupabase();
 
     // Verify ownership
-    const { data: store } = await adminDb
-      .from('stores')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
+    const store = await getSelectedStore(user.id);
 
     if (!store) {
       return NextResponse.json({ error: '找不到店家' }, { status: 404 });
@@ -200,11 +189,7 @@ export async function DELETE(
     const adminDb = createServiceSupabase();
 
     // Verify ownership
-    const { data: store } = await adminDb
-      .from('stores')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
+    const store = await getSelectedStore(user.id);
 
     if (!store) {
       return NextResponse.json({ error: '找不到店家' }, { status: 404 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
 import { createDiscountCode, getExpiryDate } from '@/lib/discount';
+import { getSelectedStore } from '@/lib/store-context';
 
 // GET: List responses (owner only)
 export async function GET(
@@ -18,12 +19,7 @@ export async function GET(
     const adminDb = createServiceSupabase();
 
     // Verify ownership
-    const { data: store } = await adminDb
-      .from('stores')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
-
+    const store = await getSelectedStore(user.id);
     if (!store) {
       return NextResponse.json({ error: '找不到店家' }, { status: 404 });
     }

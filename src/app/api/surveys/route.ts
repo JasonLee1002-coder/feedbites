@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
+import { getSelectedStore } from '@/lib/store-context';
 
 // GET: List surveys for authenticated store owner
 export async function GET() {
@@ -12,14 +13,8 @@ export async function GET() {
 
     const adminDb = createServiceSupabase();
 
-    // Get store for user
-    const { data: store, error: storeError } = await adminDb
-      .from('stores')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
-
-    if (storeError || !store) {
+    const store = await getSelectedStore(user.id);
+    if (!store) {
       return NextResponse.json({ error: '找不到店家' }, { status: 404 });
     }
 
@@ -51,14 +46,8 @@ export async function POST(request: NextRequest) {
 
     const adminDb = createServiceSupabase();
 
-    // Get store for user
-    const { data: store, error: storeError } = await adminDb
-      .from('stores')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
-
-    if (storeError || !store) {
+    const store = await getSelectedStore(user.id);
+    if (!store) {
       return NextResponse.json({ error: '找不到店家' }, { status: 404 });
     }
 

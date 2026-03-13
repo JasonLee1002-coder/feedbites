@@ -3,6 +3,7 @@ import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/serv
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import QrPrintClient from './QrPrintClient';
+import { getSelectedStore } from '@/lib/store-context';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -17,13 +18,8 @@ export default async function QrCodePage({ params }: PageProps) {
 
   const adminDb = createServiceSupabase();
 
-  const { data: store } = await adminDb
-    .from('stores')
-    .select('id, store_name, logo_url')
-    .eq('user_id', user.id)
-    .single();
-
-  if (!store) redirect('/register');
+  const store = await getSelectedStore(user.id);
+  if (!store) redirect('/register?setup=true');
 
   const { data: survey } = await adminDb
     .from('surveys')

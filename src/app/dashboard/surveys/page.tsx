@@ -4,6 +4,7 @@ import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/serv
 import { templates } from '@/lib/templates';
 import { Plus } from 'lucide-react';
 import type { TemplateId } from '@/types/survey';
+import { getSelectedStore } from '@/lib/store-context';
 
 export default async function SurveysPage() {
   const supabase = await createServerSupabase();
@@ -12,14 +13,8 @@ export default async function SurveysPage() {
 
   const adminDb = createServiceSupabase();
 
-  // Get store for this user
-  const { data: store } = await adminDb
-    .from('stores')
-    .select('id')
-    .eq('user_id', user.id)
-    .single();
-
-  if (!store) redirect('/register');
+  const store = await getSelectedStore(user.id);
+  if (!store) redirect('/register?setup=true');
 
   // Get all surveys for this store
   const { data: surveys } = await adminDb

@@ -1,5 +1,6 @@
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
 export async function POST(request: Request) {
   try {
@@ -18,30 +19,35 @@ export async function POST(request: Request) {
 
     const adminDb = createServiceSupabase();
 
-    // Check if store already exists
-    const { data: existingStore } = await adminDb
+    // Create store (multi-store: one user can have multiple stores)
+    const { data: newStore, error: storeError } = await adminDb
       .from('stores')
+      .insert({
+        user_id: user.id,
+        email: user.email,
+        store_name: storeName.trim(),
+      })
       .select('id')
-      .eq('user_id', user.id)
       .single();
-
-    if (existingStore) {
-      return NextResponse.json({ error: '店家已存在' }, { status: 400 });
-    }
-
-    // Create store
-    const { error: storeError } = await adminDb.from('stores').insert({
-      user_id: user.id,
-      email: user.email,
-      store_name: storeName.trim(),
-    });
 
     if (storeError) {
       console.error('Store creation error:', storeError);
       return NextResponse.json({ error: '建立店家失敗' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true });
+    // Auto-select the newly created store
+    if (newStore) {
+      const cookieStore = await cookies();
+      cookieStore.set('feedbites_store_id', newStore.id, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 365,
+      });
+    }
+
+    return NextResponse.json({ success: true, storeId: newStore?.id });
   } catch (err) {
     console.error('Setup store error:', err);
     return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 });

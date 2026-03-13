@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
+import { getSelectedStore } from '@/lib/store-context';
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -9,12 +10,7 @@ export async function PATCH(request: NextRequest) {
 
     const adminDb = createServiceSupabase();
 
-    const { data: store } = await adminDb
-      .from('stores')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
-
+    const store = await getSelectedStore(user.id);
     if (!store) return NextResponse.json({ error: 'Store not found' }, { status: 404 });
 
     const body = await request.json();
