@@ -307,11 +307,11 @@ export default function NewSurveyPage() {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const images: Blob[] = [];
-    const maxPages = Math.min(pdf.numPages, 5); // Max 5 pages
+    const maxPages = Math.min(pdf.numPages, 3); // Max 3 pages
 
     for (let i = 1; i <= maxPages; i++) {
       const page = await pdf.getPage(i);
-      const scale = 2; // Higher quality
+      const scale = 1.2; // Balance between quality and size
       const viewport = page.getViewport({ scale });
       const canvas = document.createElement('canvas');
       canvas.width = viewport.width;
@@ -321,7 +321,7 @@ export default function NewSurveyPage() {
       await (page as any).render({ canvasContext: ctx, viewport }).promise;
 
       const blob = await new Promise<Blob>((resolve) => {
-        canvas.toBlob(b => resolve(b!), 'image/png', 0.9);
+        canvas.toBlob(b => resolve(b!), 'image/jpeg', 0.7); // JPEG, 70% quality = much smaller
       });
       images.push(blob);
     }
