@@ -713,7 +713,18 @@ export default function NewSurveyPage() {
                           <div key={i} className="flex items-center gap-2 text-xs text-[#8A8585]">
                             <span className="w-5 h-5 rounded bg-[#FAF7F2] flex items-center justify-center text-[10px] font-bold text-[#A08735] shrink-0">{i + 1}</span>
                             <span className="truncate">{q.label}</span>
-                            <span className="text-[10px] px-1.5 py-0.5 bg-[#FAF7F2] text-[#A08735] rounded shrink-0">{q.type}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 bg-[#FAF7F2] text-[#A08735] rounded shrink-0">{{
+                              'emoji-rating': '表情評分',
+                              'rating': '星級評分',
+                              'radio': '單選',
+                              'checkbox': '多選',
+                              'text': '簡答',
+                              'textarea': '長文回饋',
+                              'number': '數字',
+                              'radio-with-reason': '單選+原因',
+                              'rating-with-reason': '評分+原因',
+                              'section-header': '分隔',
+                            }[q.type] || q.type}</span>
                           </div>
                         ))}
                       </div>
