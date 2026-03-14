@@ -93,6 +93,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
         district: data.district || m.district,
         target_audience: data.suggested_audience || m.target_audience,
         price_range: data.suggested_price_range || m.price_range,
+        cuisine_type: data.suggested_cuisine || m.cuisine_type,
       }));
       if (data.area_insight) setAreaInsight(data.area_insight);
     } catch { /* ignore */ } finally {
@@ -582,57 +583,41 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
           </span>
         </div>
 
-        {/* AI Address Analysis */}
-        <div className="mb-5 p-4 bg-gradient-to-r from-[#FF8C00]/5 to-[#FF6B00]/5 rounded-xl border border-[#FF8C00]/15">
-          <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="w-4 h-4 text-[#FF8C00]" />
-            <span className="text-xs font-bold text-[#FF8C00]">AI 商圈分析</span>
-          </div>
-          <p className="text-[11px] text-[#8A8585] mb-3">
-            輸入店家地址，副店長幫你自動分析商圈、客群、消費水平
-          </p>
-          <div className="flex gap-2">
-            <div className="flex-1 relative">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8A8585]" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Address + auto-analyze */}
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-medium text-[#3A3A3A] mb-1.5">
+              <MapPin className="w-3 h-3 inline mr-1" />
+              店家地址或名稱
+            </label>
+            <div className="flex gap-2">
               <input
                 type="text"
                 value={storeAddress}
                 onChange={e => setStoreAddress(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleAnalyzeLocation()}
-                placeholder="輸入店家地址，例如：高雄市鹽埕區大義街2號"
-                className="w-full pl-10 pr-4 py-2.5 border border-[#FF8C00]/20 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#FF8C00]/20 focus:border-[#FF8C00] bg-white"
+                placeholder="輸入地址或店名，副店長幫你自動填寫以下欄位"
+                className="flex-1 px-3 py-2 rounded-lg border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] bg-[#FAF7F2]"
               />
+              <button
+                onClick={handleAnalyzeLocation}
+                disabled={analyzing || !storeAddress.trim()}
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#C5A55A] text-white text-xs font-medium rounded-lg hover:bg-[#A08735] transition-colors disabled:opacity-50 shrink-0"
+              >
+                {analyzing ? (
+                  <><Loader2 className="w-3.5 h-3.5 animate-spin" />分析中</>
+                ) : (
+                  '自動填寫'
+                )}
+              </button>
             </div>
-            <button
-              onClick={handleAnalyzeLocation}
-              disabled={analyzing || !storeAddress.trim()}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] text-white text-sm font-medium rounded-xl hover:shadow-lg hover:shadow-[#FF8C00]/20 transition-all disabled:opacity-50 shrink-0"
-            >
-              {analyzing ? (
-                <><Loader2 className="w-4 h-4 animate-spin" />分析中</>
-              ) : (
-                <><Sparkles className="w-4 h-4" />AI 分析</>
-              )}
-            </button>
+            {areaInsight && (
+              <p className="text-[11px] text-[#8A8585] mt-1.5 flex items-center gap-1">
+                🍽️ {areaInsight}
+              </p>
+            )}
           </div>
-          {areaInsight && (
-            <div className="mt-3 flex items-start gap-2 p-2.5 bg-white rounded-lg border border-[#FF8C00]/10">
-              <Sparkles className="w-3.5 h-3.5 text-[#FF8C00] shrink-0 mt-0.5" />
-              <p className="text-xs text-[#3A3A3A] leading-relaxed">{areaInsight}</p>
-            </div>
-          )}
-        </div>
 
-        {metaFilled < metaTotal && !areaInsight && (
-          <div className="flex items-start gap-2 mb-4 p-3 bg-[#FF8C00]/5 rounded-xl border border-[#FF8C00]/10">
-            <Sparkles className="w-4 h-4 text-[#FF8C00] shrink-0 mt-0.5" />
-            <p className="text-xs text-[#3A3A3A]">
-              填完店家資料即可解鎖同業比較分析功能！
-            </p>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Cuisine Type */}
           <div>
             <label className="block text-xs font-medium text-[#3A3A3A] mb-1.5">料理類型 *</label>
