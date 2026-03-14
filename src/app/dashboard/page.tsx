@@ -6,7 +6,7 @@ import {
   TrendingUp, TrendingDown, Minus, Users, CalendarDays,
 } from 'lucide-react';
 import { getSelectedStore } from '@/lib/store-context';
-import OnboardingGuide from '@/components/dashboard/OnboardingGuide';
+// OnboardingGuide merged into AiAssistant (副店長)
 
 export default async function DashboardPage() {
   const supabase = await createServerSupabase();
@@ -166,15 +166,6 @@ export default async function DashboardPage() {
             : '今天還沒有新的回覆，把 QR Code 放到桌上試試看'}
         </p>
       </div>
-
-      {/* ════ AI Onboarding Guide ════ */}
-      <OnboardingGuide
-        storeName={storeName}
-        hasLogo={!!store.logo_url}
-        dishCount={dishCount}
-        surveyCount={surveyCount}
-        responseCount={responseCount}
-      />
 
       {/* ════ KPI Cards ════ */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

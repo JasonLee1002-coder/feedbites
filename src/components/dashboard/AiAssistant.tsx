@@ -58,7 +58,15 @@ function getPageMessages(pathname: string, context?: { dishCount?: number; surve
   ];
 }
 
-export default function AiAssistant({ dishCount = 0, surveyCount = 0 }: { dishCount?: number; surveyCount?: number }) {
+interface AiProps {
+  storeName?: string;
+  hasLogo?: boolean;
+  dishCount?: number;
+  surveyCount?: number;
+  responseCount?: number;
+}
+
+export default function AiAssistant({ storeName = '', hasLogo = false, dishCount = 0, surveyCount = 0, responseCount = 0 }: AiProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<BubbleMessage[]>([]);
@@ -74,6 +82,17 @@ export default function AiAssistant({ dishCount = 0, surveyCount = 0 }: { dishCo
   const springY = useSpring(posY, { stiffness: 40, damping: 12 });
 
   const pageMessages = getPageMessages(pathname, { dishCount, surveyCount });
+
+  // Onboarding steps (merged from OnboardingGuide)
+  const onboardingSteps = [
+    { id: 'logo', label: '上傳 Logo', href: '/dashboard/settings', done: hasLogo },
+    { id: 'menu', label: '建立菜單', href: '/dashboard/menu', done: dishCount > 0 },
+    { id: 'survey', label: '建立問卷', href: '/dashboard/surveys/new', done: surveyCount > 0 },
+    { id: 'qr', label: '列印 QR Code 收回饋', href: '/dashboard/surveys', done: responseCount > 0 },
+  ];
+  const onboardingDone = onboardingSteps.every(s => s.done);
+  const onboardingProgress = Math.round((onboardingSteps.filter(s => s.done).length / onboardingSteps.length) * 100);
+  const isDashboardHome = pathname === '/dashboard' || pathname === '/dashboard/';
 
   // Home position — bottom area, slightly right of center on desktop
   const getHomePos = () => {
@@ -284,6 +303,7 @@ export default function AiAssistant({ dishCount = 0, surveyCount = 0 }: { dishCo
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[180px]">
+              {/* Messages */}
               {messages.map((msg, i) => (
                 <motion.div
                   key={i}
@@ -298,10 +318,58 @@ export default function AiAssistant({ dishCount = 0, surveyCount = 0 }: { dishCo
                   </div>
                 </motion.div>
               ))}
+
+              {/* Onboarding checklist — only on dashboard home, not all done */}
+              {isDashboardHome && !onboardingDone && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="mt-2"
+                >
+                  <div className="bg-gradient-to-br from-[#FF8C00]/5 to-[#FF6B00]/5 rounded-xl border border-[#FF8C00]/15 p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] font-bold text-[#FF8C00]">開店進度</span>
+                      <span className="text-[10px] font-bold text-[#FF8C00]">{onboardingProgress}%</span>
+                    </div>
+                    <div className="h-1.5 bg-[#E8E2D8] rounded-full overflow-hidden mb-3">
+                      <motion.div
+                        className="h-full bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${onboardingProgress}%` }}
+                        transition={{ duration: 0.8 }}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      {onboardingSteps.map(step => (
+                        <a
+                          key={step.id}
+                          href={step.done ? undefined : step.href}
+                          className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] transition-all ${
+                            step.done
+                              ? 'text-emerald-600 line-through opacity-60'
+                              : 'text-[#3A3A3A] bg-white border border-[#E8E2D8] hover:border-[#FF8C00] hover:shadow-sm cursor-pointer'
+                          }`}
+                        >
+                          <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0 ${
+                            step.done ? 'bg-emerald-100 text-emerald-600' : 'bg-[#FF8C00]/10 text-[#FF8C00]'
+                          }`}>
+                            {step.done ? '✓' : '→'}
+                          </span>
+                          {step.label}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
               <div ref={messagesEndRef} />
             </div>
             <div className="px-4 py-2.5 border-t border-[#E8E2D8] bg-[#FAF7F2]">
-              <p className="text-[10px] text-[#8A8585] text-center">副店長會根據你所在的頁面給出建議</p>
+              <p className="text-[10px] text-[#8A8585] text-center">
+                {isDashboardHome && !onboardingDone ? '完成以上步驟，解鎖完整分析功能 ✨' : '副店長會根據你所在的頁面給出建議'}
+              </p>
             </div>
           </motion.div>
         )}

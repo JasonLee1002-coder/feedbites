@@ -30,9 +30,13 @@ export default async function DashboardLayout({
 
   // Fetch counts for AI assistant context
   const adminDb = createServiceSupabase();
-  const [{ count: dishCount }, { count: surveyCount }] = await Promise.all([
+  const [{ count: dishCount }, { count: surveyCount }, { count: responseCount }] = await Promise.all([
     adminDb.from('dishes').select('*', { count: 'exact', head: true }).eq('store_id', store.id),
     adminDb.from('surveys').select('*', { count: 'exact', head: true }).eq('store_id', store.id),
+    adminDb.from('responses').select('*', { count: 'exact', head: true }).in(
+      'survey_id',
+      (await adminDb.from('surveys').select('id').eq('store_id', store.id)).data?.map(s => s.id) || []
+    ),
   ]);
 
   return (
@@ -48,7 +52,13 @@ export default async function DashboardLayout({
           {children}
         </div>
       </main>
-      <AiAssistant dishCount={dishCount || 0} surveyCount={surveyCount || 0} />
+      <AiAssistant
+        storeName={store.store_name}
+        hasLogo={!!store.logo_url}
+        dishCount={dishCount || 0}
+        surveyCount={surveyCount || 0}
+        responseCount={responseCount || 0}
+      />
     </div>
   );
 }
