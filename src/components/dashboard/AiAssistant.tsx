@@ -59,9 +59,10 @@ interface AiProps {
   dishCount?: number;
   surveyCount?: number;
   responseCount?: number;
+  avatarUrl?: string | null;
 }
 
-export default function AiAssistant({ storeName = '', hasLogo = false, dishCount = 0, surveyCount = 0, responseCount = 0 }: AiProps) {
+export default function AiAssistant({ storeName = '', hasLogo = false, dishCount = 0, surveyCount = 0, responseCount = 0, avatarUrl }: AiProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<BubbleMessage[]>([]);
@@ -277,7 +278,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
 
   useEffect(() => {
     if (isOpen) {
-      setMessages(pageMessages.map(text => ({ text })));
+      setMessages(pageMessages);
       setShowBubble(false);
     }
   }, [isOpen, pathname]);
@@ -530,7 +531,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
           >✨</motion.div>
         ))}
 
-        {/* Main orb — FeedBites logo */}
+        {/* Main orb — owner avatar or FeedBites logo */}
         <motion.div
           className="relative w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-lg overflow-hidden border-2 border-[#64B4FF]/30"
           animate={{ scale: [1, 1.05, 1], y: [0, -3, 0] }}
@@ -544,7 +545,11 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
             ) : (
               <motion.div key="logo" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/feedbites-logo.png" alt="副店長" className="w-9 h-9 object-contain" />
+                <img
+                  src={avatarUrl || '/feedbites-logo.png'}
+                  alt="副店長"
+                  className={avatarUrl ? 'w-full h-full object-cover' : 'w-9 h-9 object-contain'}
+                />
               </motion.div>
             )}
           </AnimatePresence>

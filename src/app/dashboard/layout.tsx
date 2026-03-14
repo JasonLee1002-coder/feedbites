@@ -59,6 +59,7 @@ export default async function DashboardLayout({
         dishCount={dishCount || 0}
         surveyCount={surveyCount || 0}
         responseCount={responseCount || 0}
+        avatarUrl={store.owner_avatar_url}
       />
     </div>
   );
