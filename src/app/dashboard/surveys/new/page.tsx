@@ -260,6 +260,38 @@ export default function NewSurveyPage() {
   ]);
 
   // ---------------------------------------------------------------------------
+  // Import dishes from menu
+  // ---------------------------------------------------------------------------
+  const [loadingDishes, setLoadingDishes] = useState(false);
+  const [storeDishes, setStoreDishes] = useState<Array<{ name: string; category: string }>>([]);
+
+  const fetchStoreDishes = useCallback(async () => {
+    if (storeDishes.length > 0) return storeDishes;
+    setLoadingDishes(true);
+    try {
+      const res = await fetch('/api/dishes');
+      if (res.ok) {
+        const data = await res.json();
+        setStoreDishes(data);
+        return data;
+      }
+    } catch { /* ignore */ }
+    finally { setLoadingDishes(false); }
+    return [];
+  }, [storeDishes]);
+
+  const importDishesToBlock = useCallback(async (blockId: string) => {
+    const dishes = await fetchStoreDishes();
+    if (dishes.length === 0) return;
+    const dishNames = dishes.map((d: { name: string }) => d.name);
+    const block = blocks.find(b => b.id === blockId);
+    if (!block?.dishConfig) return;
+    updateBlock(blockId, {
+      dishConfig: { ...block.dishConfig, dishes: dishNames },
+    });
+  }, [fetchStoreDishes, blocks]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ---------------------------------------------------------------------------
   // Derived questions
   // ---------------------------------------------------------------------------
   const getQuestions = useCallback((): Question[] => {
@@ -638,13 +670,22 @@ export default function NewSurveyPage() {
                                 </button>
                               </div>
                             ))}
-                            <button
-                              onClick={() => addDish(block.id)}
-                              className="flex items-center gap-1 text-xs text-[#C5A55A] hover:text-[#A08735] transition-colors ml-16"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                              新增菜品
-                            </button>
+                            <div className="flex items-center gap-3 ml-16">
+                              <button
+                                onClick={() => addDish(block.id)}
+                                className="flex items-center gap-1 text-xs text-[#C5A55A] hover:text-[#A08735] transition-colors"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                手動新增
+                              </button>
+                              <button
+                                onClick={() => importDishesToBlock(block.id)}
+                                disabled={loadingDishes}
+                                className="flex items-center gap-1 text-xs text-[#FF8C00] hover:text-[#E07800] transition-colors font-medium disabled:opacity-50"
+                              >
+                                {loadingDishes ? '載入中...' : '📋 從菜單匯入'}
+                              </button>
+                            </div>
                           </div>
 
                           {/* Aspect toggles */}
