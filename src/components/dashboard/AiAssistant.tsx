@@ -544,12 +544,12 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
               </motion.div>
             ) : (
               <motion.div key="logo" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={avatarUrl || '/feedbites-logo.png'}
-                  alt="副店長"
-                  className={avatarUrl ? 'w-full h-full object-cover' : 'w-9 h-9 object-contain'}
-                />
+                {avatarUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={avatarUrl} alt="副店長" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-xl font-black text-[#FF8C00] select-none" style={{ fontFamily: 'Georgia, serif' }}>F</span>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
