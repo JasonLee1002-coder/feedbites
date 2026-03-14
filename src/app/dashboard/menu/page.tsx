@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, Camera, Pencil, Trash2, X, Check, ImageIcon, Star, ChefHat } from 'lucide-react';
+import { Plus, Camera, Pencil, Trash2, X, Check, ImageIcon, Star, ChefHat, Upload, Sparkles, Loader2 } from 'lucide-react';
 import VoiceRecorder from '@/components/shared/VoiceRecorder';
 
 interface Dish {
@@ -33,6 +33,17 @@ export default function MenuPage() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const menuUploadRef = useRef<HTMLInputElement>(null);
+
+  // Smart menu upload state
+  const [showMenuUpload, setShowMenuUpload] = useState(false);
+  const [menuParsing, setMenuParsing] = useState(false);
+  const [parsedDishes, setParsedDishes] = useState<Array<{
+    name: string; description: string; category: string; price: string; selected: boolean;
+  }>>([]);
+  const [parseNotes, setParseNotes] = useState('');
+  const [batchSaving, setBatchSaving] = useState(false);
+  const [batchProgress, setBatchProgress] = useState(0);
 
   useEffect(() => {
     fetchDishes();
@@ -155,6 +166,70 @@ export default function MenuPage() {
     }
   }
 
+  async function handleMenuUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setMenuParsing(true);
+    setParsedDishes([]);
+    setParseNotes('');
+    setShowMenuUpload(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const res = await fetch('/api/ai/parse-menu', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '辨識失敗');
+      }
+
+      const data = await res.json();
+      setParsedDishes((data.dishes || []).map((d: { name: string; description: string; category: string; price: string }) => ({ ...d, selected: true })));
+      setParseNotes(data.notes || '');
+    } catch (err) {
+      setParseNotes(err instanceof Error ? err.message : '辨識失敗，請重試');
+    } finally {
+      setMenuParsing(false);
+      if (menuUploadRef.current) menuUploadRef.current.value = '';
+    }
+  }
+
+  async function handleBatchCreate() {
+    const selected = parsedDishes.filter(d => d.selected);
+    if (selected.length === 0) return;
+    setBatchSaving(true);
+    setBatchProgress(0);
+
+    try {
+      for (let i = 0; i < selected.length; i++) {
+        const d = selected[i];
+        const res = await fetch('/api/dishes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: d.name,
+            description: d.description || null,
+            category: d.category || '其他',
+          }),
+        });
+        if (res.ok) {
+          const newDish = await res.json();
+          setDishes(prev => [newDish, ...prev]);
+        }
+        setBatchProgress(Math.round(((i + 1) / selected.length) * 100));
+      }
+      setShowMenuUpload(false);
+      setParsedDishes([]);
+    } catch { /* ignore */ } finally {
+      setBatchSaving(false);
+    }
+  }
+
   const handleVoiceResult = useCallback((result: { transcript: string; description: string; suggestedName?: string }) => {
     if (result.description) setFormDesc(result.description);
     if (result.suggestedName && !formName) setFormName(result.suggestedName);
@@ -200,14 +275,147 @@ export default function MenuPage() {
             上傳菜色照片與描述，用於問卷評分和人氣排行
           </p>
         </div>
-        <button
-          onClick={() => { resetForm(); setShowAddForm(true); }}
-          className="flex items-center gap-2 px-5 py-2.5 bg-[#C5A55A] text-white rounded-full text-sm font-medium hover:bg-[#A08735] transition-colors shadow-sm"
-        >
-          <Plus className="w-4 h-4" />
-          新增菜品
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => menuUploadRef.current?.click()}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] text-white rounded-full text-sm font-medium hover:shadow-lg hover:shadow-[#FF8C00]/20 transition-all shadow-sm"
+          >
+            <Sparkles className="w-4 h-4" />
+            上傳現有菜單
+          </button>
+          <button
+            onClick={() => { resetForm(); setShowAddForm(true); }}
+            className="flex items-center gap-2 px-5 py-2.5 bg-[#C5A55A] text-white rounded-full text-sm font-medium hover:bg-[#A08735] transition-colors shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            新增菜品
+          </button>
+        </div>
+        <input
+          ref={menuUploadRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          className="hidden"
+          onChange={handleMenuUpload}
+        />
       </div>
+
+      {/* Smart Menu Upload Panel */}
+      {showMenuUpload && (
+        <div className="bg-white rounded-2xl border border-[#FF8C00]/20 p-6 mb-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FF8C00] to-[#FF6B00] flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-[#3A3A3A]">AI 菜單辨識</h2>
+                <p className="text-xs text-[#8A8585]">副店長正在幫你拆解菜單圖片...</p>
+              </div>
+            </div>
+            <button onClick={() => { setShowMenuUpload(false); setParsedDishes([]); }} className="text-[#8A8585] hover:text-[#3A3A3A]">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {menuParsing ? (
+            <div className="py-12 text-center">
+              <Loader2 className="w-10 h-10 text-[#FF8C00] animate-spin mx-auto mb-4" />
+              <p className="text-sm text-[#3A3A3A] font-medium">AI 正在辨識你的菜單...</p>
+              <p className="text-xs text-[#8A8585] mt-1">通常需要 5-10 秒</p>
+            </div>
+          ) : parsedDishes.length > 0 ? (
+            <>
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-sm text-[#3A3A3A]">
+                  辨識到 <strong className="text-[#FF8C00]">{parsedDishes.length}</strong> 道菜品，勾選要加入的：
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setParsedDishes(prev => prev.map(d => ({ ...d, selected: true })))}
+                    className="text-xs text-[#C5A55A] hover:text-[#A08735]"
+                  >
+                    全選
+                  </button>
+                  <button
+                    onClick={() => setParsedDishes(prev => prev.map(d => ({ ...d, selected: false })))}
+                    className="text-xs text-[#8A8585] hover:text-[#3A3A3A]"
+                  >
+                    取消全選
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2 max-h-[400px] overflow-y-auto mb-4">
+                {parsedDishes.map((dish, i) => (
+                  <div
+                    key={i}
+                    onClick={() => setParsedDishes(prev => prev.map((d, j) => j === i ? { ...d, selected: !d.selected } : d))}
+                    className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                      dish.selected
+                        ? 'border-[#FF8C00]/30 bg-[#FF8C00]/5'
+                        : 'border-[#E8E2D8] bg-white opacity-50'
+                    }`}
+                  >
+                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
+                      dish.selected ? 'bg-[#FF8C00] border-[#FF8C00]' : 'border-[#E8E2D8]'
+                    }`}>
+                      {dish.selected && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-[#3A3A3A]">{dish.name}</span>
+                        <span className="text-[10px] px-2 py-0.5 bg-[#FAF7F2] text-[#A08735] rounded-full">{dish.category}</span>
+                        {dish.price && <span className="text-[10px] text-[#FF8C00]">{dish.price}</span>}
+                      </div>
+                      {dish.description && (
+                        <p className="text-xs text-[#8A8585] mt-0.5 line-clamp-2">{dish.description}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {parseNotes && (
+                <p className="text-xs text-[#8A8585] mb-3 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-[#FF8C00]" />
+                  {parseNotes}
+                </p>
+              )}
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleBatchCreate}
+                  disabled={batchSaving || parsedDishes.filter(d => d.selected).length === 0}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] text-white rounded-full text-sm font-bold hover:shadow-lg hover:shadow-[#FF8C00]/20 transition-all disabled:opacity-50"
+                >
+                  {batchSaving ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" />建立中 {batchProgress}%</>
+                  ) : (
+                    <><Check className="w-4 h-4" />加入 {parsedDishes.filter(d => d.selected).length} 道菜品</>
+                  )}
+                </button>
+                <button
+                  onClick={() => menuUploadRef.current?.click()}
+                  className="px-4 py-2.5 text-[#8A8585] text-sm hover:text-[#FF8C00] transition-colors"
+                >
+                  重新上傳
+                </button>
+              </div>
+            </>
+          ) : parseNotes ? (
+            <div className="py-8 text-center">
+              <p className="text-sm text-red-500 mb-3">{parseNotes}</p>
+              <button
+                onClick={() => menuUploadRef.current?.click()}
+                className="text-sm text-[#FF8C00] hover:text-[#E07800]"
+              >
+                重新上傳
+              </button>
+            </div>
+          ) : null}
+        </div>
+      )}
 
       {/* Category Filter */}
       {dishes.length > 0 && (

@@ -1,6 +1,7 @@
-import { createServerSupabase } from '@/lib/supabase/server';
+import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import Sidebar from '@/components/dashboard/Sidebar';
+import AiAssistant from '@/components/dashboard/AiAssistant';
 import { getSelectedStore, getUserStores } from '@/lib/store-context';
 
 export default async function DashboardLayout({
@@ -22,9 +23,17 @@ export default async function DashboardLayout({
     return (
       <div className="min-h-screen bg-[#FAF7F2]">
         {children}
+        <AiAssistant />
       </div>
     );
   }
+
+  // Fetch counts for AI assistant context
+  const adminDb = createServiceSupabase();
+  const [{ count: dishCount }, { count: surveyCount }] = await Promise.all([
+    adminDb.from('dishes').select('*', { count: 'exact', head: true }).eq('store_id', store.id),
+    adminDb.from('surveys').select('*', { count: 'exact', head: true }).eq('store_id', store.id),
+  ]);
 
   return (
     <div className="min-h-screen bg-[#FAF7F2]">
@@ -39,6 +48,7 @@ export default async function DashboardLayout({
           {children}
         </div>
       </main>
+      <AiAssistant dishCount={dishCount || 0} surveyCount={surveyCount || 0} />
     </div>
   );
 }
