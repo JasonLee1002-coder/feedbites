@@ -42,33 +42,24 @@ export async function POST(request: NextRequest) {
 
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          mimeType,
-          data: base64Image,
-        },
-      },
-      {
-        text: `你是餐廳菜單辨識 AI。請分析這張菜單圖片。
+    const contentParts = [
+      { inlineData: { mimeType, data: base64Image } },
+      { text: `你是餐廳菜單辨識 AI。請分析這張菜單圖片。最多辨識 30 道菜（優先招牌/主食）。description 15 字以內。英文翻中文。格式：{"dishes":[{"name":"菜名","description":"描述","category":"分類","price":"價格"}],"total":數量,"notes":"說明"} category：主食/前菜/湯品/甜點/飲品/小吃/套餐/其他。只回覆 JSON。` },
+    ];
 
-重要規則：
-- 最多辨識 30 道菜（挑最重要/招牌的）
-- 如果菜單很大，優先挑：套餐、招牌、主食、人氣推薦
-- 回覆要簡潔，每道菜的 description 控制在 15 字以內
-- 如果是英文菜名，請翻譯成中文
-
-格式：
-{"dishes":[{"name":"菜名","description":"簡短描述","category":"分類","price":"價格"}],"total":數量,"notes":"說明"}
-
-category 從以下選：主食、前菜、湯品、甜點、飲品、小吃、套餐、其他
-price 沒有就填空字串
-
-只回覆 JSON，不要 markdown，不要 \`\`\`。`,
-      },
-    ]);
-
-    const text = result.response.text();
+    // Retry up to 2 times
+    let text = '';
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const result = await model.generateContent(contentParts);
+        text = result.response.text();
+        break;
+      } catch (retryErr) {
+        console.error(`Menu parse attempt ${attempt + 1} failed:`, retryErr instanceof Error ? retryErr.message : retryErr);
+        if (attempt === 2) throw retryErr;
+        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+      }
+    }
     // Try to extract JSON from response (may be wrapped in ```json blocks)
     const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
     const jsonMatch = cleaned.match(/\{[\s\S]*\}/);

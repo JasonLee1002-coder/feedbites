@@ -134,6 +134,7 @@ function generateDemographicsQuestions(): Question[] {
     { id: 'demo_gender', type: 'radio', label: '性別', required: true, options: ['男', '女', '其他'] },
     { id: 'demo_age', type: 'radio', label: '年齡層', required: true, options: ['18歲以下', '18-25歲', '26-35歲', '36-45歲', '46歲以上'] },
     { id: 'demo_first_visit', type: 'radio', label: '是否第一次來本店', required: true, options: ['是', '否'] },
+    { id: 'demo_meal_time', type: 'radio', label: '用餐時段', required: false, options: ['早餐', '午餐', '下午茶', '晚餐', '宵夜'] },
   ];
 }
 
@@ -204,11 +205,12 @@ function generateDishQuestions(config: DishEvalConfig): Question[] {
 
 function generateMarketQuestions(): Question[] {
   return [
-    { id: 'market_header', type: 'section-header', title: '市場定價', label: '市場定價', required: false },
+    { id: 'market_header', type: 'section-header', title: '市場定價與推薦', label: '市場定價與推薦', required: false },
     { id: 'market_best_dish', type: 'text', label: '最印象深刻的是哪一道？', required: false, placeholder: '請輸入菜名' },
     { id: 'market_price', type: 'number', label: '合理的定價建議（NT$）', required: false, placeholder: '輸入金額' },
     { id: 'market_repurchase', type: 'rating', label: '回購意願', required: true, min: 1, max: 5 },
-    { id: 'market_occasion', type: 'checkbox', label: '最適合的消費情境', required: false, options: ['朋友聚餐下酒', '約會慶祝', '家庭聚會', '商務室餐', '獨自用餐'] },
+    { id: 'market_nps', type: 'emoji-rating', label: '您會推薦本餐廳給親友嗎？', required: true, min: 1, max: 5 },
+    { id: 'market_occasion', type: 'checkbox', label: '最適合的消費情境', required: false, options: ['朋友聚餐下酒', '約會慶祝', '家庭聚會', '商務宴客', '獨自用餐'] },
   ];
 }
 

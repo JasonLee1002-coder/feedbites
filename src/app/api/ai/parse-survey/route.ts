@@ -63,8 +63,19 @@ export async function POST(request: NextRequest) {
       },
     ];
 
-    const result = await model.generateContent(parts);
-    const text = result.response.text();
+    // Retry up to 2 times on failure
+    let text = '';
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const result = await model.generateContent(parts);
+        text = result.response.text();
+        break;
+      } catch (retryErr) {
+        console.error(`Survey parse attempt ${attempt + 1} failed:`, retryErr instanceof Error ? retryErr.message : retryErr);
+        if (attempt === 2) throw retryErr;
+        await new Promise(r => setTimeout(r, 1000 * (attempt + 1))); // 1s, 2s delay
+      }
+    }
 
     const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
     const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
