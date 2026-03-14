@@ -169,6 +169,13 @@ function RegisterForm() {
         </Link>
       </p>
 
+      <Link
+        href="/"
+        className="block text-center text-xs text-[#B0AAA0] mt-3 hover:text-[#C5A55A] transition-colors"
+      >
+        ← 回到首頁
+      </Link>
+
       <p className="text-center text-xs text-[#B0AAA0] mt-4">
         &copy; {new Date().getFullYear()} MCS Pte. Ltd. &middot; Singapore
       </p>

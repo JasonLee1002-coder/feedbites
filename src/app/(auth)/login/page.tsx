@@ -151,9 +151,16 @@ function LoginForm() {
       <p className="text-center text-sm text-[#8A8585] mt-6">
         還沒有帳號？{' '}
         <Link href="/register" className="text-[#C5A55A] hover:text-[#A08735]">
-          免費開通
+          免費註冊
         </Link>
       </p>
+
+      <Link
+        href="/"
+        className="block text-center text-xs text-[#B0AAA0] mt-3 hover:text-[#C5A55A] transition-colors"
+      >
+        ← 回到首頁
+      </Link>
 
       <p className="text-center text-xs text-[#B0AAA0] mt-4">
         &copy; {new Date().getFullYear()} MCS Pte. Ltd. &middot; Singapore
