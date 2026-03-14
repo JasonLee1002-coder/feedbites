@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     console.log(`Survey parse: ${images.length} image(s)`);
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const parts = [
       ...images.map(img => ({ inlineData: img })),

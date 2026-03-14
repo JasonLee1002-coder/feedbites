@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     // Determine MIME type
     const mimeType = audio.type || 'audio/webm';
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     if (mode === 'describe') {
       // Step 1: Transcribe + generate dish description

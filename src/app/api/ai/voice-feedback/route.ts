@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     const base64Audio = Buffer.from(bytes).toString('base64');
     const mimeType = audio.type || 'audio/webm';
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const result = await model.generateContent([
       {

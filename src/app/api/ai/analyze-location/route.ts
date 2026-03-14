@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const { address, storeName } = await request.json();
     if (!address) return NextResponse.json({ error: '請輸入地址或店名' }, { status: 400 });
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const result = await model.generateContent([
       {
