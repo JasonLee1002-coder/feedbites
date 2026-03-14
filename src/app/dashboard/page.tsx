@@ -6,6 +6,7 @@ import {
   TrendingUp, TrendingDown, Minus, Users, CalendarDays,
 } from 'lucide-react';
 import { getSelectedStore } from '@/lib/store-context';
+import OnboardingGuide from '@/components/dashboard/OnboardingGuide';
 
 export default async function DashboardPage() {
   const supabase = await createServerSupabase();
@@ -40,6 +41,7 @@ export default async function DashboardPage() {
     xp_earned?: number | null;
   }> = [];
   let activeSurveyCount = 0;
+  let dishCount = 0;
 
   // 7-day trend
   const dailyCounts: { label: string; count: number }[] = [];
@@ -52,6 +54,13 @@ export default async function DashboardPage() {
 
     surveyCount = surveys?.length || 0;
     activeSurveyCount = surveys?.filter((s: { is_active: boolean }) => s.is_active).length || 0;
+
+    // Dish count
+    const { count: dc } = await adminDb
+      .from('dishes')
+      .select('*', { count: 'exact', head: true })
+      .eq('store_id', storeId);
+    dishCount = dc || 0;
 
     if (surveys && surveys.length > 0) {
       const surveyIds = surveys.map((s: { id: string }) => s.id);
@@ -157,6 +166,15 @@ export default async function DashboardPage() {
             : '今天還沒有新的回覆，把 QR Code 放到桌上試試看'}
         </p>
       </div>
+
+      {/* ════ AI Onboarding Guide ════ */}
+      <OnboardingGuide
+        storeName={storeName}
+        hasLogo={!!store.logo_url}
+        dishCount={dishCount}
+        surveyCount={surveyCount}
+        responseCount={responseCount}
+      />
 
       {/* ════ KPI Cards ════ */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
