@@ -323,8 +323,8 @@ export default function NewSurveyPage() {
 
       // Auto-select suggested template
       if (data.suggestedTemplate && !selectedTemplate) {
-        const validTemplates: TemplateId[] = ['fine-dining', 'japanese', 'industrial', 'cafe', 'chinese-classic'];
-        if (validTemplates.includes(data.suggestedTemplate)) {
+        const validTemplates: TemplateId[] = ['fine-dining', 'japanese', 'industrial', 'cafe', 'chinese-classic', 'ocean', 'night-market', 'dessert', 'korean', 'bistro'];
+        if (validTemplates.includes(data.suggestedTemplate as TemplateId)) {
           setSelectedTemplate(data.suggestedTemplate as TemplateId);
         }
       }

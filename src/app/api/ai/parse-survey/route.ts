@@ -82,16 +82,27 @@ FeedBites 支援以下問題類型：
     ]);
 
     const text = result.response.text();
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
 
     if (!jsonMatch) {
-      return NextResponse.json({ error: '無法解析問卷內容' }, { status: 422 });
+      console.error('Survey parse: no JSON found:', text.substring(0, 500));
+      return NextResponse.json({ error: '無法解析問卷內容，請換一張更清晰的圖片或 PDF' }, { status: 422 });
     }
 
-    const parsed = JSON.parse(jsonMatch[0]);
-    return NextResponse.json(parsed);
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      return NextResponse.json(parsed);
+    } catch (parseErr) {
+      console.error('Survey parse: JSON error:', parseErr);
+      return NextResponse.json({ error: 'AI 回傳格式異常，請重試' }, { status: 422 });
+    }
   } catch (err) {
-    console.error('Survey parse error:', err);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error('Survey parse error:', errMsg);
+    if (errMsg.includes('SAFETY') || errMsg.includes('blocked')) {
+      return NextResponse.json({ error: '檔案內容無法處理，請換一份問卷' }, { status: 422 });
+    }
     return NextResponse.json({ error: '問卷解析失敗，請重試' }, { status: 500 });
   }
 }
