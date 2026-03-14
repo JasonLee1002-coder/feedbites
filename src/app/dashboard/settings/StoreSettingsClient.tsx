@@ -38,6 +38,7 @@ interface Props {
   storeId: string;
   storeName: string;
   logoUrl: string | null;
+  avatarUrl: string | null;
   frameId: string;
   isOwner: boolean;
   metadata?: StoreMetadata;
@@ -48,7 +49,7 @@ const PRICE_RANGES = ['100 以下', '100-300', '300-600', '600-1000', '1000 以�
 const TARGET_AUDIENCES = ['上班族', '學生', '家庭', '觀光客', '商務', '約會情侶', '銀髮族'];
 const SERVICE_TYPES = ['內用', '外帶', '外送', '內用+外帶', '複合式'];
 
-export default function StoreSettingsClient({ storeId, storeName, logoUrl: initialLogo, frameId: initialFrameId, isOwner, metadata: initialMetadata }: Props) {
+export default function StoreSettingsClient({ storeId, storeName, logoUrl: initialLogo, avatarUrl: initialAvatar, frameId: initialFrameId, isOwner, metadata: initialMetadata }: Props) {
   const [editStoreName, setEditStoreName] = useState(storeName);
   const [nameEditing, setNameEditing] = useState(false);
   const [nameSaving, setNameSaving] = useState(false);

@@ -16,6 +16,7 @@ export default async function SettingsPage() {
       storeId={store.id}
       storeName={store.store_name || ''}
       logoUrl={store.logo_url || null}
+      avatarUrl={store.owner_avatar_url || null}
       frameId={store.frame_id || 'classic-gold'}
       isOwner={store.user_id === user.id}
       metadata={{

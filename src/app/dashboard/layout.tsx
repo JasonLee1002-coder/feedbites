@@ -45,6 +45,7 @@ export default async function DashboardLayout({
         storeName={store.store_name}
         storeId={store.id}
         allStores={allStores}
+        avatarUrl={store.owner_avatar_url}
       />
       {/* Main content */}
       <main className="lg:pl-60">

@@ -67,14 +67,19 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
   const [hasInteracted, setHasInteracted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Position state — avatar moves around the content area
-  const homePos = { bottom: 80, right: 32 };
-  const [pos, setPos] = useState(homePos);
+  // Position — uses top/right relative to viewport, floats in content area
+  const [pos, setPos] = useState({ top: 300, right: 40 });
   const [isNearInput, setIsNearInput] = useState(false);
 
-  const clampPos = (p: { bottom: number; right: number }) => ({
-    bottom: Math.max(24, Math.min(p.bottom, 300)),
-    right: Math.max(16, Math.min(p.right, 120)),
+  // Content-aware home: vertically centered, right side of content area
+  const getHomePos = () => {
+    const h = typeof window !== 'undefined' ? window.innerHeight : 800;
+    return { top: Math.round(h * 0.45), right: 40 };
+  };
+
+  const clampPos = (p: { top: number; right: number }) => ({
+    top: Math.max(80, Math.min(p.top, (typeof window !== 'undefined' ? window.innerHeight : 800) - 100)),
+    right: Math.max(20, Math.min(p.right, 150)),
   });
 
   const pageMessages = getPageMessages(pathname, { dishCount, surveyCount });
@@ -97,13 +102,12 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
       if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
         const rect = el.getBoundingClientRect();
         const w = window.innerWidth;
-        const h = window.innerHeight;
 
-        // Position near the input
-        const newBottom = Math.max(20, h - rect.bottom - 10);
-        const newRight = rect.right + 70 < w ? w - rect.right - 60 : rect.left - 70 > 0 ? w - rect.left + 20 : 24;
+        // Position beside the input
+        const newTop = Math.round(rect.top + rect.height / 2 - 28);
+        const newRight = rect.right + 80 < w ? w - rect.right - 50 : rect.left > 80 ? w - rect.left + 20 : 40;
 
-        setPos(clampPos({ bottom: newBottom, right: newRight }));
+        setPos(clampPos({ top: newTop, right: newRight }));
         setIsNearInput(true);
       }
     }
@@ -111,7 +115,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
     function handleBlur() {
       setTimeout(() => {
         if (document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
-          setPos(homePos);
+          setPos(getHomePos());
           setIsNearInput(false);
         }
       }, 1500);
@@ -129,17 +133,34 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
   useEffect(() => {
     if (isOpen || isNearInput) return;
     const interval = setInterval(() => {
-      setPos(p => clampPos({
-        bottom: homePos.bottom + (Math.random() - 0.5) * 60,
-        right: homePos.right + (Math.random() - 0.5) * 40,
+      const home = getHomePos();
+      setPos(clampPos({
+        top: home.top + (Math.random() - 0.5) * 80,
+        right: home.right + (Math.random() - 0.5) * 50,
       }));
     }, 4000);
     return () => clearInterval(interval);
   }, [isOpen, isNearInput]);
 
+  // Follow scroll — keep avatar vertically centered in viewport
+  useEffect(() => {
+    let ticking = false;
+    function handleScroll() {
+      if (ticking || isNearInput || isOpen) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const home = getHomePos();
+        setPos(p => ({ ...p, top: home.top + (Math.random() - 0.5) * 30 }));
+        ticking = false;
+      });
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isNearInput, isOpen]);
+
   // Reset on page change
   useEffect(() => {
-    setPos(homePos);
+    setPos(getHomePos());
     setIsNearInput(false);
   }, [pathname]);
 
@@ -195,7 +216,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             className="fixed z-[61] max-w-[260px]"
-            style={{ bottom: pos.bottom + 64, right: pos.right - 10, transition: 'bottom 0.8s ease, right 0.8s ease' }}
+            style={{ top: pos.top - 70, right: pos.right - 10, transition: 'top 0.8s ease, right 0.8s ease' }}
           >
             <div className="relative bg-white rounded-2xl rounded-br-sm shadow-xl border border-[#FF8C00]/15 px-4 py-3">
               <div className="flex items-start gap-2">
@@ -233,7 +254,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
             transition={{ type: 'spring', damping: 22 }}
             className="fixed z-[61] w-[340px] max-h-[440px] bg-white rounded-2xl shadow-2xl border border-[#E8E2D8] overflow-hidden flex flex-col"
-            style={{ bottom: pos.bottom + 70, right: Math.max(pos.right - 140, 10), transition: 'bottom 0.5s ease, right 0.5s ease' }}
+            style={{ top: pos.top - 200, right: Math.max(pos.right - 140, 10), transition: 'top 0.5s ease, right 0.5s ease' }}
           >
             <div className="bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] px-4 py-3 flex items-center gap-3">
               <motion.span
@@ -337,9 +358,9 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
         }}
         className="fixed z-[60] group cursor-pointer"
         style={{
-          bottom: pos.bottom,
+          top: pos.top,
           right: pos.right,
-          transition: 'bottom 0.8s cubic-bezier(0.4,0,0.2,1), right 0.8s cubic-bezier(0.4,0,0.2,1)',
+          transition: 'top 0.8s cubic-bezier(0.4,0,0.2,1), right 0.8s cubic-bezier(0.4,0,0.2,1)',
         }}
         whileHover={{ scale: 1.15 }}
         whileTap={{ scale: 0.85 }}

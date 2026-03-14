@@ -17,6 +17,7 @@ interface SidebarProps {
   storeName: string;
   storeId: string;
   allStores: StoreInfo[];
+  avatarUrl?: string | null;
 }
 
 const navItems = [
@@ -27,7 +28,7 @@ const navItems = [
   { href: '/dashboard/settings', label: '店家設定', icon: Settings },
 ];
 
-export default function Sidebar({ storeName, storeId, allStores }: SidebarProps) {
+export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -167,11 +168,21 @@ export default function Sidebar({ storeName, storeId, allStores }: SidebarProps)
         })}
       </nav>
 
-      {/* Logout */}
+      {/* User section */}
       <div className="px-4 py-4 border-t border-[#E8E2D8]">
         <div className="flex items-center justify-between">
-          <div className="min-w-0">
-            <p className="text-xs text-[#8A8585]">店長</p>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-[#C5A55A]/10 flex items-center justify-center shrink-0 overflow-hidden border-2 border-[#C5A55A]/20">
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt="店長" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-xs text-[#C5A55A]">👤</span>
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-[#3A3A3A] truncate">店長</p>
+            </div>
           </div>
           <button
             onClick={handleLogout}
