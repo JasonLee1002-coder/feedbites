@@ -1514,7 +1514,7 @@ export default function NewSurveyPage() {
                           {q.label}
                         </span>
                         <span className="text-[10px] px-2 py-0.5 bg-[#FAF7F2] text-[#8A8585] rounded-full shrink-0">
-                          {q.type}
+                          {({ 'emoji-rating': '表情評分', 'rating': '星級評分', 'radio': '單選', 'checkbox': '多選', 'text': '簡答', 'textarea': '長文回饋', 'number': '數字', 'radio-with-reason': '單選+原因', 'rating-with-reason': '評分+原因', 'dish-group': '菜品評分' } as Record<string, string>)[q.type] || q.type}
                         </span>
                         {q.required && (
                           <span className="text-[10px] px-1.5 py-0.5 bg-red-50 text-red-500 rounded-full shrink-0">
