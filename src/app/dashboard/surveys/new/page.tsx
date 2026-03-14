@@ -244,6 +244,7 @@ export default function NewSurveyPage() {
   // AI survey upload
   const [surveyUploading, setSurveyUploading] = useState(false);
   const [surveyParsed, setSurveyParsed] = useState<{ title: string; questions: Question[]; notes?: string; suggestedTemplate?: string } | null>(null);
+  const [surveyUploadError, setSurveyUploadError] = useState('');
 
   // Step 2: Title + Blocks
   const [title, setTitle] = useState('');
@@ -303,6 +304,7 @@ export default function NewSurveyPage() {
     if (!file) return;
     setSurveyUploading(true);
     setSurveyParsed(null);
+    setSurveyUploadError('');
 
     try {
       const formData = new FormData();
@@ -326,6 +328,10 @@ export default function NewSurveyPage() {
         throw new Error(data.error || '解析失敗');
       }
 
+      if (!data.questions || data.questions.length === 0) {
+        throw new Error('未辨識到任何問題，請換一張更清晰的檔案');
+      }
+
       setSurveyParsed(data);
 
       // Auto-select suggested template
@@ -336,7 +342,7 @@ export default function NewSurveyPage() {
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '解析失敗');
+      setSurveyUploadError(err instanceof Error ? err.message : '解析失敗，請重試');
     } finally {
       setSurveyUploading(false);
       e.target.value = '';
@@ -600,12 +606,27 @@ export default function NewSurveyPage() {
                   上傳你的 PDF、圖片或 Word 問卷，副店長會自動幫你把問題轉換成 FeedBites 格式！
                 </p>
 
+                {surveyUploadError && (
+                  <div className="mb-3 p-3 bg-red-50 text-red-600 text-xs rounded-xl border border-red-100 flex items-start gap-2">
+                    <span className="shrink-0">⚠️</span>
+                    <div>
+                      <p className="font-medium">{surveyUploadError}</p>
+                      <button
+                        onClick={() => { setSurveyUploadError(''); }}
+                        className="text-red-400 hover:text-red-600 mt-1 underline"
+                      >
+                        重新上傳
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {surveyUploading ? (
                   <div className="flex items-center gap-3 py-4">
                     <Loader2 className="w-6 h-6 text-[#FF8C00] animate-spin" />
                     <div>
-                      <p className="text-sm font-medium text-[#3A3A3A]">AI 正在分析你的問卷...</p>
-                      <p className="text-[10px] text-[#8A8585]">辨識問題類型、選項、評分方式</p>
+                      <p className="text-sm font-medium text-[#3A3A3A]">副店長正在分析你的問卷...</p>
+                      <p className="text-[10px] text-[#8A8585]">辨識問題類型、選項、評分方式，通常需要 10-20 秒</p>
                     </div>
                   </div>
                 ) : surveyParsed ? (
