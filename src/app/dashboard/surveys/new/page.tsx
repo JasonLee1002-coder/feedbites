@@ -299,6 +299,35 @@ export default function NewSurveyPage() {
   // ---------------------------------------------------------------------------
   // AI survey upload
   // ---------------------------------------------------------------------------
+  // Convert PDF pages to images using pdf.js in browser
+  async function pdfToImages(file: File): Promise<Blob[]> {
+    const pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const images: Blob[] = [];
+    const maxPages = Math.min(pdf.numPages, 5); // Max 5 pages
+
+    for (let i = 1; i <= maxPages; i++) {
+      const page = await pdf.getPage(i);
+      const scale = 2; // Higher quality
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext('2d')!;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (page as any).render({ canvasContext: ctx, viewport }).promise;
+
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob(b => resolve(b!), 'image/png', 0.9);
+      });
+      images.push(blob);
+    }
+    return images;
+  }
+
   async function handleSurveyUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -308,7 +337,18 @@ export default function NewSurveyPage() {
 
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+
+      if (isPdf) {
+        // Convert PDF to images first
+        const images = await pdfToImages(file);
+        images.forEach((img, i) => {
+          formData.append(`image${i}`, img, `page_${i + 1}.png`);
+        });
+      } else {
+        // Direct image upload
+        formData.append('image0', file);
+      }
 
       const res = await fetch('/api/ai/parse-survey', {
         method: 'POST',
@@ -320,17 +360,11 @@ export default function NewSurveyPage() {
       try {
         data = JSON.parse(text);
       } catch {
-        console.error('Survey parse response not JSON:', text.substring(0, 200));
         throw new Error('伺服器回傳異常，請重試');
       }
 
-      if (!res.ok) {
-        throw new Error(data.error || '解析失敗');
-      }
-
-      if (!data.questions || data.questions.length === 0) {
-        throw new Error('未辨識到任何問題，請換一張更清晰的檔案');
-      }
+      if (!res.ok) throw new Error(data.error || '解析失敗');
+      if (!data.questions || data.questions.length === 0) throw new Error('未辨識到任何問題，請換一份更清晰的文件');
 
       setSurveyParsed(data);
 
