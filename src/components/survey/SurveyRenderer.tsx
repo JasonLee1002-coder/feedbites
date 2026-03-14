@@ -187,6 +187,60 @@ export default function SurveyRenderer({
   const progressRef = useRef(0);
   const showCompanionRef = useRef<(msg: CompanionMessage) => void>(() => {});
 
+  // Voice feedback recording
+  const [voiceRecording, setVoiceRecording] = useState<string | null>(null); // question ID being recorded
+  const [voiceProcessing, setVoiceProcessing] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+
+  async function startVoiceRecording(questionId: string) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      audioChunksRef.current = [];
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        setVoiceRecording(null);
+        setVoiceProcessing(true);
+
+        try {
+          const formData = new FormData();
+          formData.append('audio', blob, 'voice.webm');
+          const q = questions.find(qu => qu.id === questionId);
+          formData.append('questionLabel', q?.label || '');
+          formData.append('surveyTitle', surveyTitle || '');
+
+          const res = await fetch('/api/ai/voice-feedback', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            // Use polished version
+            setAnswer(questionId, data.polished || data.transcript || '', q?.type || 'textarea');
+            showCompanionRef.current({ text: '語音已轉換成文字了！你可以修改內容 ✨', priority: 6 });
+          }
+        } catch { /* ignore */ }
+        setVoiceProcessing(false);
+      };
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      setVoiceRecording(questionId);
+      showCompanionRef.current({ text: '正在聽你說... 說完按一下停止 🎙️', priority: 7 });
+    } catch {
+      showCompanionRef.current({ text: '無法使用麥克風，請檢查權限設定', priority: 8 });
+    }
+  }
+
+  function stopVoiceRecording() {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+  }
+
   // Achievement system
   const [earnedBadges, setEarnedBadges] = useState<Set<string>>(new Set());
   const [toastBadge, setToastBadge] = useState<Achievement | null>(null);
@@ -1409,22 +1463,62 @@ export default function SurveyRenderer({
                     />
                   )}
 
-                  {/* Textarea — chat style */}
+                  {/* Textarea — chat style + voice */}
                   {q.type === 'textarea' && (
-                    <textarea
-                      value={(answers[q.id] as string) || ''}
-                      onChange={e => setAnswer(q.id, e.target.value, 'textarea')}
-                      placeholder={q.placeholder || '在這裡暢所欲言吧～ 💬'}
-                      rows={4}
-                      className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-y transition-all"
-                      style={{
-                        background: colors.background,
-                        border: `1px solid ${colors.border}`,
-                        color: colors.text,
-                        animation:
-                          (answers[q.id] as string)?.length > 0 ? 'sparkle-border 1.5s ease-in-out infinite' : 'none',
-                      }}
-                    />
+                    <div>
+                      <textarea
+                        value={(answers[q.id] as string) || ''}
+                        onChange={e => setAnswer(q.id, e.target.value, 'textarea')}
+                        placeholder={q.placeholder || '在這裡暢所欲言吧～ 💬'}
+                        rows={4}
+                        className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-y transition-all"
+                        style={{
+                          background: colors.background,
+                          border: `1px solid ${colors.border}`,
+                          color: colors.text,
+                          animation:
+                            (answers[q.id] as string)?.length > 0 ? 'sparkle-border 1.5s ease-in-out infinite' : 'none',
+                        }}
+                      />
+                      {/* Voice input button */}
+                      <div className="flex items-center gap-2 mt-2">
+                        {voiceRecording === q.id ? (
+                          <button
+                            onClick={stopVoiceRecording}
+                            className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium text-white transition-all"
+                            style={{
+                              background: `linear-gradient(135deg, #FF4444, #FF6B6B)`,
+                              animation: 'pulse 1s ease-in-out infinite',
+                            }}
+                          >
+                            <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                            錄音中... 點擊停止
+                          </button>
+                        ) : voiceProcessing ? (
+                          <span
+                            className="flex items-center gap-2 px-4 py-2 rounded-full text-xs"
+                            style={{ color: colors.primary }}
+                          >
+                            <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeDasharray="31.4" strokeDashoffset="10" />
+                            </svg>
+                            AI 正在理解你的語音...
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => startVoiceRecording(q.id)}
+                            className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all hover:shadow-md"
+                            style={{
+                              background: `${colors.primary}15`,
+                              color: colors.primary,
+                              border: `1px solid ${colors.primary}30`,
+                            }}
+                          >
+                            🎙️ 用說的更快 — AI 語音輸入
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   )}
 
                   {/* Number */}
