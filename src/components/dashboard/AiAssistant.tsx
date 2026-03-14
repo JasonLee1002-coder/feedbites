@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import confetti from 'canvas-confetti';
 
 interface BubbleMessage {
   text: string;
@@ -82,7 +83,34 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
     right: Math.max(20, Math.min(p.right, 150)),
   });
 
-  const pageMessages = getPageMessages(pathname, { dishCount, surveyCount });
+  const rawPageMessages = getPageMessages(pathname, { dishCount, surveyCount });
+
+  // Smart proactive messages — guide the user to the next step
+  const getProactiveMessage = (): string | null => {
+    if (pathname.includes('/settings')) {
+      if (!hasLogo && dishCount === 0) return '填完資料記得上傳 Logo 喔！然後去菜單頁建立你的招牌菜 → 🍽️';
+      if (!hasLogo) return '差一步！上傳 Logo 讓你的問卷更有品牌感 📸';
+      if (dishCount === 0) return '設定完成！下一步去「菜單管理」上傳你的招牌菜吧 →';
+      if (surveyCount === 0) return '太好了！店家設定完成 ✨ 下一步去「問卷管理」建立第一份問卷吧！';
+      return null;
+    }
+    if (pathname.includes('/menu')) {
+      if (dishCount > 0 && surveyCount === 0) return `已經有 ${dishCount} 道菜了！下一步去建立問卷，讓客人幫你評分 →`;
+      return null;
+    }
+    if (pathname === '/dashboard' || pathname === '/dashboard/') {
+      if (!hasLogo && dishCount === 0 && surveyCount === 0) return '歡迎！我是你的副店長，讓我帶你快速上手 — 先去「店家設定」填寫基本資料吧 ✨';
+      if (dishCount === 0) return '下一步建議去「菜單管理」上傳你的招牌菜！';
+      if (surveyCount === 0) return '菜單建好了！去「問卷管理」建立第一份問卷吧 📋';
+      if (responseCount === 0) return '問卷已上線！把 QR Code 印出來放桌上，等回覆進來 📱';
+      if (responseCount > 0 && responseCount < 10) return `已收到 ${responseCount} 筆回覆，繼續加油！定期查看回饋是最好的經營習慣 💪`;
+      return null;
+    }
+    return null;
+  };
+
+  const proactiveMsg = getProactiveMessage();
+  const pageMessages = proactiveMsg ? [proactiveMsg, ...rawPageMessages] : rawPageMessages;
 
   // Onboarding
   const onboardingSteps = [
@@ -91,9 +119,50 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
     { id: 'survey', label: '建立問卷', href: '/dashboard/surveys/new', done: surveyCount > 0 },
     { id: 'qr', label: '列印 QR Code 收回饋', href: '/dashboard/surveys', done: responseCount > 0 },
   ];
-  const onboardingDone = onboardingSteps.every(s => s.done);
-  const onboardingProgress = Math.round((onboardingSteps.filter(s => s.done).length / onboardingSteps.length) * 100);
+  const completedCount = onboardingSteps.filter(s => s.done).length;
+  const onboardingDone = completedCount === onboardingSteps.length;
+  const onboardingProgress = Math.round((completedCount / onboardingSteps.length) * 100);
   const isDashboardHome = pathname === '/dashboard' || pathname === '/dashboard/';
+
+  // Celebrate when new steps are completed
+  const prevCompletedRef = useRef(completedCount);
+  useEffect(() => {
+    if (completedCount > prevCompletedRef.current) {
+      // A step was just completed — celebrate!
+      confetti({
+        particleCount: 60,
+        spread: 70,
+        origin: { x: 0.8, y: 0.5 },
+        colors: ['#FF8C00', '#FFD700', '#FF6B00', '#C5A55A'],
+      });
+
+      const celebrationMessages = [
+        '太棒了！又完成一個步驟 🎉',
+        '做得好！繼續下一步吧 ✨',
+        '進度 +1！你離開店達人越來越近了 💪',
+        '完美！再接再厲 🔥',
+      ];
+      const msg = celebrationMessages[completedCount - 1] || celebrationMessages[0];
+
+      // Force show bubble with celebration
+      setShowBubble(true);
+      setDisplayedText('');
+      let i = 0;
+      const timer = setInterval(() => {
+        i++;
+        setDisplayedText(msg.slice(0, i));
+        if (i >= msg.length) clearInterval(timer);
+      }, 25);
+
+      if (onboardingDone) {
+        // All done — big celebration
+        setTimeout(() => {
+          confetti({ particleCount: 100, spread: 100, origin: { y: 0.4 }, colors: ['#FF8C00', '#FFD700', '#FF6B00'] });
+        }, 500);
+      }
+    }
+    prevCompletedRef.current = completedCount;
+  }, [completedCount, onboardingDone]);
 
   // Follow focused inputs
   useEffect(() => {
