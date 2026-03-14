@@ -313,12 +313,19 @@ export default function NewSurveyPage() {
         body: formData,
       });
 
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        console.error('Survey parse response not JSON:', text.substring(0, 200));
+        throw new Error('伺服器回傳異常，請重試');
+      }
+
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data.error || '解析失敗');
       }
 
-      const data = await res.json();
       setSurveyParsed(data);
 
       // Auto-select suggested template

@@ -183,14 +183,25 @@ export default function MenuPage() {
         body: formData,
       });
 
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        console.error('Menu parse response not JSON:', text.substring(0, 200));
+        throw new Error('伺服器回傳異常，請重試');
+      }
+
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data.error || '辨識失敗');
       }
 
-      const data = await res.json();
-      setParsedDishes((data.dishes || []).map((d: { name: string; description: string; category: string; price: string }) => ({ ...d, selected: true })));
-      setParseNotes(data.notes || '');
+      if (!data.dishes || data.dishes.length === 0) {
+        throw new Error('未辨識到任何菜品，請換一張更清晰的圖片');
+      }
+
+      setParsedDishes(data.dishes.map((d: { name: string; description: string; category: string; price: string }) => ({ ...d, selected: true })));
+      setParseNotes(data.notes || `已辨識 ${data.dishes.length} 道菜品`);
     } catch (err) {
       setParseNotes(err instanceof Error ? err.message : '辨識失敗，請重試');
     } finally {
