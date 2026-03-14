@@ -30,7 +30,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
   const adminDb = createServiceSupabase();
 
   const store = await getSelectedStore(user.id);
-  if (!store) redirect('/register?setup=true');
+  if (!store) redirect('/dashboard/new-store');
 
   const { data: survey } = await adminDb
     .from('surveys')

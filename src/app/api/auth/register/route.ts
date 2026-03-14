@@ -3,9 +3,9 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    const { email, password, storeName } = await request.json();
+    const { email, password } = await request.json();
 
-    if (!email || !password || !storeName) {
+    if (!email || !password) {
       return NextResponse.json({ error: '請填寫所有欄位' }, { status: 400 });
     }
 
@@ -25,19 +25,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: authError.message }, { status: 400 });
     }
 
-    // Create store record
+    // Process pending invites for this email (no store created at registration)
     if (authData.user) {
-      const { error: storeError } = await adminDb.from('stores').insert({
-        user_id: authData.user.id,
-        email,
-        store_name: storeName,
-      });
-
-      if (storeError) {
-        console.error('Store creation error:', storeError);
-      }
-
-      // Process pending invites for this email
       const normalizedEmail = email.trim().toLowerCase();
       const { data: pendingInvites } = await adminDb
         .from('store_invites')

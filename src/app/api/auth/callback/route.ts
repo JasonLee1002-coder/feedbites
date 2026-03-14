@@ -54,8 +54,8 @@ export async function GET(request: Request) {
         const hasAnyStore = (stores && stores.length > 0) || (memberStores && memberStores.length > 0);
 
         if (!hasAnyStore) {
-          // First-time login with no stores → redirect to store setup
-          const redirectUrl = new URL('/register?setup=true', origin);
+          // No stores yet → redirect to create first store
+          const redirectUrl = new URL('/dashboard/new-store', origin);
           return NextResponse.redirect(redirectUrl);
         }
 

@@ -14,7 +14,7 @@ export default async function SurveysPage() {
   const adminDb = createServiceSupabase();
 
   const store = await getSelectedStore(user.id);
-  if (!store) redirect('/register?setup=true');
+  if (!store) redirect('/dashboard/new-store');
 
   // Get all surveys for this store
   const { data: surveys } = await adminDb

@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
 import { getSelectedStore } from '@/lib/store-context';
+import * as XLSX from 'xlsx';
 
-// GET: Export survey responses as CSV
+// GET: Export survey responses as Excel or CSV
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const format = request.nextUrl.searchParams.get('format') || 'xlsx';
+
     const supabase = await createServerSupabase();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -54,41 +57,63 @@ export async function GET(
     const questions: Array<{ id: string; title?: string; label?: string; type: string }> =
       survey.questions || [];
 
-    // Build CSV
+    const filteredQuestions = questions.filter(q => q.type !== 'section-header');
+
+    // Build headers
     const headers = [
       '回覆時間',
       '回覆者',
       '手機',
       'XP',
-      ...questions
-        .filter(q => q.type !== 'section-header')
-        .map(q => q.title || q.label || q.id),
+      ...filteredQuestions.map(q => q.title || q.label || q.id),
       '折扣碼',
       '折扣碼已使用',
       '折扣碼到期日',
     ];
 
+    // Build rows
     const rows = (responses || []).map(r => {
       const code = codeMap.get(r.id);
       return [
-        r.submitted_at,
+        r.submitted_at ? new Date(r.submitted_at).toLocaleString('zh-TW') : '',
         r.respondent_name || '匿名',
         r.phone || '',
         r.xp_earned ?? '',
-        ...questions
-          .filter(q => q.type !== 'section-header')
-          .map(q => {
-            const val = r.answers?.[q.id];
-            if (Array.isArray(val)) return val.join('; ');
-            return val ?? '';
-          }),
+        ...filteredQuestions.map(q => {
+          const val = r.answers?.[q.id];
+          if (Array.isArray(val)) return val.join('; ');
+          return val ?? '';
+        }),
         code?.code || '',
         code?.is_used ? '是' : '否',
-        code?.expires_at || '',
+        code?.expires_at ? new Date(code.expires_at).toLocaleDateString('zh-TW') : '',
       ];
     });
 
-    // Escape CSV value
+    const filename = `${survey.title}_回覆匯出`;
+
+    // Excel format
+    if (format === 'xlsx') {
+      const wsData = [headers, ...rows];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+      // Set column widths
+      ws['!cols'] = headers.map((h) => ({ wch: Math.max(h.length * 2, 12) }));
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '問卷回覆');
+
+      const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+      return new NextResponse(buf, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}.xlsx"`,
+        },
+      });
+    }
+
+    // CSV format (fallback)
     function csvEscape(val: unknown): string {
       const s = String(val ?? '');
       if (s.includes(',') || s.includes('"') || s.includes('\n')) {
@@ -97,7 +122,6 @@ export async function GET(
       return s;
     }
 
-    // Add BOM for Excel UTF-8 support
     const bom = '\uFEFF';
     const csv = bom + [
       headers.map(csvEscape).join(','),
@@ -107,7 +131,7 @@ export async function GET(
     return new NextResponse(csv, {
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="${survey.title}_回覆匯出.csv"`,
+        'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}.csv"`,
       },
     });
   } catch {

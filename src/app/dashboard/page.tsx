@@ -15,7 +15,7 @@ export default async function DashboardPage() {
   const adminDb = createServiceSupabase();
 
   const store = await getSelectedStore(user.id);
-  if (!store) redirect('/register?setup=true');
+  if (!store) redirect('/dashboard/new-store');
 
   const storeName = store.store_name || '我的店家';
   const storeId = store.id;

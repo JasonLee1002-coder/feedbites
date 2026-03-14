@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { qrFrames, type QrFrame } from '@/lib/qr-frames';
-import { Upload, Check, Save, Loader2, ImageIcon, Palette, Store, Users, UserPlus, X, Mail, Clock, LogOut, Crown } from 'lucide-react';
+import { Upload, Check, Save, Loader2, ImageIcon, Palette, Store, Users, UserPlus, X, Mail, Clock, LogOut, Crown, Trash2, AlertTriangle } from 'lucide-react';
 
 interface Member {
   id: string;
@@ -576,6 +576,80 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
             </button>
           </div>
         )}
+      </div>
+
+      {/* ═══ Danger Zone ═══ */}
+      <div className="bg-white rounded-2xl border border-red-200 p-6 mb-6">
+        <h2 className="font-bold text-red-600 mb-4 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4" />
+          危險區域
+        </h2>
+
+        {/* Delete Store */}
+        {isOwner && (
+          <div className="flex items-center justify-between p-4 bg-red-50/50 rounded-xl mb-3">
+            <div>
+              <div className="text-sm font-medium text-[#3A3A3A]">刪除此店家</div>
+              <div className="text-[10px] text-[#8A8585]">刪除店家及其所有問卷、回覆、折扣碼、菜單資料，無法復原</div>
+            </div>
+            <button
+              onClick={async () => {
+                const input = prompt(`確定要刪除「${storeName}」？\n\n請輸入店名「${storeName}」確認刪除：`);
+                if (input !== storeName) return;
+                try {
+                  const res = await fetch('/api/stores/delete', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ storeId }),
+                  });
+                  if (!res.ok) {
+                    const data = await res.json();
+                    alert(data.error || '刪除失敗');
+                    return;
+                  }
+                  window.location.href = '/dashboard';
+                } catch {
+                  alert('刪除失敗');
+                }
+              }}
+              className="shrink-0 inline-flex items-center gap-2 px-4 py-2 text-red-600 text-sm font-medium rounded-xl border border-red-300 hover:bg-red-100 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              刪除店家
+            </button>
+          </div>
+        )}
+
+        {/* Delete Account */}
+        <div className="flex items-center justify-between p-4 bg-red-50/50 rounded-xl">
+          <div>
+            <div className="text-sm font-medium text-[#3A3A3A]">刪除帳號</div>
+            <div className="text-[10px] text-[#8A8585]">刪除帳號及所有擁有的店家資料，無法復原</div>
+          </div>
+          <button
+            onClick={async () => {
+              if (!confirm('確定要刪除帳號嗎？所有你擁有的店家和資料都會被永久刪除，此操作無法復原。')) return;
+              if (!confirm('最後確認：真的要刪除帳號嗎？')) return;
+              try {
+                const res = await fetch('/api/auth/delete-account', {
+                  method: 'DELETE',
+                });
+                if (!res.ok) {
+                  const data = await res.json();
+                  alert(data.error || '刪除失敗');
+                  return;
+                }
+                window.location.href = '/';
+              } catch {
+                alert('刪除失敗');
+              }
+            }}
+            className="shrink-0 inline-flex items-center gap-2 px-4 py-2 text-red-600 text-sm font-medium rounded-xl border border-red-300 hover:bg-red-100 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+            刪除帳號
+          </button>
+        </div>
       </div>
     </div>
   );

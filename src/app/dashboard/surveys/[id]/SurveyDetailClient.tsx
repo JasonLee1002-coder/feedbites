@@ -59,7 +59,10 @@ export default function SurveyDetailClient({ surveyId, isActive: initialActive, 
   };
 
   const handleExport = () => {
-    window.open(`/api/surveys/${surveyId}/export`, '_blank');
+    // Download as Excel file
+    const link = document.createElement('a');
+    link.href = `/api/surveys/${surveyId}/export?format=xlsx`;
+    link.click();
   };
 
   return (
@@ -85,7 +88,7 @@ export default function SurveyDetailClient({ surveyId, isActive: initialActive, 
           className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-white/80 bg-white/10 border border-white/20 rounded-full hover:bg-white/20 transition-colors"
         >
           <Download className="w-3.5 h-3.5" />
-          匯出
+          匯出 Excel
         </button>
       )}
 

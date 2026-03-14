@@ -17,7 +17,14 @@ export default async function DashboardLayout({
     getUserStores(user.id),
   ]);
 
-  if (!store) redirect('/register?setup=true');
+  // No store yet — render without sidebar (for new-store page)
+  if (!store) {
+    return (
+      <div className="min-h-screen bg-[#FAF7F2]">
+        {children}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#FAF7F2]">

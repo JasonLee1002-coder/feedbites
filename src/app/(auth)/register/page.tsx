@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
 export default function RegisterPage() {
@@ -16,21 +16,11 @@ export default function RegisterPage() {
 function RegisterForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [storeName, setStoreName] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [success, setSuccess] = useState(false);
-  const [isStoreSetup, setIsStoreSetup] = useState(false);
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  // If redirected from OAuth callback with ?setup=true, show store name form
-  useEffect(() => {
-    if (searchParams.get('setup') === 'true') {
-      setIsStoreSetup(true);
-    }
-  }, [searchParams]);
 
   async function handleGoogleRegister() {
     setGoogleLoading(true);
@@ -53,45 +43,6 @@ function RegisterForm() {
     }
   }
 
-  // Store setup for Google users (first-time login)
-  async function handleStoreSetup(e: React.FormEvent) {
-    e.preventDefault();
-    if (!storeName.trim()) {
-      setMessage('請輸入餐廳名稱');
-      return;
-    }
-    setLoading(true);
-    setMessage('');
-
-    try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) {
-        setMessage('請先登入');
-        setLoading(false);
-        return;
-      }
-
-      const res = await fetch('/api/auth/setup-store', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ storeName: storeName.trim() }),
-      });
-      const data = await res.json();
-
-      if (data.error) {
-        setMessage(data.error);
-      } else {
-        router.push('/dashboard');
-      }
-    } catch {
-      setMessage('發生錯誤，請稍後再試');
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -101,7 +52,7 @@ function RegisterForm() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, storeName }),
+        body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
 
@@ -118,61 +69,6 @@ function RegisterForm() {
     }
   }
 
-  // Store setup form (for Google OAuth first-time users)
-  if (isStoreSetup) {
-    return (
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-block">
-            <h1 className="text-3xl font-bold text-[#3A3A3A] font-serif">
-              Feed<span className="text-[#C5A55A]">Bites</span>
-            </h1>
-          </Link>
-          <p className="text-xs text-[#C5A55A] tracking-[0.3em] mt-1">Bite. Rate. Save.</p>
-        </div>
-
-        <div className="bg-white rounded-2xl p-8 border border-[#E8E2D8] shadow-sm">
-          <div className="text-center mb-6">
-            <div className="text-4xl mb-3">🎉</div>
-            <h2 className="text-xl font-bold text-[#3A3A3A] mb-1">Google 連結成功！</h2>
-            <p className="text-sm text-[#8A8585]">最後一步，告訴我們你的餐廳名稱</p>
-          </div>
-
-          <form onSubmit={handleStoreSetup} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-[#3A3A3A] mb-1.5">餐廳名稱</label>
-              <input
-                type="text"
-                value={storeName}
-                onChange={e => setStoreName(e.target.value)}
-                required
-                autoFocus
-                placeholder="例如：町咖啡"
-                className="w-full px-4 py-3 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] transition-colors bg-[#FAF7F2]"
-              />
-            </div>
-
-            {message && (
-              <p className="text-sm text-red-500">{message}</p>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-[#C5A55A] text-white rounded-full text-sm font-semibold hover:bg-[#A08735] transition-colors disabled:opacity-50"
-            >
-              {loading ? '建立中...' : '開始使用 FeedBites'}
-            </button>
-          </form>
-        </div>
-
-        <p className="text-center text-xs text-[#B0AAA0] mt-6">
-          &copy; {new Date().getFullYear()} MCS Pte. Ltd. &middot; Singapore
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="w-full max-w-md">
       <div className="text-center mb-8">
@@ -185,14 +81,14 @@ function RegisterForm() {
       </div>
 
       <div className="bg-white rounded-2xl p-8 border border-[#E8E2D8] shadow-sm">
-        <h2 className="text-xl font-bold text-[#3A3A3A] mb-1">免費開通</h2>
-        <p className="text-sm text-[#8A8585] mb-6">建立你的餐廳問卷帳號</p>
+        <h2 className="text-xl font-bold text-[#3A3A3A] mb-1">免費註冊</h2>
+        <p className="text-sm text-[#8A8585] mb-6">註冊後即可建立餐廳、設計問卷</p>
 
         {success ? (
           <div className="text-center py-8">
             <div className="text-4xl mb-4">🎉</div>
             <p className="text-[#3A3A3A] font-medium mb-2">{message}</p>
-            <p className="text-sm text-[#8A8585] mb-6">即可登入使用</p>
+            <p className="text-sm text-[#8A8585] mb-6">即可登入，建立你的第一家店</p>
             <Link
               href="/login"
               className="inline-block px-6 py-3 bg-[#C5A55A] text-white rounded-full text-sm font-medium hover:bg-[#A08735] transition-colors"
@@ -226,23 +122,13 @@ function RegisterForm() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-[#3A3A3A] mb-1.5">餐廳名稱</label>
-                <input
-                  type="text"
-                  value={storeName}
-                  onChange={e => setStoreName(e.target.value)}
-                  required
-                  placeholder="例如：町咖啡"
-                  className="w-full px-4 py-3 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] transition-colors bg-[#FAF7F2]"
-                />
-              </div>
-              <div>
                 <label className="block text-sm font-medium text-[#3A3A3A] mb-1.5">Email</label>
                 <input
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   required
+                  autoFocus
                   placeholder="your@email.com"
                   className="w-full px-4 py-3 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] transition-colors bg-[#FAF7F2]"
                 />

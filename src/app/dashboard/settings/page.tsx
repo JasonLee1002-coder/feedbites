@@ -9,7 +9,7 @@ export default async function SettingsPage() {
   if (!user) redirect('/login');
 
   const store = await getSelectedStore(user.id);
-  if (!store) redirect('/register?setup=true');
+  if (!store) redirect('/dashboard/new-store');
 
   return (
     <StoreSettingsClient
