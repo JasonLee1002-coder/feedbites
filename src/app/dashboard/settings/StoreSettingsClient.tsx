@@ -49,6 +49,9 @@ const TARGET_AUDIENCES = ['上班族', '學生', '家庭', '觀光客', '商務'
 const SERVICE_TYPES = ['內用', '外帶', '外送', '內用+外帶', '複合式'];
 
 export default function StoreSettingsClient({ storeId, storeName, logoUrl: initialLogo, frameId: initialFrameId, isOwner, metadata: initialMetadata }: Props) {
+  const [editStoreName, setEditStoreName] = useState(storeName);
+  const [nameEditing, setNameEditing] = useState(false);
+  const [nameSaving, setNameSaving] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogo);
   const [selectedFrameId, setSelectedFrameId] = useState(initialFrameId);
   const [uploading, setUploading] = useState(false);
@@ -299,6 +302,78 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
           {error}
         </div>
       )}
+
+      {/* ═══ Store Name ═══ */}
+      <div className="bg-white rounded-2xl border border-[#E8E2D8] p-6 mb-6">
+        <h2 className="font-bold text-[#3A3A3A] mb-4 flex items-center gap-2">
+          <Store className="w-4 h-4 text-[#C5A55A]" />
+          餐廳名稱
+        </h2>
+        <div className="flex items-center gap-3">
+          {nameEditing ? (
+            <>
+              <input
+                type="text"
+                value={editStoreName}
+                onChange={e => setEditStoreName(e.target.value)}
+                autoFocus
+                className="flex-1 px-4 py-2.5 rounded-xl border border-[#C5A55A] text-sm outline-none focus:ring-2 focus:ring-[#C5A55A]/30 bg-[#FAF7F2]"
+                onKeyDown={async e => {
+                  if (e.key === 'Enter' && editStoreName.trim()) {
+                    setNameSaving(true);
+                    const res = await fetch('/api/stores/update', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ store_name: editStoreName.trim() }),
+                    });
+                    if (res.ok) {
+                      setNameEditing(false);
+                      window.location.reload();
+                    }
+                    setNameSaving(false);
+                  }
+                }}
+              />
+              <button
+                onClick={async () => {
+                  if (!editStoreName.trim()) return;
+                  setNameSaving(true);
+                  const res = await fetch('/api/stores/update', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ store_name: editStoreName.trim() }),
+                  });
+                  if (res.ok) {
+                    setNameEditing(false);
+                    window.location.reload();
+                  }
+                  setNameSaving(false);
+                }}
+                disabled={nameSaving}
+                className="px-4 py-2.5 bg-[#C5A55A] text-white text-sm font-medium rounded-xl hover:bg-[#A08735] disabled:opacity-50"
+              >
+                {nameSaving ? '儲存中...' : '儲存'}
+              </button>
+              <button
+                onClick={() => { setNameEditing(false); setEditStoreName(storeName); }}
+                className="px-3 py-2.5 text-[#8A8585] text-sm hover:text-[#3A3A3A]"
+              >
+                取消
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="text-lg font-bold text-[#3A3A3A] font-serif">{storeName}</span>
+              <button
+                onClick={() => setNameEditing(true)}
+                className="px-3 py-1.5 text-xs text-[#C5A55A] border border-[#C5A55A]/30 rounded-lg hover:bg-[#C5A55A]/5 transition-colors"
+              >
+                編輯名稱
+              </button>
+            </>
+          )}
+        </div>
+      </div>
 
       {/* ═══ Logo Upload ═══ */}
       <div className="bg-white rounded-2xl border border-[#E8E2D8] p-6 mb-6">
