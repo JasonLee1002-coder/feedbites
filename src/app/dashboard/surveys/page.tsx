@@ -50,13 +50,15 @@ export default async function SurveysPage() {
           <h1 className="text-2xl font-bold text-[#3A3A3A] font-serif">問卷管理</h1>
           <p className="text-sm text-[#8A8585] mt-1">管理你的所有問卷</p>
         </div>
-        <Link
-          href="/dashboard/surveys/new"
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#C5A55A] text-white text-sm font-medium rounded-xl hover:bg-[#A08735] transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          建立新問卷
-        </Link>
+        {surveyList.length > 0 && (
+          <Link
+            href="/dashboard/surveys/new"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#C5A55A] text-white text-sm font-medium rounded-xl hover:bg-[#A08735] transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            建立新問卷
+          </Link>
+        )}
       </div>
 
       {/* Survey List */}
