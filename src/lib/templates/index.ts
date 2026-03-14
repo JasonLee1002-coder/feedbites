@@ -207,6 +207,29 @@ export const templates: Record<TemplateId, Template> = {
     borderRadius: '16px',
     cardStyle: 'rounded',
   },
+
+  'bistro': {
+    id: 'bistro',
+    name: '餐酒館',
+    nameEn: 'Bistro & Wine',
+    description: '深酒紅搭配暖銅，微醺優雅氛圍',
+    suited: '餐酒館、Wine Bar、義式小館、Tapas',
+    colors: {
+      primary: '#8B2252',
+      primaryLight: '#C4667A',
+      primaryDark: '#6B1A3E',
+      background: '#1E1418',
+      surface: '#2E2228',
+      text: '#F0E0E5',
+      textLight: '#B09098',
+      border: '#3E2E35',
+      accent: '#D4956A',
+    },
+    fontHeading: "'Noto Serif TC', serif",
+    fontBody: "'Noto Sans TC', sans-serif",
+    borderRadius: '10px',
+    cardStyle: 'soft',
+  },
 };
 
 export const templateList = Object.values(templates);
