@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { templateList } from '@/lib/templates';
-import { ArrowLeft, Check, ChevronUp, ChevronDown, X, Plus, GripVertical } from 'lucide-react';
+import { ArrowLeft, Check, ChevronUp, ChevronDown, X, Plus, GripVertical, Upload, Sparkles, Loader2, FileText } from 'lucide-react';
 import type { TemplateId, Question, DiscountTier } from '@/types/survey';
 
 type Step = 1 | 2 | 3 | 4;
@@ -241,6 +241,10 @@ export default function NewSurveyPage() {
   // Step 1: Template
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateId | null>(null);
 
+  // AI survey upload
+  const [surveyUploading, setSurveyUploading] = useState(false);
+  const [surveyParsed, setSurveyParsed] = useState<{ title: string; questions: Question[]; notes?: string; suggestedTemplate?: string } | null>(null);
+
   // Step 2: Title + Blocks
   const [title, setTitle] = useState('');
   const [blocks, setBlocks] = useState<SurveyBlock[]>([]);
@@ -290,6 +294,87 @@ export default function NewSurveyPage() {
       dishConfig: { ...block.dishConfig, dishes: dishNames },
     });
   }, [fetchStoreDishes, blocks]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ---------------------------------------------------------------------------
+  // AI survey upload
+  // ---------------------------------------------------------------------------
+  async function handleSurveyUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSurveyUploading(true);
+    setSurveyParsed(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/ai/parse-survey', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '解析失敗');
+      }
+
+      const data = await res.json();
+      setSurveyParsed(data);
+
+      // Auto-select suggested template
+      if (data.suggestedTemplate && !selectedTemplate) {
+        const validTemplates: TemplateId[] = ['fine-dining', 'japanese', 'industrial', 'cafe', 'chinese-classic'];
+        if (validTemplates.includes(data.suggestedTemplate)) {
+          setSelectedTemplate(data.suggestedTemplate as TemplateId);
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '解析失敗');
+    } finally {
+      setSurveyUploading(false);
+      e.target.value = '';
+    }
+  }
+
+  function applySurveyParsed() {
+    if (!surveyParsed) return;
+
+    // Set title
+    if (surveyParsed.title) setTitle(surveyParsed.title);
+
+    // Convert parsed questions into a custom block
+    const customQuestions: CustomQuestionItem[] = surveyParsed.questions
+      .filter(q => q.type !== 'section-header')
+      .map((q, i) => ({
+        id: q.id || `imported_${i}`,
+        type: q.type as Question['type'],
+        label: q.label || '',
+        required: q.required ?? true,
+        options: q.options,
+        min: q.min,
+        max: q.max,
+        placeholder: q.placeholder,
+      }));
+
+    if (customQuestions.length > 0) {
+      const newBlock: SurveyBlock = {
+        id: nextBlockId(),
+        type: 'custom',
+        customQuestions,
+      };
+      setBlocks(prev => [...prev, newBlock]);
+    }
+
+    setSurveyParsed(null);
+
+    // Auto-select template if not selected
+    if (!selectedTemplate) {
+      setSelectedTemplate('fine-dining');
+    }
+
+    // Jump to step 2
+    setStep(2);
+  }
 
   // ---------------------------------------------------------------------------
   // Derived questions
@@ -496,6 +581,84 @@ export default function NewSurveyPage() {
       {/* ================================================================== */}
       {step === 1 && (
         <div>
+          {/* AI Survey Upload */}
+          <div className="mb-8 bg-gradient-to-r from-[#FF8C00]/5 to-[#FF6B00]/5 rounded-2xl border border-[#FF8C00]/20 p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#FF8C00] to-[#FF6B00] flex items-center justify-center shrink-0">
+                <Sparkles className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-base font-bold text-[#3A3A3A] mb-1">已有現成問卷？</h3>
+                <p className="text-xs text-[#8A8585] mb-3">
+                  上傳你的 PDF、圖片或 Word 問卷，副店長會自動幫你把問題轉換成 FeedBites 格式！
+                </p>
+
+                {surveyUploading ? (
+                  <div className="flex items-center gap-3 py-4">
+                    <Loader2 className="w-6 h-6 text-[#FF8C00] animate-spin" />
+                    <div>
+                      <p className="text-sm font-medium text-[#3A3A3A]">AI 正在分析你的問卷...</p>
+                      <p className="text-[10px] text-[#8A8585]">辨識問題類型、選項、評分方式</p>
+                    </div>
+                  </div>
+                ) : surveyParsed ? (
+                  <div>
+                    <div className="bg-white rounded-xl border border-[#FF8C00]/20 p-4 mb-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileText className="w-4 h-4 text-[#FF8C00]" />
+                        <span className="text-sm font-bold text-[#3A3A3A]">{surveyParsed.title || '問卷'}</span>
+                        <span className="text-[10px] px-2 py-0.5 bg-[#FF8C00]/10 text-[#FF8C00] rounded-full">
+                          {surveyParsed.questions.filter(q => q.type !== 'section-header').length} 題
+                        </span>
+                      </div>
+                      <div className="space-y-1 max-h-[200px] overflow-y-auto">
+                        {surveyParsed.questions.filter(q => q.type !== 'section-header').map((q, i) => (
+                          <div key={i} className="flex items-center gap-2 text-xs text-[#8A8585]">
+                            <span className="w-5 h-5 rounded bg-[#FAF7F2] flex items-center justify-center text-[10px] font-bold text-[#A08735] shrink-0">{i + 1}</span>
+                            <span className="truncate">{q.label}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 bg-[#FAF7F2] text-[#A08735] rounded shrink-0">{q.type}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {surveyParsed.notes && (
+                        <p className="text-[10px] text-[#8A8585] mt-2 flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-[#FF8C00]" />
+                          {surveyParsed.notes}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={applySurveyParsed}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] text-white rounded-full text-sm font-bold hover:shadow-lg hover:shadow-[#FF8C00]/20 transition-all"
+                      >
+                        <Check className="w-4 h-4" />
+                        套用到問卷
+                      </button>
+                      <button
+                        onClick={() => setSurveyParsed(null)}
+                        className="px-4 py-2.5 text-[#8A8585] text-sm hover:text-[#3A3A3A] transition-colors"
+                      >
+                        取消
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-[#FF8C00]/30 text-[#FF8C00] rounded-full text-sm font-medium cursor-pointer hover:bg-[#FF8C00]/5 hover:border-[#FF8C00] transition-all">
+                    <Upload className="w-4 h-4" />
+                    上傳現有問卷
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      className="hidden"
+                      onChange={handleSurveyUpload}
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
+          </div>
+
           <h2 className="text-lg font-bold text-[#3A3A3A] font-serif mb-2">選擇問卷模板</h2>
           <p className="text-sm text-[#8A8585] mb-6">選擇一個風格模板，決定問卷的視覺外觀</p>
 
