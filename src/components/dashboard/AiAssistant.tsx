@@ -298,11 +298,8 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
           >
             <div className="relative bg-white rounded-2xl rounded-br-sm shadow-xl border border-[#FF8C00]/15 px-4 py-3">
               <div className="flex items-start gap-2">
-                <motion.span
-                  className="text-base shrink-0"
-                  animate={{ rotate: [0, 10, -10, 0] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >🍽️</motion.span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/feedbites-logo.png" alt="" className="w-5 h-5 object-contain shrink-0" />
                 <p className="text-xs text-[#3A3A3A] leading-relaxed">
                   {displayedText}
                   <motion.span
@@ -335,11 +332,8 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
             style={{ top: pos.top - 200, right: Math.max(pos.right - 140, 10), transition: 'top 0.5s ease, right 0.5s ease' }}
           >
             <div className="bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] px-4 py-3 flex items-center gap-3">
-              <motion.span
-                className="text-xl"
-                animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.1, 1] }}
-                transition={{ duration: 3, repeat: Infinity }}
-              >🍽️</motion.span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/feedbites-logo.png" alt="" className="w-7 h-7 object-contain" />
               <div className="flex-1">
                 <div className="text-sm font-bold text-white">FeedBites 副店長</div>
                 <div className="text-[10px] text-white/70 flex items-center gap-1">
@@ -365,7 +359,8 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
                   transition={{ delay: i * 0.12 }}
                   className="flex gap-2"
                 >
-                  <span className="text-sm shrink-0 mt-0.5">🍽️</span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/feedbites-logo.png" alt="" className="w-4 h-4 object-contain shrink-0 mt-0.5" />
                   <div className="bg-[#FAF7F2] rounded-2xl rounded-tl-md px-3.5 py-2.5 text-xs text-[#3A3A3A] leading-relaxed max-w-[260px]">
                     {msg.text}
                   </div>
@@ -443,31 +438,50 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
         whileHover={{ scale: 1.15 }}
         whileTap={{ scale: 0.85 }}
       >
-        {/* Breathing glow */}
+        {/* Cold blue outer ring */}
         <motion.div
-          className="absolute -inset-2 rounded-full pointer-events-none"
+          className="absolute -inset-3 rounded-full pointer-events-none"
           animate={{
             boxShadow: [
-              '0 0 12px 4px rgba(255,140,0,0.10), 0 0 24px 8px rgba(255,140,0,0.05)',
-              '0 0 20px 8px rgba(255,140,0,0.22), 0 0 40px 16px rgba(255,140,0,0.10)',
-              '0 0 12px 4px rgba(255,140,0,0.10), 0 0 24px 8px rgba(255,140,0,0.05)',
+              '0 0 8px 2px rgba(100,180,255,0.15), 0 0 20px 6px rgba(100,180,255,0.08)',
+              '0 0 14px 5px rgba(100,180,255,0.30), 0 0 35px 12px rgba(100,180,255,0.12)',
+              '0 0 8px 2px rgba(100,180,255,0.15), 0 0 20px 6px rgba(100,180,255,0.08)',
             ],
           }}
           transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
         />
 
-        {/* Orbiting dots */}
+        {/* Blue orbit ring 1 */}
         <motion.div
-          className="absolute w-1.5 h-1.5 rounded-full bg-[#FFD700]/60 pointer-events-none"
+          className="absolute -inset-2 rounded-full border border-[#64B4FF]/20 pointer-events-none"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+        />
+        {/* Blue orbit ring 2 (reverse) */}
+        <motion.div
+          className="absolute -inset-4 rounded-full border border-[#64B4FF]/10 pointer-events-none"
+          animate={{ rotate: -360 }}
+          transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
+        />
+
+        {/* Orbiting blue dots */}
+        <motion.div
+          className="absolute w-1.5 h-1.5 rounded-full bg-[#64B4FF]/70 pointer-events-none"
           animate={{ rotate: 360 }}
           transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-          style={{ top: -4, left: '50%', marginLeft: -3, transformOrigin: '3px 32px' }}
+          style={{ top: -6, left: '50%', marginLeft: -3, transformOrigin: '3px 35px' }}
         />
         <motion.div
-          className="absolute w-1 h-1 rounded-full bg-[#FF8C00]/40 pointer-events-none"
+          className="absolute w-1 h-1 rounded-full bg-[#A0D0FF]/60 pointer-events-none"
           animate={{ rotate: -360 }}
-          transition={{ duration: 4.5, repeat: Infinity, ease: 'linear' }}
-          style={{ top: -2, left: '50%', marginLeft: -2, transformOrigin: '2px 30px' }}
+          transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+          style={{ top: -4, left: '50%', marginLeft: -2, transformOrigin: '2px 33px' }}
+        />
+        <motion.div
+          className="absolute w-1 h-1 rounded-full bg-[#FFD700]/50 pointer-events-none"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
+          style={{ top: -3, left: '50%', marginLeft: -2, transformOrigin: '2px 31px' }}
         />
 
         {/* Sparkles */}
@@ -475,36 +489,50 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
           <motion.div
             key={i}
             className="absolute text-[7px] pointer-events-none select-none"
-            animate={{ opacity: [0, 1, 0], scale: [0.3, 1, 0.3], y: [0, -12 - i * 6] }}
-            transition={{ duration: 2.5, repeat: Infinity, delay: i * 0.7 }}
-            style={{ top: -2, left: `${30 + i * 15}%` }}
+            animate={{ opacity: [0, 1, 0], scale: [0.3, 1, 0.3], y: [0, -14 - i * 5] }}
+            transition={{ duration: 2.5, repeat: Infinity, delay: i * 0.8 }}
+            style={{ top: -4, left: `${25 + i * 20}%` }}
           >✨</motion.div>
         ))}
 
-        {/* Main orb */}
+        {/* Main orb — FeedBites logo */}
         <motion.div
-          className="relative w-14 h-14 rounded-full bg-gradient-to-br from-[#FF8C00] to-[#FF6B00] flex items-center justify-center shadow-lg"
-          animate={{ scale: [1, 1.04, 1], y: [0, -3, 0] }}
+          className="relative w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-lg overflow-hidden border-2 border-[#64B4FF]/30"
+          animate={{ scale: [1, 1.05, 1], y: [0, -3, 0] }}
           transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
         >
           <AnimatePresence mode="wait">
             {isOpen ? (
               <motion.div key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}>
-                <X className="w-6 h-6 text-white" />
+                <X className="w-5 h-5 text-[#FF8C00]" />
               </motion.div>
             ) : (
-              <motion.span key="face" className="text-2xl select-none" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
-                🍽️
-              </motion.span>
+              <motion.div key="logo" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/feedbites-logo.png" alt="副店長" className="w-9 h-9 object-contain" />
+              </motion.div>
             )}
           </AnimatePresence>
         </motion.div>
 
-        {/* First-visit pulse */}
+        {/* Inner warm glow (orange) */}
+        <motion.div
+          className="absolute inset-0 rounded-full pointer-events-none"
+          animate={{
+            boxShadow: [
+              'inset 0 0 6px 2px rgba(255,140,0,0.10)',
+              'inset 0 0 10px 4px rgba(255,140,0,0.20)',
+              'inset 0 0 6px 2px rgba(255,140,0,0.10)',
+            ],
+          }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+        />
+
+        {/* First-visit pulse — blue */}
         {!isOpen && !hasInteracted && (
           <motion.span
-            className="absolute inset-0 rounded-full border-2 border-[#FF8C00] pointer-events-none"
-            animate={{ scale: [1, 1.6], opacity: [0.5, 0] }}
+            className="absolute -inset-1 rounded-full border-2 border-[#64B4FF] pointer-events-none"
+            animate={{ scale: [1, 1.7], opacity: [0.6, 0] }}
             transition={{ duration: 2, repeat: Infinity }}
           />
         )}
