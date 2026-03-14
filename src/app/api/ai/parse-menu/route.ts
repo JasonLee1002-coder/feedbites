@@ -3,6 +3,9 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { getSelectedStore } from '@/lib/store-context';
 
+// Allow longer execution for large menus
+export const maxDuration = 30;
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 // POST: Parse a menu image into individual dishes
@@ -47,26 +50,21 @@ export async function POST(request: NextRequest) {
         },
       },
       {
-        text: `你是餐廳菜單辨識 AI。請仔細分析這張菜單圖片，辨識出所有菜品。
-圖片可能是手繪、印刷、照片、插畫風格的菜單，都請盡力辨識。
-如果是英文菜名，請同時提供中文翻譯。
+        text: `你是餐廳菜單辨識 AI。請分析這張菜單圖片。
 
-對每道菜品，請提供：
-1. name: 菜品名稱（中文，如果原文是英文請翻譯）
-2. description: 簡短描述（根據圖片上的文字或你對這道菜的了解，20-40字）
-3. category: 分類（從以下選擇：主食、前菜、湯品、甜點、飲品、小吃、套餐、其他）
-4. price: 如果圖片上有價格就填寫，沒有就留空字串
+重要規則：
+- 最多辨識 30 道菜（挑最重要/招牌的）
+- 如果菜單很大，優先挑：套餐、招牌、主食、人氣推薦
+- 回覆要簡潔，每道菜的 description 控制在 15 字以內
+- 如果是英文菜名，請翻譯成中文
 
-回覆 JSON 格式：
-{
-  "dishes": [
-    { "name": "菜名", "description": "描述", "category": "分類", "price": "" }
-  ],
-  "total": 辨識到的菜品數量,
-  "notes": "任何額外說明"
-}
+格式：
+{"dishes":[{"name":"菜名","description":"簡短描述","category":"分類","price":"價格"}],"total":數量,"notes":"說明"}
 
-只回覆 JSON，不要 markdown 格式，不要 \`\`\`json 標記。盡可能辨識所有菜品。`,
+category 從以下選：主食、前菜、湯品、甜點、飲品、小吃、套餐、其他
+price 沒有就填空字串
+
+只回覆 JSON，不要 markdown，不要 \`\`\`。`,
       },
     ]);
 

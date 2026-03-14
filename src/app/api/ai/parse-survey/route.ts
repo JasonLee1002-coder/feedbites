@@ -3,6 +3,8 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { getSelectedStore } from '@/lib/store-context';
 
+export const maxDuration = 30;
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 // POST: Parse an existing survey document (PDF or image) into FeedBites questions
