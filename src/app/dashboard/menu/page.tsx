@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, Camera, Pencil, Trash2, X, Check, ImageIcon, Star, ChefHat } from 'lucide-react';
+import VoiceRecorder from '@/components/shared/VoiceRecorder';
 
 interface Dish {
   id: string;
@@ -31,6 +32,7 @@ export default function MenuPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchDishes();
@@ -153,6 +155,11 @@ export default function MenuPage() {
     }
   }
 
+  const handleVoiceResult = useCallback((result: { transcript: string; description: string; suggestedName?: string }) => {
+    if (result.description) setFormDesc(result.description);
+    if (result.suggestedName && !formName) setFormName(result.suggestedName);
+  }, [formName]);
+
   const categories = ['全部', ...new Set(dishes.map(d => d.category))];
   const filteredDishes = filterCategory === '全部'
     ? dishes
@@ -238,7 +245,7 @@ export default function MenuPage() {
             <div>
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full aspect-square rounded-xl border-2 border-dashed border-[#E8E2D8] hover:border-[#C5A55A] transition-colors cursor-pointer flex flex-col items-center justify-center overflow-hidden bg-[#FAF7F2] relative group"
+                className="w-full aspect-square rounded-xl border-2 border-dashed border-[#E8E2D8] hover:border-[#FF8C00] transition-colors cursor-pointer flex flex-col items-center justify-center overflow-hidden bg-[#FAF7F2] relative group"
               >
                 {formPhotoUrl ? (
                   <>
@@ -251,12 +258,42 @@ export default function MenuPage() {
                   <div className="text-sm text-[#8A8585]">上傳中...</div>
                 ) : (
                   <>
-                    <Camera className="w-8 h-8 text-[#C5A55A] mb-2" />
+                    <Camera className="w-8 h-8 text-[#FF8C00] mb-2" />
                     <span className="text-xs text-[#8A8585]">點擊上傳照片</span>
                     <span className="text-[10px] text-[#B0AAA0] mt-1">JPG / PNG / WebP</span>
                   </>
                 )}
               </div>
+
+              {/* Camera + Gallery buttons */}
+              <div className="flex gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={() => cameraInputRef.current?.click()}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-[#FF8C00] text-white text-xs font-medium rounded-lg hover:bg-[#E07800] transition-colors"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  拍照
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-[#FAF7F2] text-[#8A8585] text-xs font-medium rounded-lg border border-[#E8E2D8] hover:border-[#FF8C00] hover:text-[#FF8C00] transition-colors"
+                >
+                  <ImageIcon className="w-3.5 h-3.5" />
+                  相簿
+                </button>
+              </div>
+
+              {/* Hidden file inputs */}
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => handlePhotoUpload(e, editingId || undefined)}
+              />
               <input
                 ref={fileInputRef}
                 type="file"
@@ -287,8 +324,15 @@ export default function MenuPage() {
                   onChange={e => setFormDesc(e.target.value)}
                   placeholder="食材、特色、推薦原因..."
                   rows={3}
-                  className="w-full px-4 py-2.5 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] transition-colors bg-[#FAF7F2] resize-none"
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-[#FF8C00] transition-colors bg-[#FAF7F2] resize-none"
                 />
+                <div className="mt-2">
+                  <VoiceRecorder
+                    dishName={formName}
+                    onResult={handleVoiceResult}
+                    mode="describe"
+                  />
+                </div>
               </div>
 
               <div>
