@@ -67,9 +67,15 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
   const [hasInteracted, setHasInteracted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Position state — avatar moves around
-  const [pos, setPos] = useState({ bottom: 24, right: 24 });
+  // Position state — avatar moves around the content area
+  const homePos = { bottom: 80, right: 32 };
+  const [pos, setPos] = useState(homePos);
   const [isNearInput, setIsNearInput] = useState(false);
+
+  const clampPos = (p: { bottom: number; right: number }) => ({
+    bottom: Math.max(24, Math.min(p.bottom, 300)),
+    right: Math.max(16, Math.min(p.right, 120)),
+  });
 
   const pageMessages = getPageMessages(pathname, { dishCount, surveyCount });
 
@@ -97,7 +103,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
         const newBottom = Math.max(20, h - rect.bottom - 10);
         const newRight = rect.right + 70 < w ? w - rect.right - 60 : rect.left - 70 > 0 ? w - rect.left + 20 : 24;
 
-        setPos({ bottom: Math.max(20, Math.min(newBottom, h - 80)), right: Math.max(20, Math.min(newRight, w - 80)) });
+        setPos(clampPos({ bottom: newBottom, right: newRight }));
         setIsNearInput(true);
       }
     }
@@ -105,7 +111,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
     function handleBlur() {
       setTimeout(() => {
         if (document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
-          setPos({ bottom: 24, right: 24 });
+          setPos(homePos);
           setIsNearInput(false);
         }
       }, 1500);
@@ -123,9 +129,9 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
   useEffect(() => {
     if (isOpen || isNearInput) return;
     const interval = setInterval(() => {
-      setPos(p => ({
-        bottom: p.bottom + (Math.random() - 0.5) * 20,
-        right: Math.max(16, Math.min(p.right + (Math.random() - 0.5) * 30, 100)),
+      setPos(p => clampPos({
+        bottom: homePos.bottom + (Math.random() - 0.5) * 60,
+        right: homePos.right + (Math.random() - 0.5) * 40,
       }));
     }, 4000);
     return () => clearInterval(interval);
@@ -133,18 +139,19 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
 
   // Reset on page change
   useEffect(() => {
-    setPos({ bottom: 24, right: 24 });
+    setPos(homePos);
     setIsNearInput(false);
   }, [pathname]);
 
-  // Show bubble
+  // Show bubble — always show on page load after 1.5s
   useEffect(() => {
     setShowBubble(false);
+    setHasInteracted(false);
     const timer = setTimeout(() => {
       if (!isOpen) setShowBubble(true);
-    }, 2500);
+    }, 1500);
     return () => clearTimeout(timer);
-  }, [pathname]);
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (showBubble) {
