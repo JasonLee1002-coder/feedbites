@@ -285,13 +285,13 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
 
   useEffect(() => {
     if (showBubble && pageMessages[0]) {
-      const msg = pageMessages[0];
+      const msgText = pageMessages[0].text;
       let i = 0;
       setDisplayedText('');
       const timer = setInterval(() => {
         i++;
-        setDisplayedText(msg.slice(0, i));
-        if (i >= msg.length) clearInterval(timer);
+        setDisplayedText(msgText.slice(0, i));
+        if (i >= msgText.length) clearInterval(timer);
       }, 25);
       return () => clearInterval(timer);
     }
