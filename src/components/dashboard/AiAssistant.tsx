@@ -72,15 +72,24 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
   const [pos, setPos] = useState({ top: 300, right: 40 });
   const [isNearInput, setIsNearInput] = useState(false);
 
-  // Content-aware home: vertically centered, right side of content area
+  // Content-aware home: near the content, not viewport edge
   const getHomePos = () => {
-    const h = typeof window !== 'undefined' ? window.innerHeight : 800;
-    return { top: Math.round(h * 0.45), right: 40 };
+    if (typeof window === 'undefined') return { top: 300, right: 40 };
+    const h = window.innerHeight;
+    const w = window.innerWidth;
+    // On desktop with sidebar (lg = 1024+), content area starts at 240px
+    const sidebarW = w >= 1024 ? 240 : 0;
+    const contentW = w - sidebarW;
+    // Position just inside the right edge of content (not viewport)
+    // Content max-width is ~1152px (max-w-6xl), centered
+    const contentRight = contentW > 1152 ? (contentW - 1152) / 2 + sidebarW : sidebarW;
+    const rightOffset = Math.max(20, contentRight + 10);
+    return { top: Math.round(h * 0.4), right: rightOffset };
   };
 
   const clampPos = (p: { top: number; right: number }) => ({
     top: Math.max(80, Math.min(p.top, (typeof window !== 'undefined' ? window.innerHeight : 800) - 100)),
-    right: Math.max(20, Math.min(p.right, 150)),
+    right: Math.max(10, Math.min(p.right, 200)),
   });
 
   const rawPageMessages = getPageMessages(pathname, { dishCount, surveyCount });
