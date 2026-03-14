@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useMotionValue, useSpring, animate } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 
 interface BubbleMessage {
   text: string;
@@ -25,36 +26,27 @@ function getPageMessages(pathname: string, context?: { dishCount?: number; surve
     ];
   }
   if (pathname.includes('/surveys/new')) {
-    return [
-      '建立問卷很簡單！選一個適合你風格的模板，3 分鐘就能上線。',
-      '建議啟用折扣獎勵，回覆率可以提升 3 倍！',
-      '問題不要太多，5-8 題最佳，客人填起來不會覺得煩。',
-    ];
+    return ['建立問卷很簡單！選一個適合你風格的模板，3 分鐘就能上線。', '建議啟用折扣獎勵，回覆率可以提升 3 倍！'];
   }
   if (pathname.includes('/surveys') && pathname.includes('/qrcode')) {
-    return ['把 QR Code 列印出來，放在每張桌上或結帳櫃台旁邊。', '建議用硬卡紙或壓克力立牌，比較耐用。'];
+    return ['把 QR Code 列印出來，放在每張桌上或結帳櫃台旁邊。'];
   }
   if (pathname.includes('/surveys/')) {
     return ['看看客人的回饋，文字留言通常是最有價值的改進線索。', '可以匯出 Excel 檔案，方便跟團隊分享數據。'];
   }
   if (pathname.includes('/surveys')) {
-    if (context?.surveyCount === 0) return ['還沒有問卷呢！點「建立新問卷」開始收集客人回饋吧。', '10 種精美模板任你選，從日料到餐酒館都有。'];
-    return ['記得定期檢查回覆，即時了解客人的想法。', '可以複製問卷來做 A/B 測試，看看哪個版本回覆率更高。'];
+    if (context?.surveyCount === 0) return ['還沒有問卷呢！點「建立新問卷」開始收集客人回饋吧。'];
+    return ['記得定期檢查回覆，即時了解客人的想法。'];
   }
   if (pathname.includes('/settings')) {
-    return [
-      '上傳 Logo 讓問卷更有品牌感，客人會覺得更專業。',
-      '記得填寫「店家資料」！填完就能解鎖同業比較分析功能。',
-      '邀請夥伴一起管理店家，大家權限相同，協作更方便。',
-    ];
+    return ['上傳 Logo 讓問卷更有品牌感！', '記得填寫「店家資料」，填完就能解鎖同業比較分析功能。'];
   }
   if (pathname.includes('/new-store')) {
-    return ['歡迎加入 FeedBites！先幫你的餐廳取個名字吧。', '一個帳號可以管理好幾家店，之後隨時可以新增。'];
+    return ['歡迎加入 FeedBites！先幫你的餐廳取個名字吧。'];
   }
   return [
-    '嗨！我是你的 FeedBites 副店長，有什麼需要幫忙的隨時問我！',
+    '嗨！我是你的 FeedBites 副店長，有什麼需要幫忙的隨時點我！',
     '每天花 2 分鐘看一下新回覆，持續改進就是最好的經營策略。',
-    '把 QR Code 放在桌上，讓問卷自己收集回饋，你專心做菜就好。',
   ];
 }
 
@@ -75,15 +67,13 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
   const [hasInteracted, setHasInteracted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Dynamic position
-  const posX = useMotionValue(typeof window !== 'undefined' ? window.innerWidth - 80 : 300);
-  const posY = useMotionValue(typeof window !== 'undefined' ? window.innerHeight - 80 : 500);
-  const springX = useSpring(posX, { stiffness: 40, damping: 12 });
-  const springY = useSpring(posY, { stiffness: 40, damping: 12 });
+  // Position state — avatar moves around
+  const [pos, setPos] = useState({ bottom: 24, right: 24 });
+  const [isNearInput, setIsNearInput] = useState(false);
 
   const pageMessages = getPageMessages(pathname, { dishCount, surveyCount });
 
-  // Onboarding steps (merged from OnboardingGuide)
+  // Onboarding
   const onboardingSteps = [
     { id: 'logo', label: '上傳 Logo', href: '/dashboard/settings', done: hasLogo },
     { id: 'menu', label: '建立菜單', href: '/dashboard/menu', done: dishCount > 0 },
@@ -94,56 +84,31 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
   const onboardingProgress = Math.round((onboardingSteps.filter(s => s.done).length / onboardingSteps.length) * 100);
   const isDashboardHome = pathname === '/dashboard' || pathname === '/dashboard/';
 
-  // Home position — bottom area, slightly right of center on desktop
-  const getHomePos = () => {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    // On desktop with sidebar (lg:pl-60 = 240px), offset to content area
-    const sidebarOffset = w >= 1024 ? 240 : 0;
-    const contentCenter = sidebarOffset + (w - sidebarOffset) / 2;
-    return {
-      x: Math.min(contentCenter + 120, w - 80),
-      y: h - 100,
-    };
-  };
-
-  // Initialize position
-  useEffect(() => {
-    const home = getHomePos();
-    posX.set(home.x);
-    posY.set(home.y);
-  }, []);
-
-  // Float near focused inputs
+  // Follow focused inputs
   useEffect(() => {
     function handleFocus(e: FocusEvent) {
       const el = e.target as HTMLElement;
-      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
         const rect = el.getBoundingClientRect();
         const w = window.innerWidth;
-        // Position to the side of the input, vertically aligned
-        const targetY = Math.min(Math.max(rect.top + rect.height / 2, 60), window.innerHeight - 80);
+        const h = window.innerHeight;
 
-        if (rect.right + 80 < w) {
-          // Space on the right — go right
-          animate(posX, Math.min(rect.right + 30, w - 80), { duration: 0.8 });
-        } else if (rect.left - 80 > 0) {
-          // Space on the left
-          animate(posX, rect.left - 70, { duration: 0.8 });
-        }
-        animate(posY, targetY, { duration: 0.8 });
+        // Position near the input
+        const newBottom = Math.max(20, h - rect.bottom - 10);
+        const newRight = rect.right + 70 < w ? w - rect.right - 60 : rect.left - 70 > 0 ? w - rect.left + 20 : 24;
+
+        setPos({ bottom: Math.max(20, Math.min(newBottom, h - 80)), right: Math.max(20, Math.min(newRight, w - 80)) });
+        setIsNearInput(true);
       }
     }
 
     function handleBlur() {
-      // Drift back toward home after a delay
       setTimeout(() => {
         if (document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
-          const home = getHomePos();
-          animate(posX, home.x, { duration: 1.2 });
-          animate(posY, home.y, { duration: 1.2 });
+          setPos({ bottom: 24, right: 24 });
+          setIsNearInput(false);
         }
-      }, 2000);
+      }, 1500);
     }
 
     document.addEventListener('focusin', handleFocus);
@@ -152,35 +117,29 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
       document.removeEventListener('focusin', handleFocus);
       document.removeEventListener('focusout', handleBlur);
     };
-  }, [posX, posY]);
+  }, []);
 
-  // Gentle idle drift — wander slightly when nothing is happening
+  // Gentle idle drift
   useEffect(() => {
+    if (isOpen || isNearInput) return;
     const interval = setInterval(() => {
-      if (!isOpen && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
-        const home = getHomePos();
-        const driftX = home.x + (Math.random() - 0.5) * 60;
-        const driftY = home.y + (Math.random() - 0.5) * 40;
-        animate(posX, Math.max(20, Math.min(driftX, window.innerWidth - 80)), { duration: 2 });
-        animate(posY, Math.max(60, Math.min(driftY, window.innerHeight - 80)), { duration: 2 });
-      }
-    }, 5000);
+      setPos(p => ({
+        bottom: p.bottom + (Math.random() - 0.5) * 20,
+        right: Math.max(16, Math.min(p.right + (Math.random() - 0.5) * 30, 100)),
+      }));
+    }, 4000);
     return () => clearInterval(interval);
-  }, [isOpen, posX, posY]);
+  }, [isOpen, isNearInput]);
 
-  // Reset position on page change
+  // Reset on page change
   useEffect(() => {
-    setTimeout(() => {
-      const home = getHomePos();
-      animate(posX, home.x, { duration: 1 });
-      animate(posY, home.y, { duration: 1 });
-    }, 500);
+    setPos({ bottom: 24, right: 24 });
+    setIsNearInput(false);
   }, [pathname]);
 
   // Show bubble
   useEffect(() => {
     setShowBubble(false);
-    setHasInteracted(false);
     const timer = setTimeout(() => {
       if (!isOpen) setShowBubble(true);
     }, 2500);
@@ -221,20 +180,15 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
 
   return (
     <>
-      {/* Bubble tip — follows the avatar */}
+      {/* ═══ Bubble tip ═══ */}
       <AnimatePresence>
         {showBubble && !isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
+            initial={{ opacity: 0, y: 10, scale: 0.85 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
-            className="fixed z-[61] max-w-[260px] pointer-events-auto"
-            style={{
-              x: springX,
-              y: springY,
-              translateX: '-110%',
-              translateY: '-100%',
-            }}
+            className="fixed z-[61] max-w-[260px]"
+            style={{ bottom: pos.bottom + 64, right: pos.right - 10, transition: 'bottom 0.8s ease, right 0.8s ease' }}
           >
             <div className="relative bg-white rounded-2xl rounded-br-sm shadow-xl border border-[#FF8C00]/15 px-4 py-3">
               <div className="flex items-start gap-2">
@@ -242,9 +196,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
                   className="text-base shrink-0"
                   animate={{ rotate: [0, 10, -10, 0] }}
                   transition={{ duration: 2, repeat: Infinity }}
-                >
-                  🍽️
-                </motion.span>
+                >🍽️</motion.span>
                 <p className="text-xs text-[#3A3A3A] leading-relaxed">
                   {displayedText}
                   <motion.span
@@ -256,7 +208,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
               </div>
               <button
                 onClick={() => setShowBubble(false)}
-                className="absolute -top-2 -right-2 w-5 h-5 bg-[#3A3A3A]/50 rounded-full flex items-center justify-center hover:bg-[#3A3A3A] transition-colors"
+                className="absolute -top-2 -right-2 w-5 h-5 bg-[#3A3A3A]/50 rounded-full flex items-center justify-center hover:bg-[#3A3A3A]"
               >
                 <X className="w-3 h-3 text-white" />
               </button>
@@ -265,7 +217,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
         )}
       </AnimatePresence>
 
-      {/* Chat panel — opens near avatar */}
+      {/* ═══ Chat panel ═══ */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -274,19 +226,14 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
             transition={{ type: 'spring', damping: 22 }}
             className="fixed z-[61] w-[340px] max-h-[440px] bg-white rounded-2xl shadow-2xl border border-[#E8E2D8] overflow-hidden flex flex-col"
-            style={{
-              right: 20,
-              bottom: 90,
-            }}
+            style={{ bottom: pos.bottom + 70, right: Math.max(pos.right - 140, 10), transition: 'bottom 0.5s ease, right 0.5s ease' }}
           >
             <div className="bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] px-4 py-3 flex items-center gap-3">
               <motion.span
                 className="text-xl"
                 animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.1, 1] }}
                 transition={{ duration: 3, repeat: Infinity }}
-              >
-                🍽️
-              </motion.span>
+              >🍽️</motion.span>
               <div className="flex-1">
                 <div className="text-sm font-bold text-white">FeedBites 副店長</div>
                 <div className="text-[10px] text-white/70 flex items-center gap-1">
@@ -302,8 +249,8 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
                 <X className="w-4 h-4" />
               </button>
             </div>
+
             <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[180px]">
-              {/* Messages */}
               {messages.map((msg, i) => (
                 <motion.div
                   key={i}
@@ -319,13 +266,12 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
                 </motion.div>
               ))}
 
-              {/* Onboarding checklist — only on dashboard home, not all done */}
+              {/* Onboarding checklist */}
               {isDashboardHome && !onboardingDone && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
-                  className="mt-2"
                 >
                   <div className="bg-gradient-to-br from-[#FF8C00]/5 to-[#FF6B00]/5 rounded-xl border border-[#FF8C00]/15 p-3">
                     <div className="flex items-center justify-between mb-2">
@@ -342,30 +288,30 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
                     </div>
                     <div className="space-y-1.5">
                       {onboardingSteps.map(step => (
-                        <a
-                          key={step.id}
-                          href={step.done ? undefined : step.href}
-                          className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] transition-all ${
-                            step.done
-                              ? 'text-emerald-600 line-through opacity-60'
-                              : 'text-[#3A3A3A] bg-white border border-[#E8E2D8] hover:border-[#FF8C00] hover:shadow-sm cursor-pointer'
-                          }`}
-                        >
-                          <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0 ${
-                            step.done ? 'bg-emerald-100 text-emerald-600' : 'bg-[#FF8C00]/10 text-[#FF8C00]'
-                          }`}>
-                            {step.done ? '✓' : '→'}
-                          </span>
-                          {step.label}
-                        </a>
+                        step.done ? (
+                          <div key={step.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] text-emerald-600 line-through opacity-60">
+                            <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[9px] shrink-0">✓</span>
+                            {step.label}
+                          </div>
+                        ) : (
+                          <Link
+                            key={step.id}
+                            href={step.href}
+                            onClick={() => setIsOpen(false)}
+                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] text-[#3A3A3A] bg-white border border-[#E8E2D8] hover:border-[#FF8C00] hover:shadow-sm transition-all"
+                          >
+                            <span className="w-4 h-4 rounded-full bg-[#FF8C00]/10 text-[#FF8C00] flex items-center justify-center text-[9px] shrink-0">→</span>
+                            {step.label}
+                          </Link>
+                        )
                       ))}
                     </div>
                   </div>
                 </motion.div>
               )}
-
               <div ref={messagesEndRef} />
             </div>
+
             <div className="px-4 py-2.5 border-t border-[#E8E2D8] bg-[#FAF7F2]">
               <p className="text-[10px] text-[#8A8585] text-center">
                 {isDashboardHome && !onboardingDone ? '完成以上步驟，解鎖完整分析功能 ✨' : '副店長會根據你所在的頁面給出建議'}
@@ -375,7 +321,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
         )}
       </AnimatePresence>
 
-      {/* ═══ The floating spirit avatar ═══ */}
+      {/* ═══ Floating Avatar ═══ */}
       <motion.button
         onClick={() => {
           setIsOpen(!isOpen);
@@ -383,60 +329,56 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
           setShowBubble(false);
         }}
         className="fixed z-[60] group cursor-pointer"
-        style={{ x: springX, y: springY, translateX: '-50%', translateY: '-50%' }}
+        style={{
+          bottom: pos.bottom,
+          right: pos.right,
+          transition: 'bottom 0.8s cubic-bezier(0.4,0,0.2,1), right 0.8s cubic-bezier(0.4,0,0.2,1)',
+        }}
         whileHover={{ scale: 1.15 }}
         whileTap={{ scale: 0.85 }}
       >
-        {/* Breathing glow rings */}
+        {/* Breathing glow */}
         <motion.div
-          className="absolute inset-[-8px] rounded-full"
+          className="absolute -inset-2 rounded-full pointer-events-none"
           animate={{
             boxShadow: [
-              '0 0 12px 4px rgba(255,140,0,0.12), 0 0 24px 8px rgba(255,140,0,0.06)',
+              '0 0 12px 4px rgba(255,140,0,0.10), 0 0 24px 8px rgba(255,140,0,0.05)',
               '0 0 20px 8px rgba(255,140,0,0.22), 0 0 40px 16px rgba(255,140,0,0.10)',
-              '0 0 12px 4px rgba(255,140,0,0.12), 0 0 24px 8px rgba(255,140,0,0.06)',
+              '0 0 12px 4px rgba(255,140,0,0.10), 0 0 24px 8px rgba(255,140,0,0.05)',
             ],
           }}
           transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
         />
 
-        {/* Orbiting dot 1 */}
+        {/* Orbiting dots */}
         <motion.div
-          className="absolute w-1.5 h-1.5 rounded-full bg-[#FFD700]/60"
+          className="absolute w-1.5 h-1.5 rounded-full bg-[#FFD700]/60 pointer-events-none"
           animate={{ rotate: 360 }}
           transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-          style={{ top: -6, left: '50%', marginLeft: -3, transformOrigin: '3px 34px' }}
+          style={{ top: -4, left: '50%', marginLeft: -3, transformOrigin: '3px 32px' }}
         />
-        {/* Orbiting dot 2 */}
         <motion.div
-          className="absolute w-1 h-1 rounded-full bg-[#FF8C00]/50"
+          className="absolute w-1 h-1 rounded-full bg-[#FF8C00]/40 pointer-events-none"
           animate={{ rotate: -360 }}
-          transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
-          style={{ top: -4, left: '50%', marginLeft: -2, transformOrigin: '2px 30px' }}
+          transition={{ duration: 4.5, repeat: Infinity, ease: 'linear' }}
+          style={{ top: -2, left: '50%', marginLeft: -2, transformOrigin: '2px 30px' }}
         />
 
         {/* Sparkles */}
         {[0, 1, 2].map(i => (
           <motion.div
             key={i}
-            className="absolute text-[7px] pointer-events-none"
-            animate={{
-              opacity: [0, 1, 0],
-              scale: [0.3, 1, 0.3],
-              x: [0, (i - 1) * 18],
-              y: [0, -15 - i * 8],
-            }}
-            transition={{ duration: 2.5, repeat: Infinity, delay: i * 0.8 }}
-            style={{ top: -2, left: '50%' }}
-          >
-            ✨
-          </motion.div>
+            className="absolute text-[7px] pointer-events-none select-none"
+            animate={{ opacity: [0, 1, 0], scale: [0.3, 1, 0.3], y: [0, -12 - i * 6] }}
+            transition={{ duration: 2.5, repeat: Infinity, delay: i * 0.7 }}
+            style={{ top: -2, left: `${30 + i * 15}%` }}
+          >✨</motion.div>
         ))}
 
         {/* Main orb */}
         <motion.div
           className="relative w-14 h-14 rounded-full bg-gradient-to-br from-[#FF8C00] to-[#FF6B00] flex items-center justify-center shadow-lg"
-          animate={{ scale: [1, 1.04, 1] }}
+          animate={{ scale: [1, 1.04, 1], y: [0, -3, 0] }}
           transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
         >
           <AnimatePresence mode="wait">
@@ -445,17 +387,17 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
                 <X className="w-6 h-6 text-white" />
               </motion.div>
             ) : (
-              <motion.span key="face" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="text-2xl select-none">
+              <motion.span key="face" className="text-2xl select-none" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
                 🍽️
               </motion.span>
             )}
           </AnimatePresence>
         </motion.div>
 
-        {/* Pulse ring for first visit */}
+        {/* First-visit pulse */}
         {!isOpen && !hasInteracted && (
           <motion.span
-            className="absolute inset-0 rounded-full border-2 border-[#FF8C00]"
+            className="absolute inset-0 rounded-full border-2 border-[#FF8C00] pointer-events-none"
             animate={{ scale: [1, 1.6], opacity: [0.5, 0] }}
             transition={{ duration: 2, repeat: Infinity }}
           />
