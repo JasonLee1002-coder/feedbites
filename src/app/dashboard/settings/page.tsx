@@ -17,6 +17,7 @@ export default async function SettingsPage() {
       storeName={store.store_name || ''}
       logoUrl={store.logo_url || null}
       frameId={store.frame_id || 'classic-gold'}
+      isOwner={store.user_id === user.id}
     />
   );
 }

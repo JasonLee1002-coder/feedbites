@@ -5,6 +5,7 @@ import HeroSection from '@/components/landing/HeroSection';
 import FeaturesSection from '@/components/landing/FeaturesSection';
 import StepsSection from '@/components/landing/StepsSection';
 import TemplatesSection from '@/components/landing/TemplatesSection';
+import HomeHero from '@/components/landing/HomeHero';
 
 export const metadata: Metadata = {
   title: 'FeedBites — 免費餐廳問卷系統｜掃碼填問卷，自動送折扣碼',
@@ -42,7 +43,17 @@ const faqData = [
   },
 ];
 
-export default function LandingPage() {
+// 上帝模式密鑰 — 加在網址後面 ?m=feedbites2026 才會顯示招商頁面
+const GOD_MODE_KEY = 'feedbites2026';
+
+export default async function LandingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const params = await searchParams;
+  const isGodMode = params.m === GOD_MODE_KEY;
+
   const faqJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
@@ -75,6 +86,12 @@ export default function LandingPage() {
     },
   };
 
+  // 一般模式：動畫登入/註冊頁面
+  if (!isGodMode) {
+    return <HomeHero />;
+  }
+
+  // 上帝模式：完整招商頁面
   return (
     <div className="min-h-screen bg-[#FAF7F2] overflow-x-hidden">
       <script

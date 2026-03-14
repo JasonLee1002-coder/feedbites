@@ -15,14 +15,46 @@ export async function GET(request: Request) {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const adminDb = createServiceSupabase();
+
+        // Process pending invites for this user's email
+        if (user.email) {
+          const { data: pendingInvites } = await adminDb
+            .from('store_invites')
+            .select('id, store_id, invited_by')
+            .eq('email', user.email.toLowerCase());
+
+          if (pendingInvites && pendingInvites.length > 0) {
+            for (const invite of pendingInvites) {
+              await adminDb.from('store_members').upsert({
+                store_id: invite.store_id,
+                user_id: user.id,
+                invited_by: invite.invited_by,
+              }, { onConflict: 'store_id,user_id' });
+            }
+            // Clean up processed invites
+            await adminDb
+              .from('store_invites')
+              .delete()
+              .eq('email', user.email.toLowerCase());
+          }
+        }
+
         const { data: stores } = await adminDb
           .from('stores')
           .select('id')
           .eq('user_id', user.id)
           .order('created_at', { ascending: true });
 
-        if (!stores || stores.length === 0) {
-          // First-time login → redirect to store setup
+        // Also check member stores
+        const { data: memberStores } = await adminDb
+          .from('store_members')
+          .select('store_id')
+          .eq('user_id', user.id);
+
+        const hasAnyStore = (stores && stores.length > 0) || (memberStores && memberStores.length > 0);
+
+        if (!hasAnyStore) {
+          // First-time login with no stores → redirect to store setup
           const redirectUrl = new URL('/register?setup=true', origin);
           return NextResponse.redirect(redirectUrl);
         }
@@ -30,10 +62,15 @@ export async function GET(request: Request) {
         // Auto-select first store if no cookie set
         const cookieStore = await cookies();
         const currentStoreId = cookieStore.get('feedbites_store_id')?.value;
-        const validStore = stores.find(s => s.id === currentStoreId);
 
-        if (!validStore) {
-          cookieStore.set('feedbites_store_id', stores[0].id, {
+        const allStoreIds = [
+          ...(stores || []).map(s => s.id),
+          ...(memberStores || []).map(s => s.store_id),
+        ];
+        const validStore = allStoreIds.includes(currentStoreId!);
+
+        if (!validStore && allStoreIds.length > 0) {
+          cookieStore.set('feedbites_store_id', allStoreIds[0], {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',

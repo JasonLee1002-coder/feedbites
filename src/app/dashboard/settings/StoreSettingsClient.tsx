@@ -1,17 +1,37 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { qrFrames, type QrFrame } from '@/lib/qr-frames';
-import { Upload, Check, Save, Loader2, ImageIcon, Palette, Store } from 'lucide-react';
+import { Upload, Check, Save, Loader2, ImageIcon, Palette, Store, Users, UserPlus, X, Mail, Clock, LogOut, Crown } from 'lucide-react';
+
+interface Member {
+  id: string;
+  user_id: string;
+  email: string;
+  joined_at: string;
+}
+
+interface Invite {
+  id: string;
+  email: string;
+  created_at: string;
+}
+
+interface MembersData {
+  owner: { user_id: string; email: string };
+  members: Member[];
+  invites: Invite[];
+}
 
 interface Props {
   storeId: string;
   storeName: string;
   logoUrl: string | null;
   frameId: string;
+  isOwner: boolean;
 }
 
-export default function StoreSettingsClient({ storeId, storeName, logoUrl: initialLogo, frameId: initialFrameId }: Props) {
+export default function StoreSettingsClient({ storeId, storeName, logoUrl: initialLogo, frameId: initialFrameId, isOwner }: Props) {
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogo);
   const [selectedFrameId, setSelectedFrameId] = useState(initialFrameId);
   const [uploading, setUploading] = useState(false);
@@ -20,7 +40,121 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Member management state
+  const [membersData, setMembersData] = useState<MembersData | null>(null);
+  const [membersLoading, setMembersLoading] = useState(true);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviting, setInviting] = useState(false);
+  const [memberMsg, setMemberMsg] = useState('');
+  const [memberError, setMemberError] = useState('');
+
   const selectedFrame = qrFrames.find(f => f.id === selectedFrameId) || qrFrames[0];
+
+  // Load members
+  useEffect(() => {
+    fetchMembers();
+  }, [storeId]);
+
+  async function fetchMembers() {
+    setMembersLoading(true);
+    try {
+      const res = await fetch('/api/stores/members');
+      if (res.ok) {
+        const data = await res.json();
+        setMembersData(data);
+      }
+    } catch {
+      // silently fail — members section just won't show data
+    } finally {
+      setMembersLoading(false);
+    }
+  }
+
+  async function handleInvite(e: React.FormEvent) {
+    e.preventDefault();
+    if (!inviteEmail.trim()) return;
+    setInviting(true);
+    setMemberError('');
+    setMemberMsg('');
+
+    try {
+      const res = await fetch('/api/stores/members', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: inviteEmail.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      if (data.status === 'added') {
+        setMemberMsg(`已將 ${data.email} 加入為成員`);
+      } else {
+        setMemberMsg(`已邀請 ${data.email}（對方註冊後會自動加入）`);
+      }
+      setInviteEmail('');
+      fetchMembers();
+    } catch (err) {
+      setMemberError(err instanceof Error ? err.message : '邀請失敗');
+    } finally {
+      setInviting(false);
+    }
+  }
+
+  async function handleRemoveMember(memberId: string, email: string) {
+    if (!confirm(`確定要移除 ${email}？`)) return;
+    setMemberError('');
+    try {
+      const res = await fetch('/api/stores/members', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberId }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error);
+      }
+      fetchMembers();
+    } catch (err) {
+      setMemberError(err instanceof Error ? err.message : '移除失敗');
+    }
+  }
+
+  async function handleCancelInvite(inviteId: string) {
+    setMemberError('');
+    try {
+      const res = await fetch('/api/stores/members', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inviteId }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error);
+      }
+      fetchMembers();
+    } catch (err) {
+      setMemberError(err instanceof Error ? err.message : '取消失敗');
+    }
+  }
+
+  async function handleLeaveStore() {
+    if (!confirm('確定要退出這家店？退出後將無法管理此店家。')) return;
+    setMemberError('');
+    try {
+      const res = await fetch('/api/stores/members', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ selfLeave: true }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error);
+      }
+      window.location.href = '/dashboard';
+    } catch (err) {
+      setMemberError(err instanceof Error ? err.message : '退出失敗');
+    }
+  }
 
   async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -288,7 +422,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
       </div>
 
       {/* ═══ Save Button ═══ */}
-      <div className="flex justify-end">
+      <div className="flex justify-end mb-6">
         <button
           onClick={handleSave}
           disabled={saving}
@@ -306,6 +440,142 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
             <><Save className="w-4 h-4" />儲存設定</>
           )}
         </button>
+      </div>
+
+      {/* ═══ Member Management ═══ */}
+      <div className="bg-white rounded-2xl border border-[#E8E2D8] p-6 mb-6">
+        <h2 className="font-bold text-[#3A3A3A] mb-4 flex items-center gap-2">
+          <Users className="w-4 h-4 text-[#C5A55A]" />
+          成員管理
+        </h2>
+        <p className="text-xs text-[#8A8585] mb-4">
+          邀請夥伴或店員一起管理這家店，所有成員擁有相同權限
+        </p>
+
+        {memberError && (
+          <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-xl border border-red-100">
+            {memberError}
+          </div>
+        )}
+        {memberMsg && (
+          <div className="mb-4 p-3 bg-emerald-50 text-emerald-700 text-sm rounded-xl border border-emerald-100">
+            {memberMsg}
+          </div>
+        )}
+
+        {/* Invite form */}
+        <form onSubmit={handleInvite} className="flex gap-2 mb-6">
+          <div className="flex-1 relative">
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8A8585]" />
+            <input
+              type="email"
+              placeholder="輸入對方的 Email"
+              value={inviteEmail}
+              onChange={e => setInviteEmail(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 border border-[#E8E2D8] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/30 focus:border-[#C5A55A]"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={inviting || !inviteEmail.trim()}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#C5A55A] text-white text-sm font-medium rounded-xl hover:bg-[#A08735] transition-colors disabled:opacity-50 shrink-0"
+          >
+            {inviting ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <UserPlus className="w-4 h-4" />
+            )}
+            邀請
+          </button>
+        </form>
+
+        {/* Members list */}
+        {membersLoading ? (
+          <div className="flex items-center justify-center py-8 text-[#8A8585]">
+            <Loader2 className="w-5 h-5 animate-spin mr-2" />
+            載入中...
+          </div>
+        ) : membersData ? (
+          <div className="space-y-2">
+            {/* Owner */}
+            <div className="flex items-center justify-between p-3 bg-[#FAF7F2] rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-[#C5A55A]/10 flex items-center justify-center">
+                  <Crown className="w-4 h-4 text-[#C5A55A]" />
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-[#3A3A3A]">{membersData.owner.email}</div>
+                  <div className="text-[10px] text-[#8A8585]">建立者</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Members */}
+            {membersData.members.map(member => (
+              <div key={member.id} className="flex items-center justify-between p-3 bg-[#FAF7F2] rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center">
+                    <Users className="w-4 h-4 text-blue-500" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-[#3A3A3A]">{member.email}</div>
+                    <div className="text-[10px] text-[#8A8585]">
+                      加入於 {new Date(member.joined_at).toLocaleDateString('zh-TW')}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleRemoveMember(member.id, member.email)}
+                  className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="移除成員"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+
+            {/* Pending invites */}
+            {membersData.invites.map(invite => (
+              <div key={invite.id} className="flex items-center justify-between p-3 bg-amber-50/50 rounded-xl border border-dashed border-amber-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center">
+                    <Clock className="w-4 h-4 text-amber-500" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-[#3A3A3A]">{invite.email}</div>
+                    <div className="text-[10px] text-amber-600">等待註冊中</div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleCancelInvite(invite.id)}
+                  className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="取消邀請"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+
+            {membersData.members.length === 0 && membersData.invites.length === 0 && (
+              <p className="text-sm text-[#8A8585] text-center py-4">
+                目前沒有其他成員，邀請夥伴一起管理吧
+              </p>
+            )}
+          </div>
+        ) : null}
+
+        {/* Leave store button (for non-owners) */}
+        {!isOwner && (
+          <div className="mt-6 pt-4 border-t border-[#E8E2D8]">
+            <button
+              onClick={handleLeaveStore}
+              className="inline-flex items-center gap-2 px-4 py-2.5 text-red-600 text-sm font-medium rounded-xl border border-red-200 hover:bg-red-50 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              退出此店家
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

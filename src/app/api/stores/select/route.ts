@@ -17,17 +17,37 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '未授權' }, { status: 401 });
     }
 
-    // Verify this store belongs to the user
+    // Verify this store belongs to the user (owner or member)
     const adminDb = createServiceSupabase();
     const { data: store } = await adminDb
+      .from('stores')
+      .select('id')
+      .eq('id', storeId)
+      .single();
+
+    if (!store) {
+      return NextResponse.json({ error: '店家不存在' }, { status: 404 });
+    }
+
+    // Check ownership or membership
+    const { data: ownedStore } = await adminDb
       .from('stores')
       .select('id')
       .eq('id', storeId)
       .eq('user_id', user.id)
       .single();
 
-    if (!store) {
-      return NextResponse.json({ error: '店家不存在' }, { status: 404 });
+    if (!ownedStore) {
+      const { data: membership } = await adminDb
+        .from('store_members')
+        .select('id')
+        .eq('store_id', storeId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (!membership) {
+        return NextResponse.json({ error: '你不是此店家的成員' }, { status: 403 });
+      }
     }
 
     // Set cookie
