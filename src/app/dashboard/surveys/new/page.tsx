@@ -1,11 +1,52 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { templateList } from '@/lib/templates';
 import { ArrowLeft, Check, ChevronUp, ChevronDown, X, Plus, GripVertical, Upload, Sparkles, Loader2, FileText } from 'lucide-react';
 import type { TemplateId, Question, DiscountTier } from '@/types/survey';
+
+// Animated progress for survey upload
+function SurveyUploadProgress() {
+  const [step, setStep] = useState(0);
+  const steps = [
+    { text: '正在讀取文件...', icon: '📄' },
+    { text: '辨識問題和選項中...', icon: '🔍' },
+    { text: '分析問題類型（評分、選擇、開放）...', icon: '🧠' },
+    { text: '快好了！整理成 FeedBites 格式...', icon: '✨' },
+  ];
+
+  useEffect(() => {
+    const timers = [
+      setTimeout(() => setStep(1), 3000),
+      setTimeout(() => setStep(2), 8000),
+      setTimeout(() => setStep(3), 14000),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  const current = steps[step];
+  return (
+    <div className="py-5">
+      <div className="flex items-center gap-3 mb-3">
+        <Loader2 className="w-6 h-6 text-[#FF8C00] animate-spin" />
+        <div>
+          <p className="text-sm font-medium text-[#3A3A3A]">副店長正在分析你的問卷</p>
+          <p className="text-[10px] text-[#8A8585]">大約 15-25 秒，請稍候</p>
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        {steps.map((s, i) => (
+          <div key={i} className={`flex items-center gap-2 text-xs transition-all duration-500 ${i <= step ? 'text-[#3A3A3A]' : 'text-[#E8E2D8]'}`}>
+            <span>{i < step ? '✅' : i === step ? s.icon : '⬜'}</span>
+            <span>{s.text}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -656,13 +697,7 @@ export default function NewSurveyPage() {
                 )}
 
                 {surveyUploading ? (
-                  <div className="flex items-center gap-3 py-4">
-                    <Loader2 className="w-6 h-6 text-[#FF8C00] animate-spin" />
-                    <div>
-                      <p className="text-sm font-medium text-[#3A3A3A]">副店長正在分析你的問卷...</p>
-                      <p className="text-[10px] text-[#8A8585]">辨識問題類型、選項、評分方式，通常需要 10-20 秒</p>
-                    </div>
-                  </div>
+                  <SurveyUploadProgress />
                 ) : surveyParsed ? (
                   <div>
                     <div className="bg-white rounded-xl border border-[#FF8C00]/20 p-4 mb-3">
