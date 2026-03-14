@@ -181,6 +181,12 @@ export default function SurveyRenderer({
   const companionQueueRef = useRef<CompanionMessage[]>([]);
   const companionBusyRef = useRef(false);
 
+  // Idle detection refs
+  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const idleCountRef = useRef(0);
+  const progressRef = useRef(0);
+  const showCompanionRef = useRef<(msg: CompanionMessage) => void>(() => {});
+
   // Achievement system
   const [earnedBadges, setEarnedBadges] = useState<Set<string>>(new Set());
   const [toastBadge, setToastBadge] = useState<Achievement | null>(null);
@@ -244,6 +250,38 @@ export default function SurveyRenderer({
     return v && (Array.isArray(v) ? v.length > 0 : v.trim() !== '');
   }).length;
   const progress = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
+  progressRef.current = progress;
+
+  /* ───── Idle detection — nudge pausing customers ───── */
+  useEffect(() => {
+    const idleMessages = [
+      '需要幫忙嗎？隨意選擇就好，沒有標準答案 😊',
+      '你的每一個回答都很重要，店家會用心改進 ✨',
+      '快完成了！填完就能拿到折扣碼喔 🎫',
+      '只需要你的真實感受，怎麼選都對 👍',
+      '休息一下也沒關係，我在這等你～ ☕',
+    ];
+
+    function resetIdleTimer() {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = setTimeout(() => {
+        if (progressRef.current < 100) {
+          const msg = idleMessages[idleCountRef.current % idleMessages.length];
+          showCompanionRef.current({ text: msg, priority: 4 });
+          idleCountRef.current++;
+        }
+      }, 15000);
+    }
+
+    resetIdleTimer();
+    const events = ['touchstart', 'click', 'scroll', 'keydown'];
+    events.forEach(e => window.addEventListener(e, resetIdleTimer, { passive: true }));
+
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      events.forEach(e => window.removeEventListener(e, resetIdleTimer));
+    };
+  }, []);
 
   const isLastSection = currentSection === sections.length - 1;
   const currentLevel = getLevel(xp);
@@ -336,6 +374,7 @@ export default function SurveyRenderer({
       }, 400);
     }, 2500);
   }, []);
+  showCompanionRef.current = showCompanionMessage;
 
   /* ───── Achievement trigger ───── */
   const triggerAchievement = useCallback((id: string) => {

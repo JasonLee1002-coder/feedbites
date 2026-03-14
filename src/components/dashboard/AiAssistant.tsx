@@ -65,7 +65,9 @@ function getPageMessages(pathname: string, context?: { dishCount?: number; surve
   if (pathname.includes('/settings')) {
     return [
       '上傳 Logo 讓問卷更有品牌感，客人會覺得更專業。',
+      '記得填寫「店家資料」！我們會根據這些資訊提供同業比較和經營建議。',
       '邀請夥伴一起管理店家，大家權限相同，協作更方便。',
+      '料理類型、客單價、地區 — 這三個欄位最重要，填完就能解鎖分析功能。',
     ];
   }
 

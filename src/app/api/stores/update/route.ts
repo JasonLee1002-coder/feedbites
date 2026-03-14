@@ -16,8 +16,12 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json();
 
     // Only allow updating specific fields
-    const allowedFields = ['store_name', 'frame_id', 'logo_url'];
-    const updates: Record<string, string | null> = {};
+    const allowedFields = [
+      'store_name', 'frame_id', 'logo_url',
+      'cuisine_type', 'city', 'district', 'price_range',
+      'seating_capacity', 'opening_year', 'target_audience', 'service_type',
+    ];
+    const updates: Record<string, string | number | null> = {};
     for (const key of allowedFields) {
       if (key in body) updates[key] = body[key];
     }

@@ -75,7 +75,7 @@ export interface DiscountCode {
   created_at: string;
 }
 
-export type TemplateId = 'fine-dining' | 'japanese' | 'industrial' | 'cafe' | 'chinese-classic';
+export type TemplateId = 'fine-dining' | 'japanese' | 'industrial' | 'cafe' | 'chinese-classic' | 'ocean' | 'night-market' | 'dessert' | 'korean';
 
 export interface ThemeColors {
   primary: string;

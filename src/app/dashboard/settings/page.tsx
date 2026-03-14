@@ -18,6 +18,16 @@ export default async function SettingsPage() {
       logoUrl={store.logo_url || null}
       frameId={store.frame_id || 'classic-gold'}
       isOwner={store.user_id === user.id}
+      metadata={{
+        cuisine_type: store.cuisine_type || '',
+        city: store.city || '',
+        district: store.district || '',
+        price_range: store.price_range || '',
+        seating_capacity: store.seating_capacity || null,
+        opening_year: store.opening_year || null,
+        target_audience: store.target_audience || '',
+        service_type: store.service_type || '',
+      }}
     />
   );
 }

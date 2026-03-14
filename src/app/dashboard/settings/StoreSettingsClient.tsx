@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { qrFrames, type QrFrame } from '@/lib/qr-frames';
-import { Upload, Check, Save, Loader2, ImageIcon, Palette, Store, Users, UserPlus, X, Mail, Clock, LogOut, Crown, Trash2, AlertTriangle } from 'lucide-react';
+import { Upload, Check, Save, Loader2, ImageIcon, Palette, Store, Users, UserPlus, X, Mail, Clock, LogOut, Crown, Trash2, AlertTriangle, Sparkles, MapPin, BarChart3 } from 'lucide-react';
 
 interface Member {
   id: string;
@@ -23,15 +23,32 @@ interface MembersData {
   invites: Invite[];
 }
 
+interface StoreMetadata {
+  cuisine_type: string;
+  city: string;
+  district: string;
+  price_range: string;
+  seating_capacity: number | null;
+  opening_year: number | null;
+  target_audience: string;
+  service_type: string;
+}
+
 interface Props {
   storeId: string;
   storeName: string;
   logoUrl: string | null;
   frameId: string;
   isOwner: boolean;
+  metadata?: StoreMetadata;
 }
 
-export default function StoreSettingsClient({ storeId, storeName, logoUrl: initialLogo, frameId: initialFrameId, isOwner }: Props) {
+const CUISINE_TYPES = ['日料', '中餐', '西餐', '韓式', '泰式', '咖啡廳', '酒吧', '甜點', '海鮮', '夜市小吃', '早午餐', '火鍋', '燒烤', '素食', '其他'];
+const PRICE_RANGES = ['100 以下', '100-300', '300-600', '600-1000', '1000 以上'];
+const TARGET_AUDIENCES = ['上班族', '學生', '家庭', '觀光客', '商務', '約會情侶', '銀髮族'];
+const SERVICE_TYPES = ['內用', '外帶', '外送', '內用+外帶', '複合式'];
+
+export default function StoreSettingsClient({ storeId, storeName, logoUrl: initialLogo, frameId: initialFrameId, isOwner, metadata: initialMetadata }: Props) {
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogo);
   const [selectedFrameId, setSelectedFrameId] = useState(initialFrameId);
   const [uploading, setUploading] = useState(false);
@@ -39,6 +56,34 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Store metadata
+  const [meta, setMeta] = useState<StoreMetadata>(initialMetadata || {
+    cuisine_type: '', city: '', district: '', price_range: '',
+    seating_capacity: null, opening_year: null, target_audience: '', service_type: '',
+  });
+  const [metaSaving, setMetaSaving] = useState(false);
+  const [metaSaved, setMetaSaved] = useState(false);
+
+  const metaFilled = [meta.cuisine_type, meta.city, meta.price_range, meta.service_type].filter(Boolean).length;
+  const metaTotal = 4;
+
+  async function handleMetaSave() {
+    setMetaSaving(true);
+    try {
+      const res = await fetch('/api/stores/update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(meta),
+      });
+      if (res.ok) {
+        setMetaSaved(true);
+        setTimeout(() => setMetaSaved(false), 3000);
+      }
+    } catch { /* ignore */ } finally {
+      setMetaSaving(false);
+    }
+  }
 
   // Member management state
   const [membersData, setMembersData] = useState<MembersData | null>(null);
@@ -418,6 +463,181 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
               ))}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* ═══ Store Profile (Big Data) ═══ */}
+      <div className="bg-white rounded-2xl border border-[#E8E2D8] p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-[#C5A55A]" />
+            <h2 className="font-bold text-[#3A3A3A]">店家資料</h2>
+          </div>
+          <span className="text-[10px] px-2 py-1 bg-[#FF8C00]/10 text-[#FF8C00] rounded-full">
+            {metaFilled}/{metaTotal} 已填寫
+          </span>
+        </div>
+
+        {metaFilled < metaTotal && (
+          <div className="flex items-start gap-2 mb-4 p-3 bg-[#FF8C00]/5 rounded-xl border border-[#FF8C00]/10">
+            <Sparkles className="w-4 h-4 text-[#FF8C00] shrink-0 mt-0.5" />
+            <p className="text-xs text-[#3A3A3A]">
+              副店長提醒：填寫店家資料有助於我們提供更精準的經營建議和同業比較分析！
+            </p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Cuisine Type */}
+          <div>
+            <label className="block text-xs font-medium text-[#3A3A3A] mb-1.5">料理類型 *</label>
+            <div className="flex flex-wrap gap-1.5">
+              {CUISINE_TYPES.map(t => (
+                <button
+                  key={t}
+                  onClick={() => setMeta(m => ({ ...m, cuisine_type: m.cuisine_type === t ? '' : t }))}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] transition-colors ${
+                    meta.cuisine_type === t
+                      ? 'bg-[#C5A55A] text-white'
+                      : 'bg-[#FAF7F2] text-[#8A8585] border border-[#E8E2D8] hover:border-[#C5A55A]'
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Price Range */}
+          <div>
+            <label className="block text-xs font-medium text-[#3A3A3A] mb-1.5">平均客單價 (NT$) *</label>
+            <div className="flex flex-wrap gap-1.5">
+              {PRICE_RANGES.map(p => (
+                <button
+                  key={p}
+                  onClick={() => setMeta(m => ({ ...m, price_range: m.price_range === p ? '' : p }))}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] transition-colors ${
+                    meta.price_range === p
+                      ? 'bg-[#C5A55A] text-white'
+                      : 'bg-[#FAF7F2] text-[#8A8585] border border-[#E8E2D8] hover:border-[#C5A55A]'
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* City */}
+          <div>
+            <label className="block text-xs font-medium text-[#3A3A3A] mb-1.5">
+              <MapPin className="w-3 h-3 inline mr-1" />
+              城市 *
+            </label>
+            <input
+              type="text"
+              value={meta.city}
+              onChange={e => setMeta(m => ({ ...m, city: e.target.value }))}
+              placeholder="例如：高雄市"
+              className="w-full px-3 py-2 rounded-lg border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] bg-[#FAF7F2]"
+            />
+          </div>
+
+          {/* District */}
+          <div>
+            <label className="block text-xs font-medium text-[#3A3A3A] mb-1.5">區域 / 商圈</label>
+            <input
+              type="text"
+              value={meta.district}
+              onChange={e => setMeta(m => ({ ...m, district: e.target.value }))}
+              placeholder="例如：駁二特區、信義區"
+              className="w-full px-3 py-2 rounded-lg border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] bg-[#FAF7F2]"
+            />
+          </div>
+
+          {/* Service Type */}
+          <div>
+            <label className="block text-xs font-medium text-[#3A3A3A] mb-1.5">服務類型 *</label>
+            <div className="flex flex-wrap gap-1.5">
+              {SERVICE_TYPES.map(s => (
+                <button
+                  key={s}
+                  onClick={() => setMeta(m => ({ ...m, service_type: m.service_type === s ? '' : s }))}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] transition-colors ${
+                    meta.service_type === s
+                      ? 'bg-[#C5A55A] text-white'
+                      : 'bg-[#FAF7F2] text-[#8A8585] border border-[#E8E2D8] hover:border-[#C5A55A]'
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Target Audience */}
+          <div>
+            <label className="block text-xs font-medium text-[#3A3A3A] mb-1.5">主要客群</label>
+            <div className="flex flex-wrap gap-1.5">
+              {TARGET_AUDIENCES.map(a => (
+                <button
+                  key={a}
+                  onClick={() => setMeta(m => ({ ...m, target_audience: m.target_audience === a ? '' : a }))}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] transition-colors ${
+                    meta.target_audience === a
+                      ? 'bg-[#C5A55A] text-white'
+                      : 'bg-[#FAF7F2] text-[#8A8585] border border-[#E8E2D8] hover:border-[#C5A55A]'
+                  }`}
+                >
+                  {a}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Seating */}
+          <div>
+            <label className="block text-xs font-medium text-[#3A3A3A] mb-1.5">座位數</label>
+            <input
+              type="number"
+              value={meta.seating_capacity ?? ''}
+              onChange={e => setMeta(m => ({ ...m, seating_capacity: e.target.value ? Number(e.target.value) : null }))}
+              placeholder="例如：40"
+              className="w-full px-3 py-2 rounded-lg border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] bg-[#FAF7F2]"
+            />
+          </div>
+
+          {/* Opening Year */}
+          <div>
+            <label className="block text-xs font-medium text-[#3A3A3A] mb-1.5">開業年份</label>
+            <input
+              type="number"
+              value={meta.opening_year ?? ''}
+              onChange={e => setMeta(m => ({ ...m, opening_year: e.target.value ? Number(e.target.value) : null }))}
+              placeholder="例如：2020"
+              className="w-full px-3 py-2 rounded-lg border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] bg-[#FAF7F2]"
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end mt-4">
+          <button
+            onClick={handleMetaSave}
+            disabled={metaSaving}
+            className={`inline-flex items-center gap-2 px-5 py-2 text-sm font-medium rounded-xl transition-all ${
+              metaSaved
+                ? 'bg-emerald-500 text-white'
+                : 'bg-[#C5A55A] text-white hover:bg-[#A08735]'
+            } disabled:opacity-50`}
+          >
+            {metaSaving ? (
+              <><Loader2 className="w-4 h-4 animate-spin" />儲存中...</>
+            ) : metaSaved ? (
+              <><Check className="w-4 h-4" />已儲存</>
+            ) : (
+              <><Save className="w-4 h-4" />儲存資料</>
+            )}
+          </button>
         </div>
       </div>
 
