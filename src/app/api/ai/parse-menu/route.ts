@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
+import { createServerSupabase } from '@/lib/supabase/server';
 import { getSelectedStore } from '@/lib/store-context';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -25,7 +25,17 @@ export async function POST(request: NextRequest) {
     // Convert image to base64
     const bytes = await image.arrayBuffer();
     const base64Image = Buffer.from(bytes).toString('base64');
-    const mimeType = image.type || 'image/jpeg';
+
+    // Normalize MIME type — Gemini supports jpeg, png, webp, gif
+    let mimeType = image.type || 'image/jpeg';
+    // Some browsers send empty or wrong MIME for webp
+    if (!mimeType.startsWith('image/')) {
+      const name = image.name.toLowerCase();
+      if (name.endsWith('.webp')) mimeType = 'image/webp';
+      else if (name.endsWith('.png')) mimeType = 'image/png';
+      else if (name.endsWith('.jpg') || name.endsWith('.jpeg')) mimeType = 'image/jpeg';
+      else mimeType = 'image/jpeg';
+    }
 
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
@@ -38,37 +48,56 @@ export async function POST(request: NextRequest) {
       },
       {
         text: `你是餐廳菜單辨識 AI。請仔細分析這張菜單圖片，辨識出所有菜品。
+圖片可能是手繪、印刷、照片、插畫風格的菜單，都請盡力辨識。
+如果是英文菜名，請同時提供中文翻譯。
 
 對每道菜品，請提供：
-1. name: 菜品名稱
+1. name: 菜品名稱（中文，如果原文是英文請翻譯）
 2. description: 簡短描述（根據圖片上的文字或你對這道菜的了解，20-40字）
 3. category: 分類（從以下選擇：主食、前菜、湯品、甜點、飲品、小吃、套餐、其他）
-4. price: 如果圖片上有價格就填寫，沒有就留空
+4. price: 如果圖片上有價格就填寫，沒有就留空字串
 
 回覆 JSON 格式：
 {
   "dishes": [
-    { "name": "菜名", "description": "描述", "category": "分類", "price": "價格或空" }
+    { "name": "菜名", "description": "描述", "category": "分類", "price": "" }
   ],
   "total": 辨識到的菜品數量,
-  "notes": "任何額外說明（例如：部分文字模糊無法辨識）"
+  "notes": "任何額外說明"
 }
 
-只回覆 JSON，不要其他文字。盡可能辨識所有菜品，即使文字不完全清楚也嘗試猜測。`,
+只回覆 JSON，不要 markdown 格式，不要 \`\`\`json 標記。盡可能辨識所有菜品。`,
       },
     ]);
 
     const text = result.response.text();
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    // Try to extract JSON from response (may be wrapped in ```json blocks)
+    const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
 
     if (!jsonMatch) {
-      return NextResponse.json({ error: '無法辨識菜單內容' }, { status: 422 });
+      console.error('Menu parse: no JSON found in response:', text.substring(0, 500));
+      return NextResponse.json({ error: '無法辨識菜單內容，請換一張更清晰的圖片' }, { status: 422 });
     }
 
-    const parsed = JSON.parse(jsonMatch[0]);
-    return NextResponse.json(parsed);
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      return NextResponse.json(parsed);
+    } catch (parseErr) {
+      console.error('Menu parse: JSON parse error:', parseErr, 'raw:', jsonMatch[0].substring(0, 300));
+      return NextResponse.json({ error: 'AI 回傳格式異常，請重試' }, { status: 422 });
+    }
   } catch (err) {
-    console.error('Menu parse error:', err);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error('Menu parse error:', errMsg);
+
+    if (errMsg.includes('SAFETY') || errMsg.includes('blocked')) {
+      return NextResponse.json({ error: '圖片內容無法處理，請換一張菜單圖片' }, { status: 422 });
+    }
+    if (errMsg.includes('too large') || errMsg.includes('size')) {
+      return NextResponse.json({ error: '圖片太大，請壓縮後再試（建議 5MB 以下）' }, { status: 413 });
+    }
+
     return NextResponse.json({ error: '菜單辨識失敗，請重試' }, { status: 500 });
   }
 }
