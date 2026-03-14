@@ -51,8 +51,9 @@ const SERVICE_TYPES = ['內用', '外帶', '外送', '內用+外帶', '複合式
 
 export default function StoreSettingsClient({ storeId, storeName, logoUrl: initialLogo, avatarUrl: initialAvatar, frameId: initialFrameId, isOwner, metadata: initialMetadata }: Props) {
   const [editStoreName, setEditStoreName] = useState(storeName);
-  const [nameEditing, setNameEditing] = useState(false);
-  const [nameSaving, setNameSaving] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatar);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogo);
   const [selectedFrameId, setSelectedFrameId] = useState(initialFrameId);
   const [uploading, setUploading] = useState(false);
@@ -316,19 +317,74 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
         </div>
       )}
 
-      {/* ═══ Store Name ═══ */}
+      {/* ═══ Store Name + Owner Avatar ═══ */}
       <div className="bg-white rounded-2xl border border-[#E8E2D8] p-6 mb-6">
-        <h2 className="font-bold text-[#3A3A3A] mb-3 flex items-center gap-2">
-          <Store className="w-4 h-4 text-[#C5A55A]" />
-          餐廳名稱
-        </h2>
-        <input
-          type="text"
-          value={editStoreName}
-          onChange={e => setEditStoreName(e.target.value)}
-          placeholder="輸入你的餐廳名稱"
-          className="w-full px-4 py-2.5 rounded-xl border border-[#E8E2D8] text-base font-bold outline-none focus:border-[#C5A55A] focus:ring-2 focus:ring-[#C5A55A]/20 bg-[#FAF7F2] font-serif text-[#3A3A3A]"
-        />
+        <div className="flex items-start gap-5">
+          {/* Avatar upload */}
+          <div className="shrink-0">
+            <button
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={avatarUploading}
+              className="relative w-16 h-16 rounded-full border-2 border-dashed border-[#E8E2D8] hover:border-[#C5A55A] transition-colors overflow-hidden bg-[#FAF7F2] group"
+            >
+              {avatarUrl ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={avatarUrl} alt="店長" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Upload className="w-4 h-4 text-white" />
+                  </div>
+                </>
+              ) : avatarUploading ? (
+                <Loader2 className="w-5 h-5 text-[#8A8585] animate-spin absolute inset-0 m-auto" />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full">
+                  <span className="text-lg">👤</span>
+                  <span className="text-[8px] text-[#8A8585]">上傳頭像</span>
+                </div>
+              )}
+            </button>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setAvatarUploading(true);
+                try {
+                  const formData = new FormData();
+                  formData.append('avatar', file);
+                  const res = await fetch('/api/stores/upload-avatar', { method: 'POST', body: formData });
+                  if (res.ok) {
+                    const data = await res.json();
+                    setAvatarUrl(data.avatar_url);
+                  }
+                } catch { /* ignore */ } finally {
+                  setAvatarUploading(false);
+                  if (avatarInputRef.current) avatarInputRef.current.value = '';
+                }
+              }}
+            />
+          </div>
+
+          {/* Store name */}
+          <div className="flex-1">
+            <h2 className="font-bold text-[#3A3A3A] mb-3 flex items-center gap-2">
+              <Store className="w-4 h-4 text-[#C5A55A]" />
+              餐廳名稱
+            </h2>
+            <input
+              type="text"
+              value={editStoreName}
+              onChange={e => setEditStoreName(e.target.value)}
+              placeholder="輸入你的餐廳名稱"
+              className="w-full px-4 py-2.5 rounded-xl border border-[#E8E2D8] text-base font-bold outline-none focus:border-[#C5A55A] focus:ring-2 focus:ring-[#C5A55A]/20 bg-[#FAF7F2] font-serif text-[#3A3A3A]"
+            />
+            <p className="text-[10px] text-[#8A8585] mt-1.5">上傳頭像後，副店長圖示會變成你的照片</p>
+          </div>
+        </div>
       </div>
 
       {/* ═══ Logo Upload ═══ */}
