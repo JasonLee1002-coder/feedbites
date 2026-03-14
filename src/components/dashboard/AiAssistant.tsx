@@ -9,6 +9,8 @@ import confetti from 'canvas-confetti';
 
 interface BubbleMessage {
   text: string;
+  link?: string;  // clickable navigation
+  linkLabel?: string;
 }
 
 function getPageMessages(pathname: string, context?: { dishCount?: number; surveyCount?: number }): string[] {
@@ -94,32 +96,46 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
 
   const rawPageMessages = getPageMessages(pathname, { dishCount, surveyCount });
 
-  // Smart proactive messages — guide the user to the next step
-  const getProactiveMessage = (): string | null => {
+  // Smart proactive messages with navigation links
+  // Flow: 設定(Logo+資料) → 菜單 → 問卷 → QR Code
+  const getProactiveMessage = (): BubbleMessage | null => {
     if (pathname.includes('/settings')) {
-      if (!hasLogo && dishCount === 0) return '填完資料記得上傳 Logo 喔！然後去菜單頁建立你的招牌菜 → 🍽️';
-      if (!hasLogo) return '差一步！上傳 Logo 讓你的問卷更有品牌感 📸';
-      if (dishCount === 0) return '設定完成！下一步去「菜單管理」上傳你的招牌菜吧 →';
-      if (surveyCount === 0) return '太好了！店家設定完成 ✨ 下一步去「問卷管理」建立第一份問卷吧！';
+      if (!hasLogo && dishCount === 0) return { text: '填完資料記得上傳 Logo 喔！然後下一步去建菜單 ✨', link: '/dashboard/menu', linkLabel: '去建立菜單 →' };
+      if (!hasLogo) return { text: '差一步！上傳 Logo 讓你的問卷更有品牌感 📸' };
+      if (dishCount === 0) return { text: '設定完成！下一步去建立你的招牌菜吧', link: '/dashboard/menu', linkLabel: '去建立菜單 →' };
+      if (surveyCount === 0) return { text: '太好了！設定和菜單都搞定了 ✨ 來建立問卷吧', link: '/dashboard/surveys/new', linkLabel: '去建立問卷 →' };
       return null;
     }
     if (pathname.includes('/menu')) {
-      if (dishCount > 0 && surveyCount === 0) return `已經有 ${dishCount} 道菜了！下一步去建立問卷，讓客人幫你評分 →`;
+      if (dishCount === 0) return { text: '上傳你的菜單照片，我幫你自動辨識！或手動新增也行', link: undefined, linkLabel: undefined };
+      if (surveyCount === 0) return { text: `菜單有 ${dishCount} 道菜了！下一步建立問卷讓客人評分`, link: '/dashboard/surveys/new', linkLabel: '去建立問卷 →' };
       return null;
     }
+    if (pathname.includes('/surveys/new')) {
+      return null; // 正在建問卷，不要打擾
+    }
+    if (pathname.includes('/surveys')) {
+      if (surveyCount > 0 && responseCount === 0) return { text: '問卷已建好！列印 QR Code 放桌上就能收回饋', link: undefined, linkLabel: undefined };
+      return null;
+    }
+    // Dashboard home — guide to next incomplete step
     if (pathname === '/dashboard' || pathname === '/dashboard/') {
-      if (!hasLogo && dishCount === 0 && surveyCount === 0) return '歡迎！我是你的副店長，讓我帶你快速上手 — 先去「店家設定」填寫基本資料吧 ✨';
-      if (dishCount === 0) return '下一步建議去「菜單管理」上傳你的招牌菜！';
-      if (surveyCount === 0) return '菜單建好了！去「問卷管理」建立第一份問卷吧 📋';
-      if (responseCount === 0) return '問卷已上線！把 QR Code 印出來放桌上，等回覆進來 📱';
-      if (responseCount > 0 && responseCount < 10) return `已收到 ${responseCount} 筆回覆，繼續加油！定期查看回饋是最好的經營習慣 💪`;
+      if (!hasLogo && dishCount === 0 && surveyCount === 0) return { text: '嗨！我是你的副店長 ✨ 先來設定店家基本資料吧', link: '/dashboard/settings', linkLabel: '前往設定 →' };
+      if (!hasLogo) return { text: '記得去設定頁上傳 Logo，品牌感很重要！', link: '/dashboard/settings', linkLabel: '前往設定 →' };
+      if (dishCount === 0) return { text: '下一步去建立菜單！上傳招牌菜照片吧', link: '/dashboard/menu', linkLabel: '去建立菜單 →' };
+      if (surveyCount === 0) return { text: '菜單建好了！來建立第一份問卷吧', link: '/dashboard/surveys/new', linkLabel: '去建立問卷 →' };
+      if (responseCount === 0) return { text: '問卷上線了！列印 QR Code 放桌上開始收集回饋', link: '/dashboard/surveys', linkLabel: '查看問卷 →' };
+      if (responseCount > 0 && responseCount < 10) return { text: `已收到 ${responseCount} 筆回覆，繼續加油！💪` };
       return null;
     }
     return null;
   };
 
   const proactiveMsg = getProactiveMessage();
-  const pageMessages = proactiveMsg ? [proactiveMsg, ...rawPageMessages] : rawPageMessages;
+  const pageMessages: BubbleMessage[] = [
+    ...(proactiveMsg ? [proactiveMsg] : []),
+    ...rawPageMessages.map(text => ({ text })),
+  ];
 
   // Onboarding
   const onboardingSteps = [
@@ -300,14 +316,24 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
               <div className="flex items-start gap-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/feedbites-logo.png" alt="" className="w-5 h-5 object-contain shrink-0" />
-                <p className="text-xs text-[#3A3A3A] leading-relaxed">
-                  {displayedText}
-                  <motion.span
-                    className="inline-block w-0.5 h-3 bg-[#FF8C00] ml-0.5 align-middle"
-                    animate={{ opacity: [1, 0] }}
-                    transition={{ duration: 0.5, repeat: Infinity }}
-                  />
-                </p>
+                <div className="text-xs text-[#3A3A3A] leading-relaxed">
+                  <span>
+                    {displayedText}
+                    <motion.span
+                      className="inline-block w-0.5 h-3 bg-[#FF8C00] ml-0.5 align-middle"
+                      animate={{ opacity: [1, 0] }}
+                      transition={{ duration: 0.5, repeat: Infinity }}
+                    />
+                  </span>
+                  {proactiveMsg?.link && displayedText.length === proactiveMsg.text.length && (
+                    <Link
+                      href={proactiveMsg.link}
+                      className="inline-block mt-2 px-3 py-1 bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] text-white text-[10px] font-bold rounded-md hover:shadow-md transition-all"
+                    >
+                      {proactiveMsg.linkLabel || '前往 →'}
+                    </Link>
+                  )}
+                </div>
               </div>
               <button
                 onClick={() => setShowBubble(false)}
@@ -362,7 +388,16 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src="/feedbites-logo.png" alt="" className="w-4 h-4 object-contain shrink-0 mt-0.5" />
                   <div className="bg-[#FAF7F2] rounded-2xl rounded-tl-md px-3.5 py-2.5 text-xs text-[#3A3A3A] leading-relaxed max-w-[260px]">
-                    {msg.text}
+                    <span>{msg.text}</span>
+                    {msg.link && (
+                      <Link
+                        href={msg.link}
+                        onClick={() => setIsOpen(false)}
+                        className="block mt-2 px-3 py-1.5 bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] text-white text-[11px] font-bold rounded-lg text-center hover:shadow-md hover:shadow-[#FF8C00]/20 transition-all"
+                      >
+                        {msg.linkLabel || '前往 →'}
+                      </Link>
+                    )}
                   </div>
                 </motion.div>
               ))}
