@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import HeroSection from '@/components/landing/HeroSection';
 import FeaturesSection from '@/components/landing/FeaturesSection';
@@ -88,10 +89,13 @@ export default function LandingPage() {
       {/* Nav */}
       <nav className="relative z-50 flex items-center justify-between px-6 py-4 max-w-6xl mx-auto">
         <div className="flex items-center gap-2">
-          <img
+          <Image
             src="/feedbites-logo.png"
             alt="FeedBites — 免費餐廳問卷系統"
-            className="h-10 object-contain"
+            width={160}
+            height={40}
+            className="h-10 w-auto object-contain"
+            priority
           />
         </div>
         <Link
@@ -157,10 +161,12 @@ export default function LandingPage() {
       <footer className="py-12 px-6 bg-[#2A2A2A]">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-6">
-            <img
+            <Image
               src="/feedbites-logo.png"
               alt="FeedBites"
-              className="h-10 mx-auto mb-4 object-contain"
+              width={160}
+              height={40}
+              className="h-10 w-auto mx-auto mb-4 object-contain"
             />
           </div>
           <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-white/40 mb-6">

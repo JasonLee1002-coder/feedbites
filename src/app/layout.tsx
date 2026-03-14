@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { Noto_Sans_TC, Noto_Serif_TC } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import './globals.css';
 
 const notoSans = Noto_Sans_TC({
@@ -112,6 +114,8 @@ export default function RootLayout({
       </head>
       <body className={`${notoSans.variable} ${notoSerif.variable} font-sans antialiased`}>
         {children}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
