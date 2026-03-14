@@ -269,22 +269,33 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
     }
   }
 
-  async function handleSave() {
+  async function handleSaveAll() {
     setSaving(true);
     setError('');
     setSaved(false);
 
     try {
+      // Save frame + store name + metadata all at once
       const res = await fetch('/api/stores/update', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ frame_id: selectedFrameId }),
+        body: JSON.stringify({
+          frame_id: selectedFrameId,
+          store_name: editStoreName.trim() || storeName,
+          ...meta,
+        }),
       });
 
       if (!res.ok) throw new Error('儲存失敗');
 
       setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      setMetaSaved(true);
+      setTimeout(() => { setSaved(false); setMetaSaved(false); }, 3000);
+
+      // Reload if store name changed
+      if (editStoreName.trim() && editStoreName.trim() !== storeName) {
+        setTimeout(() => window.location.reload(), 500);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '儲存失敗');
     } finally {
@@ -307,74 +318,17 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
 
       {/* ═══ Store Name ═══ */}
       <div className="bg-white rounded-2xl border border-[#E8E2D8] p-6 mb-6">
-        <h2 className="font-bold text-[#3A3A3A] mb-4 flex items-center gap-2">
+        <h2 className="font-bold text-[#3A3A3A] mb-3 flex items-center gap-2">
           <Store className="w-4 h-4 text-[#C5A55A]" />
           餐廳名稱
         </h2>
-        <div className="flex items-center gap-3">
-          {nameEditing ? (
-            <>
-              <input
-                type="text"
-                value={editStoreName}
-                onChange={e => setEditStoreName(e.target.value)}
-                autoFocus
-                className="flex-1 px-4 py-2.5 rounded-xl border border-[#C5A55A] text-sm outline-none focus:ring-2 focus:ring-[#C5A55A]/30 bg-[#FAF7F2]"
-                onKeyDown={async e => {
-                  if (e.key === 'Enter' && editStoreName.trim()) {
-                    setNameSaving(true);
-                    const res = await fetch('/api/stores/update', {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ store_name: editStoreName.trim() }),
-                    });
-                    if (res.ok) {
-                      setNameEditing(false);
-                      window.location.reload();
-                    }
-                    setNameSaving(false);
-                  }
-                }}
-              />
-              <button
-                onClick={async () => {
-                  if (!editStoreName.trim()) return;
-                  setNameSaving(true);
-                  const res = await fetch('/api/stores/update', {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ store_name: editStoreName.trim() }),
-                  });
-                  if (res.ok) {
-                    setNameEditing(false);
-                    window.location.reload();
-                  }
-                  setNameSaving(false);
-                }}
-                disabled={nameSaving}
-                className="px-4 py-2.5 bg-[#C5A55A] text-white text-sm font-medium rounded-xl hover:bg-[#A08735] disabled:opacity-50"
-              >
-                {nameSaving ? '儲存中...' : '儲存'}
-              </button>
-              <button
-                onClick={() => { setNameEditing(false); setEditStoreName(storeName); }}
-                className="px-3 py-2.5 text-[#8A8585] text-sm hover:text-[#3A3A3A]"
-              >
-                取消
-              </button>
-            </>
-          ) : (
-            <>
-              <span className="text-lg font-bold text-[#3A3A3A] font-serif">{storeName}</span>
-              <button
-                onClick={() => setNameEditing(true)}
-                className="px-3 py-1.5 text-xs text-[#C5A55A] border border-[#C5A55A]/30 rounded-lg hover:bg-[#C5A55A]/5 transition-colors"
-              >
-                編輯名稱
-              </button>
-            </>
-          )}
-        </div>
+        <input
+          type="text"
+          value={editStoreName}
+          onChange={e => setEditStoreName(e.target.value)}
+          placeholder="輸入你的餐廳名稱"
+          className="w-full px-4 py-2.5 rounded-xl border border-[#E8E2D8] text-base font-bold outline-none focus:border-[#C5A55A] focus:ring-2 focus:ring-[#C5A55A]/20 bg-[#FAF7F2] font-serif text-[#3A3A3A]"
+        />
       </div>
 
       {/* ═══ Logo Upload ═══ */}
@@ -750,33 +704,14 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
           </div>
         </div>
 
-        <div className="flex justify-end mt-4">
-          <button
-            onClick={handleMetaSave}
-            disabled={metaSaving}
-            className={`inline-flex items-center gap-2 px-5 py-2 text-sm font-medium rounded-xl transition-all ${
-              metaSaved
-                ? 'bg-emerald-500 text-white'
-                : 'bg-[#C5A55A] text-white hover:bg-[#A08735]'
-            } disabled:opacity-50`}
-          >
-            {metaSaving ? (
-              <><Loader2 className="w-4 h-4 animate-spin" />儲存中...</>
-            ) : metaSaved ? (
-              <><Check className="w-4 h-4" />已儲存</>
-            ) : (
-              <><Save className="w-4 h-4" />儲存資料</>
-            )}
-          </button>
-        </div>
       </div>
 
-      {/* ═══ Save Button (frame settings) ═══ */}
+      {/* ═══ Save All ═══ */}
       <div className="flex justify-end mb-6">
         <button
-          onClick={handleSave}
+          onClick={handleSaveAll}
           disabled={saving}
-          className={`inline-flex items-center gap-2 px-6 py-3 text-white text-sm font-bold rounded-xl transition-all shadow-md ${
+          className={`inline-flex items-center gap-2 px-8 py-3 text-white text-sm font-bold rounded-xl transition-all shadow-md ${
             saved
               ? 'bg-emerald-500'
               : 'bg-[#C5A55A] hover:bg-[#A08735]'
@@ -785,9 +720,9 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
           {saving ? (
             <><Loader2 className="w-4 h-4 animate-spin" />儲存中...</>
           ) : saved ? (
-            <><Check className="w-4 h-4" />已儲存</>
+            <><Check className="w-4 h-4" />已儲存！</>
           ) : (
-            <><Save className="w-4 h-4" />儲存底圖設定</>
+            <><Save className="w-4 h-4" />儲存所有設定</>
           )}
         </button>
       </div>
