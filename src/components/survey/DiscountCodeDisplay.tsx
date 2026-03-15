@@ -54,18 +54,20 @@ function ScratchCard({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Fill cover
+    // Fill cover at 2x resolution
+    const w2 = width * 2;
+    const h2 = height * 2;
     ctx.fillStyle = coverColor;
-    ctx.fillRect(0, 0, width, height);
+    ctx.fillRect(0, 0, w2, h2);
 
-    // Instructional text
+    // Instructional text (2x scale)
     ctx.fillStyle = 'rgba(255,255,255,0.9)';
-    ctx.font = 'bold 20px sans-serif';
+    ctx.font = 'bold 40px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('👆 刮刮看', width / 2, height / 2 - 12);
-    ctx.font = '14px sans-serif';
-    ctx.fillText('刮開查看你的獎勵', width / 2, height / 2 + 18);
+    ctx.fillText('👆 刮刮看', w2 / 2, h2 / 2 - 24);
+    ctx.font = '28px sans-serif';
+    ctx.fillText('刮開查看你的獎勵', w2 / 2, h2 / 2 + 36);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -93,18 +95,19 @@ function ScratchCard({
 
       ctx.globalCompositeOperation = 'destination-out';
 
-      // Draw a line from the last point to the current point for smooth strokes
+      // Draw at 2x scale for retina
+      const x2 = x * 2, y2 = y * 2;
       if (lastPoint.current) {
-        ctx.lineWidth = 50;
+        ctx.lineWidth = 80;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         ctx.beginPath();
-        ctx.moveTo(lastPoint.current.x, lastPoint.current.y);
-        ctx.lineTo(x, y);
+        ctx.moveTo(lastPoint.current.x * 2, lastPoint.current.y * 2);
+        ctx.lineTo(x2, y2);
         ctx.stroke();
       } else {
         ctx.beginPath();
-        ctx.arc(x, y, 25, 0, Math.PI * 2);
+        ctx.arc(x2, y2, 40, 0, Math.PI * 2);
         ctx.fill();
       }
 
@@ -130,6 +133,7 @@ function ScratchCard({
     const percentage = transparent / (imageData.data.length / 4);
     if (percentage > 0.4) {
       revealedRef.current = true;
+      setRevealed(true);
       // Fade-clear the remaining cover
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       onReveal();
@@ -190,19 +194,26 @@ function ScratchCard({
     lastPoint.current = null;
   }, []);
 
+  const [revealed, setRevealed] = useState(false);
+
   return (
     <div className="relative" style={{ width, height }}>
-      {/* Content underneath the scratch cover */}
-      <div className="absolute inset-0 flex items-center justify-center">
+      {/* Content underneath — hidden until scratched enough */}
+      <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-500 ${revealed ? 'opacity-100' : 'opacity-0'}`}>
         {children}
       </div>
+
+      {/* Solid background when not revealed */}
+      {!revealed && (
+        <div className="absolute inset-0 rounded-2xl" style={{ background: coverColor }} />
+      )}
 
       {/* Scratch canvas overlay */}
       <canvas
         ref={canvasRef}
-        width={width}
-        height={height}
-        className="absolute inset-0 rounded-2xl cursor-pointer"
+        width={width * 2}
+        height={height * 2}
+        className="absolute inset-0 rounded-2xl cursor-pointer w-full h-full"
         style={{ touchAction: 'none' }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
