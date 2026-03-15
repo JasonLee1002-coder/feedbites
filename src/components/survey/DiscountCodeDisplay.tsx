@@ -685,29 +685,7 @@ export default function DiscountCodeDisplay({
         <PhoneCollect colors={colors} storeName={storeName} onSubmit={onPhoneSubmit} responseId={responseId} surveyId={surveyId} />
       )}
 
-      {/* ---- FeedBites viral banner (post-completion, not during survey) ---- */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.2, duration: 0.6 }}
-        className="mt-8 w-full max-w-sm p-5 rounded-2xl text-center"
-        style={{ background: `${colors.primary}08`, border: `1px solid ${colors.border}` }}
-      >
-        <p className="text-xs mb-2" style={{ color: colors.textLight }}>
-          你也是餐飲業主嗎？
-        </p>
-        <p className="text-xs leading-relaxed mb-3" style={{ color: colors.textLight }}>
-          <strong style={{ color: colors.text }}>FeedBites</strong> — 全球免費餐飲問卷系統
-        </p>
-        <a
-          href="/"
-          target="_blank"
-          className="inline-block px-5 py-2 rounded-full text-xs font-medium transition-all hover:opacity-80"
-          style={{ background: colors.primary, color: 'white' }}
-        >
-          免費開通我的餐廳問卷 →
-        </a>
-      </motion.div>
+      {/* viral banner removed — focus on TACB test */}
 
       {/* ---- FeedBites Branding ---- */}
       <motion.div

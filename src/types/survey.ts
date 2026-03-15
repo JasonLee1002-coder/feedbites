@@ -21,6 +21,7 @@ export interface Question {
   showReason?: boolean;        // For radio/rating: show "原因" text field after selection
   reasonPlaceholder?: string;  // Placeholder for the reason field
   dishName?: string;           // For dish-group: the dish this group belongs to
+  dishPhotoUrl?: string;       // Photo of the dish for visual reference
   subQuestions?: Question[];   // For dish-group: the questions within
   numberPrefix?: string;       // For number: prefix label (e.g. "NT$", "分鐘")
 }

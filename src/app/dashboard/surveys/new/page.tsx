@@ -57,6 +57,7 @@ type BlockType = 'demographics' | 'dish-evaluation' | 'impression' | 'market' | 
 
 interface DishEvalConfig {
   dishes: string[];
+  dishPhotos?: Record<string, string>; // dishName → photoUrl
   aspects: {
     appearance: boolean;
     aroma: boolean;
@@ -163,12 +164,14 @@ function generateDishQuestions(config: DishEvalConfig): Question[] {
 
   config.dishes.forEach((dish, di) => {
     const dishName = dish.trim() || `菜品 ${di + 1}`;
+    const photoUrl = config.dishPhotos?.[dishName];
     questions.push({
       id: `dish_${di}_header`,
       type: 'section-header',
       title: dishName,
       label: dishName,
       description: `請評價「${dishName}」`,
+      dishPhotoUrl: photoUrl,
       required: false,
     });
 
@@ -311,7 +314,7 @@ export default function NewSurveyPage() {
   // Import dishes from menu
   // ---------------------------------------------------------------------------
   const [loadingDishes, setLoadingDishes] = useState(false);
-  const [storeDishes, setStoreDishes] = useState<Array<{ name: string; category: string }>>([]);
+  const [storeDishes, setStoreDishes] = useState<Array<{ name: string; category: string; photo_url?: string | null }>>([]);
 
   const fetchStoreDishes = useCallback(async () => {
     if (storeDishes.length > 0) return storeDishes;
@@ -332,10 +335,14 @@ export default function NewSurveyPage() {
     const dishes = await fetchStoreDishes();
     if (dishes.length === 0) return;
     const dishNames = dishes.map((d: { name: string }) => d.name);
+    const dishPhotos: Record<string, string> = {};
+    for (const d of dishes) {
+      if (d.photo_url) dishPhotos[d.name] = d.photo_url;
+    }
     const block = blocks.find(b => b.id === blockId);
     if (!block?.dishConfig) return;
     updateBlock(blockId, {
-      dishConfig: { ...block.dishConfig, dishes: dishNames },
+      dishConfig: { ...block.dishConfig, dishes: dishNames, dishPhotos },
     });
   }, [fetchStoreDishes, blocks]); // eslint-disable-line react-hooks/exhaustive-deps
 

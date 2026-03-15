@@ -1078,6 +1078,17 @@ export default function SurveyRenderer({
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: index * 0.1, ...springSmooth }}
                   >
+                    {q.dishPhotoUrl && (
+                      <motion.div
+                        className="w-full h-32 rounded-xl overflow-hidden mb-3"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: index * 0.1 }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={q.dishPhotoUrl} alt={q.title || ''} className="w-full h-full object-cover" />
+                      </motion.div>
+                    )}
                     <h2
                       className="text-lg font-bold tracking-wide"
                       style={{ color: colors.primary, fontFamily: "'Noto Serif TC', serif" }}
