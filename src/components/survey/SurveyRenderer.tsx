@@ -392,9 +392,9 @@ export default function SurveyRenderer({
           triggerAchievement('complete');
         }
         const msgs: Record<number, string> = {
-          25: '四分之一了，繼續加油！',
-          50: '一半了！快到了～',
-          75: '剩最後幾題了！',
+          25: `已完成 ${answeredCount}/${totalQuestions} 題，做得好！繼續～ 😊`,
+          50: `一半了！${totalQuestions - answeredCount} 題就完成囉 ✨`,
+          75: `剩最後 ${totalQuestions - answeredCount} 題！馬上就能拿獎勵了 🎁`,
           100: '全部完成！太厲害了！🎉',
         };
         showCompanionMessage({ text: msgs[m], priority: 8 });
@@ -623,17 +623,9 @@ export default function SurveyRenderer({
   function handleSubmit() {
     const missing = getRequiredUnanswered();
     if (missing.length > 0) {
-      setShowValidation(true);
-      // Navigate to the section of the first missing question
-      const first = missing[0];
-      if (first.sectionIndex !== currentSection) {
-        setDirection(first.sectionIndex > currentSection ? 1 : -1);
-        setCurrentSection(first.sectionIndex);
-      }
-      showCompanionMessage({ text: `還有 ${missing.length} 題必填題要完成喔！`, priority: 9 });
-      return;
+      // Gentle reminder but allow submit
+      showCompanionMessage({ text: `還有 ${missing.length} 題沒填，沒關係，想跳過也可以提交 😊`, priority: 7 });
     }
-    setShowValidation(false);
     megaConfetti(colors);
     onSubmit(answers, xp);
   }
@@ -973,76 +965,7 @@ export default function SurveyRenderer({
         );
       })()}
 
-      {/* ───── STICKY PROGRESS BAR - clean & simple ───── */}
-      <div className="sticky top-0 z-50" style={{ background: colors.background }}>
-        <div className="px-4 pt-2 pb-1">
-          {/* Simple progress */}
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px]" style={{ color: colors.textLight }}>
-              已完成 {answeredCount}/{totalQuestions} 題
-            </span>
-            <span className="text-[10px] font-bold" style={{ color: colors.primary }}>{progress}%</span>
-          </div>
-
-          {/* Clean progress bar */}
-          <div className="relative h-2 rounded-full overflow-hidden" style={{ background: colors.border }}>
-            <motion.div
-              className="h-full rounded-full relative overflow-hidden"
-              style={{ background: `linear-gradient(90deg, ${colors.primaryLight}, ${colors.primary})` }}
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.5, ease: 'easeOut' }}
-            >
-              <div
-                className="absolute inset-0"
-                style={{
-                  background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)`,
-                  animation: 'shimmer 2s ease-in-out infinite',
-                }}
-              />
-            </motion.div>
-            {/* Keep tier markers only for visual reference — no labels */}
-            {displayTiers.slice(1).map((tier, i) => {
-              const markerPos = Math.min(100, (tier.min_xp / maxXpForBar) * 100);
-              return (
-                <div
-                  key={i}
-                  className="absolute top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full"
-                  style={{
-                    left: `${markerPos}%`,
-                    background: xp >= tier.min_xp ? '#FFD700' : colors.textLight,
-                    border: `1px solid ${colors.background}`,
-                    transform: 'translate(-50%, -50%)',
-                  }}
-                  title={`${tier.emoji} ${tier.name}: ${tier.min_xp} 點`}
-                />
-              );
-            })}
-          </div>
-
-          {/* Minimal spacer */}
-          <div className="h-0">
-            <AnimatePresence>
-              {floatingXp && (
-                <motion.div
-                  key={floatingXp.id}
-                  className="absolute right-4 -top-2 text-sm font-bold pointer-events-none"
-                  style={{ color: colors.primary }}
-                  initial={{ opacity: 1, y: 0 }}
-                  animate={{ opacity: 0, y: -30 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.8, ease: 'easeOut' }}
-                >
-                  +{floatingXp.amount} 點
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-
-        {/* Thin separator line */}
-        <div className="h-px" style={{ background: colors.border }} />
-      </div>
+      {/* Progress is now communicated via companion, no sticky bar */}
 
       {/* ───── Section navigation tabs ───── */}
       <div className="flex gap-1 px-4 pt-3 pb-4 overflow-x-auto">
