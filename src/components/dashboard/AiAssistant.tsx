@@ -150,6 +150,8 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
   const onboardingProgress = Math.round((completedCount / onboardingSteps.length) * 100);
   const isDashboardHome = pathname === '/dashboard' || pathname === '/dashboard/';
   const isQrCodePage = pathname.includes('/qrcode');
+  const isSettingsPage = pathname.includes('/settings');
+  const [inputFocused, setInputFocused] = useState(false);
 
   // Celebrate when new steps are completed
   const prevCompletedRef = useRef(completedCount);
@@ -195,11 +197,13 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
   useEffect(() => {
     function handleFocus(e: FocusEvent) {
       const el = e.target as HTMLElement;
-      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
+        setInputFocused(true);
+        // On mobile (< 768px), just hide — don't try to reposition
+        if (window.innerWidth < 768) return;
+
         const rect = el.getBoundingClientRect();
         const w = window.innerWidth;
-
-        // Position beside the input
         const newTop = Math.round(rect.top + rect.height / 2 - 28);
         const newRight = rect.right + 80 < w ? w - rect.right - 50 : rect.left > 80 ? w - rect.left + 20 : 40;
 
@@ -211,6 +215,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
     function handleBlur() {
       setTimeout(() => {
         if (document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+          setInputFocused(false);
           setPos(getHomePos());
           setIsNearInput(false);
         }
@@ -459,14 +464,14 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
         )}
       </AnimatePresence>
 
-      {/* ═══ Floating Avatar ═══ */}
+      {/* ═══ Floating Avatar — hide on mobile when typing ═══ */}
       <motion.button
         onClick={() => {
           setIsOpen(!isOpen);
           setHasInteracted(true);
           setShowBubble(false);
         }}
-        className="fixed z-[60] group cursor-pointer"
+        className={`fixed z-[60] group cursor-pointer ${inputFocused ? 'md:block hidden' : ''}`}
         style={{
           top: pos.top,
           right: pos.right,
