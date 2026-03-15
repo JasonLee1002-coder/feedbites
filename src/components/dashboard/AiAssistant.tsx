@@ -149,6 +149,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
   const onboardingDone = completedCount === onboardingSteps.length;
   const onboardingProgress = Math.round((completedCount / onboardingSteps.length) * 100);
   const isDashboardHome = pathname === '/dashboard' || pathname === '/dashboard/';
+  const isQrCodePage = pathname.includes('/qrcode');
 
   // Celebrate when new steps are completed
   const prevCompletedRef = useRef(completedCount);
@@ -264,7 +265,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
     setShowBubble(false);
     setHasInteracted(false);
     const timer = setTimeout(() => {
-      if (!isOpen) setShowBubble(true);
+      if (!isOpen && !isQrCodePage) setShowBubble(true);
     }, 1500);
     return () => clearTimeout(timer);
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -533,7 +534,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
 
         {/* Main orb — owner avatar or FeedBites logo */}
         <motion.div
-          className="relative w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-lg overflow-hidden border-2 border-[#64B4FF]/30"
+          className={`relative rounded-full bg-white flex items-center justify-center shadow-lg overflow-hidden border-2 border-[#64B4FF]/30 ${isQrCodePage ? 'w-8 h-8' : 'w-12 h-12'}`}
           animate={{ scale: [1, 1.05, 1], y: [0, -3, 0] }}
           transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
         >

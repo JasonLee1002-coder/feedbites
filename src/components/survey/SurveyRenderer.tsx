@@ -663,17 +663,27 @@ export default function SurveyRenderer({
   };
 
   /* ───── helper: render option button (card-style, not boring pill) ───── */
+  // Map satisfaction words to emojis
+  const satisfactionEmoji: Record<string, string> = {
+    '非常滿意': '🤩', '滿意': '😊', '普通': '😐', '不太滿意': '😕', '不滿意': '😞', '很差': '😫',
+    '非常好': '🤩', '好': '😊', '還好': '😐', '不好': '😕',
+    '非常願意': '😍', '願意': '😊', '不願意': '😕',
+    '太多（適合分享）': '😅', '剛好': '👌', '稍微偏少': '🤏',
+  };
+
   const renderPill = (
     opt: string,
     isSelected: boolean,
     onClick: () => void,
     size: 'sm' | 'md' = 'md',
-  ) => (
+  ) => {
+    const emoji = satisfactionEmoji[opt];
+    return (
     <motion.button
       key={opt}
       onClick={onClick}
       whileTap={{ scale: 0.92 }}
-      animate={isSelected ? { scale: [1, 1.05, 1] } : { scale: 1 }}
+      animate={isSelected ? { scale: [1, 1.08, 1] } : { scale: 1 }}
       transition={springBounce}
       layout
       className={`${size === 'sm' ? 'px-3 py-2 text-xs' : 'px-4 py-2.5 text-sm'} rounded-xl font-medium transition-all relative overflow-hidden`}
@@ -687,18 +697,22 @@ export default function SurveyRenderer({
       }}
     >
       {/* Selection checkmark */}
-      {isSelected && (
+      {emoji && (
         <motion.span
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          className="inline-block mr-1"
+          className="inline-block mr-1 text-base"
+          animate={isSelected ? { scale: [1, 1.3, 1] } : { scale: 1 }}
+          transition={{ duration: 0.3 }}
         >
-          ✓
+          {emoji}
         </motion.span>
+      )}
+      {!emoji && isSelected && (
+        <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="inline-block mr-1">✓</motion.span>
       )}
       {opt}
     </motion.button>
-  );
+    );
+  };
 
   /* ───── helper: render rating (emoji faces instead of numbers) ───── */
   const renderRating = (qId: string, compact = false) => (
@@ -1011,47 +1025,26 @@ export default function SurveyRenderer({
         );
       })()}
 
-      {/* ───── STICKY GAME HUD - always visible at top ───── */}
+      {/* ───── STICKY PROGRESS BAR - clean & simple ───── */}
       <div className="sticky top-0 z-50" style={{ background: colors.background }}>
-        {/* Main HUD bar */}
         <div className="px-4 pt-2 pb-1">
-          {/* Top row: Level badge + Points counter + Tier indicator */}
+          {/* Simple progress */}
           <div className="flex items-center justify-between mb-1.5">
-            {/* Left: Level badge */}
-            <div className="flex items-center gap-2">
-              <span
-                className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
-                style={{ background: `linear-gradient(135deg, ${currentTier.color}, ${currentTier.colorDark})` }}
-              >
-                {currentTier.emoji} {currentTier.name}
-              </span>
-              <motion.span
-                className="text-xs font-mono font-bold"
-                style={{ color: colors.primary }}
-                key={displayXp}
-              >
-                {displayXp} 點
-              </motion.span>
-            </div>
-
-            {/* Right: Next tier hint */}
-            <div className="text-[10px]" style={{ color: colors.textLight }}>
-              {nextTier
-                ? `再 ${nextTier.min_xp - xp} 點 → ${nextTier.emoji} ${nextTier.name}`
-                : '最高等級！'}
-            </div>
+            <span className="text-[10px]" style={{ color: colors.textLight }}>
+              已完成 {answeredCount}/{totalQuestions} 題
+            </span>
+            <span className="text-[10px] font-bold" style={{ color: colors.primary }}>{progress}%</span>
           </div>
 
-          {/* Progress bar with tier markers */}
+          {/* Clean progress bar */}
           <div className="relative h-2 rounded-full overflow-hidden" style={{ background: colors.border }}>
             <motion.div
               className="h-full rounded-full relative overflow-hidden"
-              style={{ background: `linear-gradient(90deg, ${colors.primaryLight}, ${colors.primary}, #FFD700)` }}
+              style={{ background: `linear-gradient(90deg, ${colors.primaryLight}, ${colors.primary})` }}
               initial={{ width: 0 }}
-              animate={{ width: `${xpBarProgress}%` }}
+              animate={{ width: `${progress}%` }}
               transition={{ duration: 0.5, ease: 'easeOut' }}
             >
-              {/* Shimmer */}
               <div
                 className="absolute inset-0"
                 style={{
@@ -1060,7 +1053,7 @@ export default function SurveyRenderer({
                 }}
               />
             </motion.div>
-            {/* Tier marker dots on the progress bar */}
+            {/* Keep tier markers only for visual reference — no labels */}
             {displayTiers.slice(1).map((tier, i) => {
               const markerPos = Math.min(100, (tier.min_xp / maxXpForBar) * 100);
               return (
@@ -1079,48 +1072,16 @@ export default function SurveyRenderer({
             })}
           </div>
 
-          {/* Question counter + combo indicator */}
-          <div className="flex justify-between items-center mt-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px]" style={{ color: colors.textLight }}>
-                已完成 {answeredCount}/{totalQuestions} 題
-              </span>
-              <AnimatePresence>
-                {combo >= 3 && (
-                  <motion.span
-                    key={combo}
-                    initial={{ scale: 0.5, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.5, opacity: 0 }}
-                    transition={springBounce}
-                    className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full font-bold"
-                    style={{
-                      background: combo >= 5
-                        ? 'linear-gradient(135deg, #FFD700, #FF6B35)'
-                        : 'linear-gradient(135deg, #FF6B35, #FF4444)',
-                      color: 'white',
-                      fontSize: '9px',
-                      boxShadow: combo >= 5 ? '0 0 12px #FFD70060' : 'none',
-                    }}
-                  >
-                    {combo >= 5 ? '👑' : '🔥'} x{combo} 點數x2
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </div>
-            <span className="text-[10px]" style={{ color: colors.textLight }}>{progress}%</span>
-          </div>
-
-          {/* Floating +點 text */}
-          <div className="relative h-0">
+          {/* Minimal spacer */}
+          <div className="h-0">
             <AnimatePresence>
               {floatingXp && (
                 <motion.div
                   key={floatingXp.id}
-                  className="absolute right-0 -top-2 text-sm font-bold pointer-events-none"
-                  style={{ color: '#FFD700' }}
+                  className="absolute right-4 -top-2 text-sm font-bold pointer-events-none"
+                  style={{ color: colors.primary }}
                   initial={{ opacity: 1, y: 0 }}
-                  animate={{ opacity: 0, y: -40 }}
+                  animate={{ opacity: 0, y: -30 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.8, ease: 'easeOut' }}
                 >
