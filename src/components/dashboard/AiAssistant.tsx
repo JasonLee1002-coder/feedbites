@@ -319,15 +319,38 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
             className="fixed z-[61] max-w-[260px]"
             style={{ top: pos.top - 70, right: pos.right - 10, transition: 'top 0.8s ease, right 0.8s ease' }}
           >
-            <div className="relative bg-white rounded-2xl rounded-br-sm shadow-xl border border-[#FF8C00]/15 px-4 py-3">
-              <div className="flex items-start gap-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/feedbites-logo.png" alt="" className="w-5 h-5 object-contain shrink-0" />
-                <div className="text-xs text-[#3A3A3A] leading-relaxed">
+            {/* Glassy breathing bubble */}
+            <motion.div
+              className="relative rounded-2xl rounded-br-sm px-4 py-3 backdrop-blur-md"
+              style={{
+                background: 'rgba(255,255,255,0.85)',
+                border: '1px solid rgba(255,140,0,0.15)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.5)',
+              }}
+              animate={{
+                boxShadow: [
+                  '0 8px 32px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.5)',
+                  '0 8px 32px rgba(255,140,0,0.12), inset 0 1px 0 rgba(255,255,255,0.5)',
+                  '0 8px 32px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.5)',
+                ],
+              }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <div className="flex items-start gap-2.5">
+                {/* Mini avatar */}
+                <div className="w-7 h-7 rounded-full overflow-hidden border border-[#FF8C00]/20 bg-gradient-to-br from-[#FF8C00]/10 to-[#FF6B00]/10 flex items-center justify-center shrink-0">
+                  {avatarUrl ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-sm font-black text-[#FF8C00]" style={{ fontFamily: 'Georgia, serif' }}>F</span>
+                  )}
+                </div>
+                <div className="text-[13px] text-[#3A3A3A] leading-relaxed flex-1">
                   <span>
                     {displayedText}
                     <motion.span
-                      className="inline-block w-0.5 h-3 bg-[#FF8C00] ml-0.5 align-middle"
+                      className="inline-block w-0.5 h-3.5 bg-[#FF8C00] ml-0.5 align-middle rounded-full"
                       animate={{ opacity: [1, 0] }}
                       transition={{ duration: 0.5, repeat: Infinity }}
                     />
@@ -335,7 +358,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
                   {proactiveMsg?.link && displayedText.length === proactiveMsg.text.length && (
                     <Link
                       href={proactiveMsg.link}
-                      className="inline-block mt-2 px-3 py-1 bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] text-white text-[10px] font-bold rounded-md hover:shadow-md transition-all"
+                      className="block mt-2 px-3 py-1.5 bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] text-white text-[11px] font-bold rounded-lg text-center hover:shadow-lg hover:shadow-[#FF8C00]/20 transition-all"
                     >
                       {proactiveMsg.linkLabel || '前往 →'}
                     </Link>
@@ -344,11 +367,11 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
               </div>
               <button
                 onClick={() => setShowBubble(false)}
-                className="absolute -top-2 -right-2 w-5 h-5 bg-[#3A3A3A]/50 rounded-full flex items-center justify-center hover:bg-[#3A3A3A]"
+                className="absolute -top-2 -right-2 w-5 h-5 bg-[#3A3A3A]/40 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-[#3A3A3A]/70 transition-colors"
               >
                 <X className="w-3 h-3 text-white" />
               </button>
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -365,8 +388,14 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
             style={{ top: pos.top - 200, right: Math.max(pos.right - 140, 10), transition: 'top 0.5s ease, right 0.5s ease' }}
           >
             <div className="bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] px-4 py-3 flex items-center gap-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/feedbites-logo.png" alt="" className="w-7 h-7 object-contain" />
+              <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-white/30 bg-white/20 flex items-center justify-center shrink-0">
+                {avatarUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-lg font-black text-white" style={{ fontFamily: 'Georgia, serif' }}>F</span>
+                )}
+              </div>
               <div className="flex-1">
                 <div className="text-sm font-bold text-white">FeedBites 副店長</div>
                 <div className="text-[10px] text-white/70 flex items-center gap-1">
@@ -392,8 +421,14 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
                   transition={{ delay: i * 0.12 }}
                   className="flex gap-2"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/feedbites-logo.png" alt="" className="w-4 h-4 object-contain shrink-0 mt-0.5" />
+                  <div className="w-5 h-5 rounded-full overflow-hidden bg-[#FF8C00]/10 flex items-center justify-center shrink-0 mt-0.5">
+                    {avatarUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-[9px] font-black text-[#FF8C00]" style={{ fontFamily: 'Georgia, serif' }}>F</span>
+                    )}
+                  </div>
                   <div className="bg-[#FAF7F2] rounded-2xl rounded-tl-md px-3.5 py-2.5 text-xs text-[#3A3A3A] leading-relaxed max-w-[260px]">
                     <span>{msg.text}</span>
                     {msg.link && (
