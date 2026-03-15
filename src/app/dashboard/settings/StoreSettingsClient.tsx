@@ -379,10 +379,19 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
               type="text"
               value={editStoreName}
               onChange={e => setEditStoreName(e.target.value)}
+              onBlur={async () => {
+                if (editStoreName.trim() && editStoreName.trim() !== storeName) {
+                  await fetch('/api/stores/update', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ store_name: editStoreName.trim() }),
+                  });
+                }
+              }}
               placeholder="輸入你的餐廳名稱"
               className="w-full px-4 py-2.5 rounded-xl border border-[#E8E2D8] text-base font-bold outline-none focus:border-[#C5A55A] focus:ring-2 focus:ring-[#C5A55A]/20 bg-[#FAF7F2] font-serif text-[#3A3A3A]"
             />
-            <p className="text-[10px] text-[#8A8585] mt-1.5">上傳頭像後，副店長圖示會變成你的照片</p>
+            <p className="text-[10px] text-[#8A8585] mt-1.5">店名修改後自動儲存 · 上傳頭像後副店長會變成你的照片</p>
           </div>
         </div>
       </div>
