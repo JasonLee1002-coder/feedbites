@@ -860,58 +860,6 @@ export default function SurveyRenderer({
         )}
       </AnimatePresence>
 
-      {/* ───── Level Up toast (non-blocking) ───── */}
-      <AnimatePresence>
-        {levelUpVisible && (
-          <motion.div
-            className="fixed top-2 left-1/2 z-[90] pointer-events-none flex items-center gap-2 px-4 py-2 rounded-2xl"
-            style={{
-              background: 'linear-gradient(135deg, #FFD700, #FFA500)',
-              boxShadow: '0 4px 20px rgba(255,215,0,0.4)',
-              transform: 'translateX(-50%)',
-            }}
-            initial={{ y: -50, opacity: 0, x: '-50%' }}
-            animate={{ y: 0, opacity: 1, x: '-50%' }}
-            exit={{ y: -50, opacity: 0, x: '-50%' }}
-            transition={springBounce}
-          >
-            <span className="text-lg">{currentTier.emoji}</span>
-            <span className="text-sm font-bold text-white">
-              升級到 {currentTier.name}！
-            </span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ───── Achievement Toast ───── */}
-      <AnimatePresence>
-        {toastBadge && (
-          <motion.div
-            className="fixed top-14 left-1/2 z-[80] flex items-center gap-2 px-4 py-2.5 rounded-2xl"
-            style={{
-              background: 'linear-gradient(135deg, #1a1a2e, #16213e)',
-              border: '1px solid #FFD70050',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.4), 0 0 15px #FFD70020',
-              transform: 'translateX(-50%)',
-            }}
-            initial={{ y: -60, opacity: 0, x: '-50%' }}
-            animate={{ y: 0, opacity: 1, x: '-50%' }}
-            exit={{ y: -60, opacity: 0, x: '-50%' }}
-            transition={springBounce}
-          >
-            <span className="text-2xl">{toastBadge.icon}</span>
-            <div>
-              <div className="text-sm font-bold" style={{ color: '#FFD700' }}>
-                {toastBadge.title}
-              </div>
-              <div className="text-[10px]" style={{ color: '#aaa' }}>
-                {toastBadge.condition}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* ───── AI Companion (bottom-left, compact) ───── */}
       <AnimatePresence>
         {companionVisible && companionTyped && (
@@ -1551,33 +1499,6 @@ export default function SurveyRenderer({
                 </motion.button>
               )}
             </div>
-
-            {/* ───── Earned Badges Display ───── */}
-            {earnedBadges.size > 0 && (
-              <motion.div
-                className="mt-4 flex flex-wrap gap-2 justify-center"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-              >
-                {ACHIEVEMENTS.filter(a => earnedBadges.has(a.id)).map(badge => (
-                  <motion.div
-                    key={badge.id}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium"
-                    style={{
-                      background: '#FFD70015',
-                      border: '1px solid #FFD70040',
-                      color: '#B8860B',
-                    }}
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={springBounce}
-                  >
-                    <span>{badge.icon}</span>
-                    <span>{badge.title}</span>
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
 
             {/* ───── Footer ───── */}
             <div className="text-center mt-6 pb-8">
