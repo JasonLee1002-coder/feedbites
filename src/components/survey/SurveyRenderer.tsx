@@ -1006,7 +1006,7 @@ export default function SurveyRenderer({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
               >
-                完成問卷即可獲得 {discountValue}
+                🎁 填完問卷立即領取專屬優惠券
               </motion.div>
             )}
           </div>
