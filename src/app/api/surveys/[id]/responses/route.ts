@@ -160,7 +160,7 @@ export async function POST(
   }
 }
 
-// PATCH: Update phone on an existing response (public, best-effort)
+// PATCH: Update phone/email on an existing response (public, best-effort)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -169,15 +169,23 @@ export async function PATCH(
     const { id } = await params;
     const adminDb = createServiceSupabase();
     const body = await request.json();
-    const { response_id, phone } = body;
+    const { response_id, phone, email } = body;
 
-    if (!response_id || !phone) {
+    if (!response_id) {
       return NextResponse.json({ error: '缺少參數' }, { status: 400 });
+    }
+
+    const updates: Record<string, string> = {};
+    if (phone) updates.phone = phone;
+    if (email) updates.email = email;
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: '沒有要更新的欄位' }, { status: 400 });
     }
 
     const { error } = await adminDb
       .from('responses')
-      .update({ phone })
+      .update(updates)
       .eq('id', response_id)
       .eq('survey_id', id);
 

@@ -194,6 +194,8 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
         tierName={discountResult.tier_name}
         tierEmoji={discountResult.tier_emoji}
         xpEarned={xpEarned}
+        responseId={responseId || undefined}
+        surveyId={survey.id}
         onPhoneSubmit={(phoneNumber) => {
           // Update phone on existing response via PATCH
           if (responseId) {

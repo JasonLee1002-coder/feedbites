@@ -16,6 +16,8 @@ interface DiscountCodeDisplayProps {
   tierEmoji?: string;
   xpEarned?: number;
   onPhoneSubmit?: (phone: string) => void;
+  responseId?: string;
+  surveyId?: string;
 }
 
 // Map tier names to confetti color palettes
@@ -219,24 +221,34 @@ function PhoneCollect({
   colors,
   storeName,
   onSubmit,
+  responseId,
+  surveyId,
 }: {
   colors: ThemeColors;
   storeName: string;
   onSubmit: (phone: string) => void;
+  responseId?: string;
+  surveyId?: string;
 }) {
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
 
   if (submitted) {
     return (
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="mt-6 w-full max-w-sm text-center"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="mt-6 w-full max-w-sm text-center p-4 rounded-2xl"
+        style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
       >
-        <div className="text-xs" style={{ color: colors.primary }}>
-          ✓ 已收到！下次有優惠會通知你
+        <div className="text-2xl mb-2">🎉</div>
+        <div className="text-sm font-bold" style={{ color: colors.primary }}>
+          已收到！禮券已綁定到你的帳號
+        </div>
+        <div className="text-[11px] mt-1" style={{ color: colors.textLight }}>
+          下次來店出示 {email ? 'Email' : '手機號碼'}，即可使用累積的優惠
         </div>
       </motion.div>
     );
@@ -247,43 +259,90 @@ function PhoneCollect({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 1.0, duration: 0.5 }}
-      className="mt-6 w-full max-w-sm p-4 rounded-2xl"
+      className="mt-6 w-full max-w-sm p-5 rounded-2xl"
       style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
     >
-      <p className="text-xs text-center mb-3" style={{ color: colors.textLight }}>
-        留下手機號碼，{storeName} 下次有優惠直接通知你
-      </p>
-      <div className="flex gap-2">
+      {/* 副店長 persuasive message */}
+      <div className="flex items-start gap-2 mb-4">
+        <span className="text-lg shrink-0">🍽️</span>
+        <p className="text-xs leading-relaxed" style={{ color: colors.text }}>
+          留下聯絡方式，<strong style={{ color: colors.primary }}>禮券會直接寄到你的信箱</strong>！
+          下次來店出示 Email 或手機號碼，店家就能查到你累積的優惠，放心 😊
+        </p>
+      </div>
+
+      <div className="space-y-2.5">
+        {/* Email */}
+        <input
+          type="email"
+          value={email}
+          onChange={e => { setEmail(e.target.value); setError(''); }}
+          placeholder="your@email.com"
+          className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+          style={{
+            background: colors.background,
+            border: `1px solid ${colors.border}`,
+            color: colors.text,
+          }}
+        />
+
+        {/* Phone */}
         <input
           type="tel"
           value={phone}
           onChange={e => { setPhone(e.target.value); setError(''); }}
-          placeholder="0912345678"
+          placeholder="手機號碼（選填）0912345678"
           inputMode="numeric"
-          className="flex-1 px-3 py-2.5 rounded-xl text-sm outline-none"
+          className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
           style={{
             background: colors.background,
-            border: `1px solid ${error ? '#D4605A' : colors.border}`,
+            border: `1px solid ${colors.border}`,
             color: colors.text,
           }}
         />
+
+        {error && <p className="text-[10px]" style={{ color: '#D4605A' }}>{error}</p>}
+
         <button
           onClick={() => {
-            const cleaned = phone.replace(/[-\s]/g, '');
-            if (!/^09\d{8}$/.test(cleaned)) {
-              setError('格式不對');
+            if (!email && !phone) {
+              setError('請至少填寫一項');
               return;
             }
-            onSubmit(cleaned);
+            if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+              setError('Email 格式不正確');
+              return;
+            }
+            if (phone) {
+              const cleaned = phone.replace(/[-\s]/g, '');
+              if (!/^09\d{8}$/.test(cleaned)) {
+                setError('手機格式：09xxxxxxxx');
+                return;
+              }
+              onSubmit(cleaned);
+            } else {
+              onSubmit('');
+            }
+            // Save email via API too
+            if (email && responseId) {
+              fetch(`/api/surveys/${surveyId}/responses`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ response_id: responseId, email }),
+              }).catch(() => {});
+            }
             setSubmitted(true);
           }}
-          className="px-4 py-2.5 rounded-xl text-xs font-medium text-white"
-          style={{ background: colors.primary }}
+          className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all hover:shadow-lg"
+          style={{ background: `linear-gradient(135deg, ${colors.primary}, ${colors.primaryDark || colors.primary})` }}
         >
-          送出
+          領取禮券 🎁
         </button>
+
+        <p className="text-[10px] text-center" style={{ color: colors.textLight }}>
+          填寫後即可收到禮券，下次消費直接使用
+        </p>
       </div>
-      {error && <p className="text-[10px] mt-1" style={{ color: '#D4605A' }}>{error}</p>}
     </motion.div>
   );
 }
@@ -300,6 +359,8 @@ export default function DiscountCodeDisplay({
   tierEmoji,
   xpEarned,
   onPhoneSubmit,
+  responseId,
+  surveyId,
 }: DiscountCodeDisplayProps) {
   const isAdvanced = discountMode === 'advanced' && !!tierName;
   const confettiColors =
@@ -621,7 +682,7 @@ export default function DiscountCodeDisplay({
 
       {/* ---- Optional phone collection (soft ask, after reward) ---- */}
       {onPhoneSubmit && (
-        <PhoneCollect colors={colors} storeName={storeName} onSubmit={onPhoneSubmit} />
+        <PhoneCollect colors={colors} storeName={storeName} onSubmit={onPhoneSubmit} responseId={responseId} surveyId={surveyId} />
       )}
 
       {/* ---- FeedBites viral banner (post-completion, not during survey) ---- */}
