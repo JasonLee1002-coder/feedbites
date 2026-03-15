@@ -20,6 +20,7 @@ interface SurveyRendererProps {
   storeName: string;
   surveyTitle: string;
   logoUrl?: string | null;
+  ownerAvatarUrl?: string | null;
   frameId?: string | null;
   discountEnabled: boolean;
   discountValue: string;
@@ -148,6 +149,7 @@ export default function SurveyRenderer({
   storeName,
   surveyTitle,
   logoUrl,
+  ownerAvatarUrl,
   frameId,
   discountEnabled,
   discountValue,
@@ -852,27 +854,72 @@ export default function SurveyRenderer({
         )}
       </AnimatePresence>
 
-      {/* ───── AI Companion (bottom-left, compact) ───── */}
+      {/* ───── 副店長 Companion (floating, with avatar + effects) ───── */}
       <AnimatePresence>
         {companionVisible && companionTyped && (
           <motion.div
-            className="fixed bottom-20 left-3 z-[60] flex items-end gap-1.5"
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 10, opacity: 0 }}
+            className="fixed bottom-6 left-3 z-[60] flex items-end gap-2"
+            initial={{ y: 30, opacity: 0, scale: 0.9 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 20, opacity: 0, scale: 0.9 }}
             transition={springSmooth}
           >
-            <span className="text-base">🍽️</span>
+            {/* Avatar orb with effects */}
+            <div className="relative shrink-0">
+              {/* Glow ring */}
+              <motion.div
+                className="absolute -inset-1 rounded-full"
+                animate={{
+                  boxShadow: [
+                    `0 0 8px 2px ${colors.primary}20`,
+                    `0 0 16px 4px ${colors.primary}35`,
+                    `0 0 8px 2px ${colors.primary}20`,
+                  ],
+                }}
+                transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+              />
+              {/* Avatar */}
+              <motion.div
+                className="w-10 h-10 rounded-full overflow-hidden border-2 flex items-center justify-center"
+                style={{
+                  borderColor: `${colors.primary}50`,
+                  background: colors.surface,
+                }}
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                {ownerAvatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={ownerAvatarUrl} alt="副店長" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-lg font-bold" style={{ color: colors.primary }}>F</span>
+                )}
+              </motion.div>
+              {/* Sparkle */}
+              <motion.span
+                className="absolute -top-1 -right-1 text-[8px] pointer-events-none"
+                animate={{ opacity: [0, 1, 0], scale: [0.5, 1, 0.5] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >✨</motion.span>
+            </div>
+
+            {/* Speech bubble */}
             <div
-              className="max-w-[180px] px-2.5 py-1.5 rounded-xl rounded-bl-sm text-[11px] leading-relaxed"
+              className="max-w-[220px] px-3 py-2 rounded-2xl rounded-bl-sm text-sm leading-relaxed"
               style={{
                 background: colors.surface,
                 border: `1px solid ${colors.border}`,
-                color: colors.textLight,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                color: colors.text,
+                boxShadow: `0 4px 15px rgba(0,0,0,0.08), 0 0 0 1px ${colors.primary}10`,
               }}
             >
               {companionTyped}
+              <motion.span
+                className="inline-block w-0.5 h-3.5 ml-0.5 align-middle rounded-full"
+                style={{ background: colors.primary }}
+                animate={{ opacity: [1, 0] }}
+                transition={{ duration: 0.5, repeat: Infinity }}
+              />
             </div>
           </motion.div>
         )}

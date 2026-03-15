@@ -13,6 +13,7 @@ interface SurveyWithStore extends Survey {
     store_name: string;
     logo_url: string | null;
     frame_id?: string | null;
+    owner_avatar_url?: string | null;
   };
 }
 
@@ -131,6 +132,7 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
         storeName={storeName}
         surveyTitle={survey.title}
         logoUrl={logoUrl}
+        ownerAvatarUrl={survey.stores?.owner_avatar_url}
         frameId={frameId}
         discountEnabled={survey.discount_enabled}
         discountValue={survey.discount_value}

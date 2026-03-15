@@ -34,7 +34,7 @@ export default async function PublicSurveyPage({ params }: Props) {
   const db = createServiceSupabase();
   const { data: survey } = await db
     .from('surveys')
-    .select('*, stores(store_name, logo_url, frame_id)')
+    .select('*, stores(store_name, logo_url, frame_id, owner_avatar_url)')
     .eq('id', surveyId)
     .eq('is_active', true)
     .single();
