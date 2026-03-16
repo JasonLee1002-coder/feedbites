@@ -4,6 +4,16 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import type { ThemeColors } from '@/types/survey';
+import PrizeWheel from './PrizeWheel';
+
+const DEFAULT_PRIZES = [
+  { label: '9折優惠', emoji: '🎫', color: '#FF8C00' },
+  { label: '免費飲品', emoji: '🥤', color: '#42A5F5' },
+  { label: '85折優惠', emoji: '🔥', color: '#FF6B6B' },
+  { label: '免費甜點', emoji: '🍰', color: '#EC407A' },
+  { label: '折$50', emoji: '💰', color: '#66BB6A' },
+  { label: '兩人同行一人免費', emoji: '👫', color: '#AB47BC' },
+];
 
 interface DiscountCodeDisplayProps {
   code: string;
@@ -562,45 +572,21 @@ export default function DiscountCodeDisplay({
           </div>
         )}
 
-        {/* ---- Scratch Card Area — hide discount value until revealed ---- */}
+        {/* ---- Prize Wheel + Discount Reveal ---- */}
         <div className="mb-4">
           {!scratched ? (
             <>
-              <div
-                className="text-sm font-medium mb-2"
-                style={{ color: colors.primary }}
-              >
-                你的獎勵藏在下面
+              <div className="text-sm font-medium mb-2" style={{ color: colors.primary }}>
+                🎰 轉轉看你的運氣！
               </div>
-              <div
-                className="text-xs mb-3"
-                style={{ color: colors.textLight }}
-              >
-                用手指刮開揭曉！
+              <div className="text-xs mb-4" style={{ color: colors.textLight }}>
+                各種驚喜獎勵等你來拿
               </div>
-              <div className="flex justify-center">
-                <ScratchCard
-                  width={300}
-                  height={150}
-                  coverColor={colors.primary}
-                  onReveal={handleReveal}
-                >
-                  <div className="text-center select-none">
-                    <div
-                      className="text-xl font-bold mb-1"
-                      style={{ color: colors.text }}
-                    >
-                      {discountValue}
-                    </div>
-                    <div
-                      className="text-2xl font-mono font-bold tracking-[0.3em]"
-                      style={{ color: colors.primary }}
-                    >
-                      {code}
-                    </div>
-                  </div>
-                </ScratchCard>
-              </div>
+              <PrizeWheel
+                prizes={DEFAULT_PRIZES}
+                colors={colors}
+                onResult={() => handleReveal()}
+              />
             </>
           ) : (
             <motion.div
