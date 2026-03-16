@@ -40,10 +40,12 @@ export default function MenuPage() {
   const [menuParsing, setMenuParsing] = useState(false);
   const [parsedDishes, setParsedDishes] = useState<Array<{
     name: string; description: string; category: string; price: string; selected: boolean;
+    bbox?: [number, number, number, number]; photoUrl?: string;
   }>>([]);
   const [parseNotes, setParseNotes] = useState('');
   const [batchSaving, setBatchSaving] = useState(false);
   const [batchProgress, setBatchProgress] = useState(0);
+  const menuImageRef = useRef<HTMLImageElement | null>(null);
 
   useEffect(() => {
     fetchDishes();
@@ -166,6 +168,67 @@ export default function MenuPage() {
     }
   }
 
+  // Crop a dish photo from the original menu image using bbox coordinates
+  async function cropDishPhoto(
+    originalImage: HTMLImageElement,
+    bbox: [number, number, number, number],
+  ): Promise<Blob | null> {
+    try {
+      const [yMin, xMin, yMax, xMax] = bbox;
+      const imgW = originalImage.naturalWidth;
+      const imgH = originalImage.naturalHeight;
+
+      // Convert normalized coords (0-1000) to pixel coords
+      const x = Math.round((xMin / 1000) * imgW);
+      const y = Math.round((yMin / 1000) * imgH);
+      const w = Math.round(((xMax - xMin) / 1000) * imgW);
+      const h = Math.round(((yMax - yMin) / 1000) * imgH);
+
+      if (w < 10 || h < 10) return null;
+
+      const canvas = document.createElement('canvas');
+      // Limit output size to 512px max dimension
+      const scale = Math.min(1, 512 / Math.max(w, h));
+      canvas.width = Math.round(w * scale);
+      canvas.height = Math.round(h * scale);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+      ctx.drawImage(originalImage, x, y, w, h, 0, 0, canvas.width, canvas.height);
+
+      return new Promise(resolve => {
+        canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.85);
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  // Upload a cropped dish photo blob
+  async function uploadDishPhotoBlob(blob: Blob, dishName: string): Promise<string | null> {
+    try {
+      const formData = new FormData();
+      formData.append('photo', blob, `${dishName}_${Date.now()}.jpg`);
+      const res = await fetch('/api/dishes/upload-photo', { method: 'POST', body: formData });
+      if (res.ok) {
+        const data = await res.json();
+        return data.url || null;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  // Load an image file into an HTMLImageElement
+  function loadImage(file: File): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
   // Compress large images before upload to avoid timeout/size issues
   async function compressImage(file: File, maxWidth = 2048, quality = 0.8): Promise<Blob> {
     return new Promise((resolve, reject) => {
@@ -240,8 +303,31 @@ export default function MenuPage() {
         throw new Error('未辨識到任何菜品，請換一張更清晰的圖片');
       }
 
-      setParsedDishes(data.dishes.map((d: { name: string; description: string; category: string; price: string }) => ({ ...d, selected: true })));
-      setParseNotes(data.notes || `已辨識 ${data.dishes.length} 道菜品`);
+      // Load original image for cropping dish photos
+      const originalImg = await loadImage(file);
+      menuImageRef.current = originalImg;
+
+      // Crop dish photos from bounding boxes in parallel
+      const dishesWithPhotos = await Promise.all(
+        data.dishes.map(async (d: { name: string; description: string; category: string; price: string; bbox?: [number, number, number, number] }) => {
+          let photoUrl: string | undefined;
+          if (d.bbox && Array.isArray(d.bbox) && d.bbox.length === 4) {
+            const blob = await cropDishPhoto(originalImg, d.bbox);
+            if (blob) {
+              const url = await uploadDishPhotoBlob(blob, d.name);
+              if (url) photoUrl = url;
+            }
+          }
+          return { ...d, selected: true, photoUrl };
+        })
+      );
+
+      const photosCount = dishesWithPhotos.filter((d: { photoUrl?: string }) => d.photoUrl).length;
+      setParsedDishes(dishesWithPhotos);
+      setParseNotes(
+        (data.notes || `已辨識 ${data.dishes.length} 道菜品`) +
+        (photosCount > 0 ? ` · 已擷取 ${photosCount} 張菜品照片` : '')
+      );
     } catch (err) {
       setParseNotes(err instanceof Error ? err.message : '辨識失敗，請重試');
     } finally {
@@ -266,6 +352,7 @@ export default function MenuPage() {
             name: d.name,
             description: d.description || null,
             category: d.category || '其他',
+            photo_url: d.photoUrl || null,
           }),
         });
         if (res.ok) {
@@ -372,8 +459,8 @@ export default function MenuPage() {
           {menuParsing ? (
             <div className="py-12 text-center">
               <Loader2 className="w-10 h-10 text-[#FF8C00] animate-spin mx-auto mb-4" />
-              <p className="text-sm text-[#3A3A3A] font-medium">AI 正在辨識你的菜單...</p>
-              <p className="text-xs text-[#8A8585] mt-1">通常需要 5-10 秒</p>
+              <p className="text-sm text-[#3A3A3A] font-medium">AI 正在辨識菜單 + 擷取菜品照片...</p>
+              <p className="text-xs text-[#8A8585] mt-1">通常需要 10-20 秒</p>
             </div>
           ) : parsedDishes.length > 0 ? (
             <>
@@ -413,6 +500,12 @@ export default function MenuPage() {
                     }`}>
                       {dish.selected && <Check className="w-3 h-3 text-white" />}
                     </div>
+                    {/* Dish photo thumbnail */}
+                    {dish.photoUrl && (
+                      <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 border border-[#E8E2D8]">
+                        <img src={dish.photoUrl} alt={dish.name} className="w-full h-full object-cover" />
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-[#3A3A3A]">{dish.name}</span>

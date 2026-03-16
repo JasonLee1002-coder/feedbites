@@ -44,7 +44,14 @@ export async function POST(request: NextRequest) {
 
     const contentParts = [
       { inlineData: { mimeType, data: base64Image } },
-      { text: `你是餐廳菜單辨識 AI。請分析這張菜單圖片。最多辨識 30 道菜（優先招牌/主食）。description 15 字以內。英文翻中文。格式：{"dishes":[{"name":"菜名","description":"描述","category":"分類","price":"價格"}],"total":數量,"notes":"說明"} category：主食/前菜/湯品/甜點/飲品/小吃/套餐/其他。只回覆 JSON。` },
+      { text: `你是餐廳菜單辨識 AI。請分析這張菜單圖片。最多辨識 30 道菜（優先招牌/主食）。description 15 字以內。英文翻中文。
+
+**重要：如果菜單上有菜品的照片，請用 bbox 標示每道菜照片的位置。**
+bbox 格式：[y_min, x_min, y_max, x_max]，數值範圍 0-1000（正規化座標）。
+如果某道菜沒有照片，則不需要 bbox 欄位。
+
+格式：{"dishes":[{"name":"菜名","description":"描述","category":"分類","price":"價格","bbox":[y_min,x_min,y_max,x_max]}],"total":數量,"notes":"說明"}
+category：主食/前菜/湯品/甜點/飲品/小吃/套餐/其他。只回覆 JSON。` },
     ];
 
     // Retry up to 2 times
