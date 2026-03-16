@@ -79,6 +79,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
   async function handleAnalyzeLocation() {
     if (!storeAddress.trim()) return;
     setAnalyzing(true);
+    setAreaInsight(''); // Clear old insight
     setAreaInsight('');
     try {
       const res = await fetch('/api/ai/analyze-location', {
@@ -88,13 +89,14 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
       });
       if (!res.ok) throw new Error('分析失敗');
       const data = await res.json();
+      // Clear ALL fields first, then fill with AI results (no mixing old+new)
       setMeta(m => ({
         ...m,
-        city: data.city || m.city,
-        district: data.district || m.district,
-        target_audience: data.suggested_audience || m.target_audience,
-        price_range: data.suggested_price_range || m.price_range,
-        cuisine_type: data.suggested_cuisine || m.cuisine_type,
+        city: data.city || '',
+        district: data.district || '',
+        target_audience: data.suggested_audience || '',
+        price_range: data.suggested_price_range || '',
+        cuisine_type: data.suggested_cuisine || '',
       }));
       if (data.area_insight) setAreaInsight(data.area_insight);
     } catch { /* ignore */ } finally {
@@ -615,7 +617,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
                 value={storeAddress}
                 onChange={e => setStoreAddress(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleAnalyzeLocation()}
-                placeholder="輸入地址或店名，副店長幫你自動填寫以下欄位"
+                placeholder="輸入地址或店名，AI 搜尋自動填寫"
                 className="flex-1 px-3 py-2 rounded-lg border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] bg-[#FAF7F2]"
               />
               <button
@@ -626,7 +628,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
                 {analyzing ? (
                   <><Loader2 className="w-3.5 h-3.5 animate-spin" />分析中</>
                 ) : (
-                  '自動填寫'
+                  'AI 搜尋'
                 )}
               </button>
             </div>
