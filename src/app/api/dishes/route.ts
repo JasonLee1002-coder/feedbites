@@ -64,3 +64,40 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 });
   }
 }
+
+// DELETE: Delete all dishes for current store
+export async function DELETE() {
+  try {
+    const supabase = await createServerSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: '未授權' }, { status: 401 });
+
+    const store = await getSelectedStore(user.id);
+    if (!store) return NextResponse.json({ error: '找不到店家' }, { status: 404 });
+
+    const adminDb = createServiceSupabase();
+
+    // Delete all dishes for this store
+    const { error } = await adminDb
+      .from('dishes')
+      .delete()
+      .eq('store_id', store.id);
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    // Clean up photos from storage
+    const { data: files } = await adminDb.storage
+      .from('store-assets')
+      .list(`dishes/${store.id}`);
+
+    if (files && files.length > 0) {
+      await adminDb.storage
+        .from('store-assets')
+        .remove(files.map(f => `dishes/${store.id}/${f.name}`));
+    }
+
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 });
+  }
+}

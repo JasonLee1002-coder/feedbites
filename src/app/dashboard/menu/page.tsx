@@ -31,6 +31,7 @@ export default function MenuPage() {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [clearingAll, setClearingAll] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const menuUploadRef = useRef<HTMLInputElement>(null);
@@ -165,6 +166,20 @@ export default function MenuPage() {
       }
     } catch { /* ignore */ } finally {
       setDeleting(null);
+    }
+  }
+
+  async function handleClearAll() {
+    if (!confirm(`確定要清空全部 ${dishes.length} 道菜品嗎？此操作無法復原。`)) return;
+    setClearingAll(true);
+    try {
+      const res = await fetch('/api/dishes', { method: 'DELETE' });
+      if (res.ok) {
+        setDishes([]);
+        resetForm();
+      }
+    } catch { /* ignore */ } finally {
+      setClearingAll(false);
     }
   }
 
@@ -851,9 +866,19 @@ export default function MenuPage() {
               <strong className="text-[#3A3A3A]">{dishes.filter(d => d.photo_url).length}</strong> 已上傳照片
             </span>
           </div>
-          <div className="flex items-center gap-1 text-xs text-[#B0AAA0]">
-            <Star className="w-3 h-3" />
-            建立問卷時可選擇讓客人評分這些菜品
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 text-xs text-[#B0AAA0]">
+              <Star className="w-3 h-3" />
+              建立問卷時可選擇讓客人評分這些菜品
+            </div>
+            <button
+              onClick={handleClearAll}
+              disabled={clearingAll}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg border border-red-200 transition-colors disabled:opacity-50"
+            >
+              <Trash2 className="w-3 h-3" />
+              {clearingAll ? '清除中...' : '清空全部'}
+            </button>
           </div>
         </div>
       )}
