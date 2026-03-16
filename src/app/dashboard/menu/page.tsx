@@ -434,6 +434,12 @@ export default function MenuPage() {
                 </p>
               )}
 
+              <div className="mb-4 p-3 bg-[#FAF7F2] rounded-xl border border-[#E8E2D8]">
+                <p className="text-xs text-[#8A8585] leading-relaxed">
+                  💡 加入後若需修改菜品名稱、描述或分類，請到下方<strong className="text-[#C5A55A]">菜單列表</strong>點擊菜品卡片的 ✏️ 編輯按鈕進行修改
+                </p>
+              </div>
+
               <div className="flex items-center gap-3">
                 <button
                   onClick={handleBatchCreate}
