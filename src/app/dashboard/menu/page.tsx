@@ -303,31 +303,51 @@ export default function MenuPage() {
         throw new Error('未辨識到任何菜品，請換一張更清晰的圖片');
       }
 
-      // Load original image for cropping dish photos
-      const originalImg = await loadImage(file);
-      menuImageRef.current = originalImg;
+      // First show the parsed dishes immediately (no photos yet)
+      const initialDishes = data.dishes.map((d: { name: string; description: string; category: string; price: string; bbox?: [number, number, number, number] }) => ({
+        ...d, selected: true, photoUrl: undefined,
+      }));
+      setParsedDishes(initialDishes);
+      setMenuParsing(false);
 
-      // Crop dish photos from bounding boxes in parallel
-      const dishesWithPhotos = await Promise.all(
-        data.dishes.map(async (d: { name: string; description: string; category: string; price: string; bbox?: [number, number, number, number] }) => {
-          let photoUrl: string | undefined;
-          if (d.bbox && Array.isArray(d.bbox) && d.bbox.length === 4) {
+      const bboxDishes = data.dishes.filter((d: { bbox?: number[] }) => d.bbox && Array.isArray(d.bbox) && d.bbox.length === 4);
+      const bboxCount = bboxDishes.length;
+
+      if (bboxCount > 0) {
+        setParseNotes(`已辨識 ${data.dishes.length} 道菜品，正在擷取 ${bboxCount} 張照片...`);
+
+        // Load original image for cropping
+        const originalImg = await loadImage(file);
+        menuImageRef.current = originalImg;
+
+        // Sequential crop + upload (one at a time, update UI progressively)
+        let photosSuccess = 0;
+        for (let i = 0; i < data.dishes.length; i++) {
+          const d = data.dishes[i] as { name: string; bbox?: [number, number, number, number] };
+          if (!d.bbox || !Array.isArray(d.bbox) || d.bbox.length !== 4) continue;
+
+          try {
             const blob = await cropDishPhoto(originalImg, d.bbox);
-            if (blob) {
+            if (blob && blob.size > 500) { // Skip tiny/empty blobs
               const url = await uploadDishPhotoBlob(blob, d.name);
-              if (url) photoUrl = url;
+              if (url) {
+                photosSuccess++;
+                // Update this dish's photo in state immediately
+                setParsedDishes(prev => prev.map((pd, j) => j === i ? { ...pd, photoUrl: url } : pd));
+              }
             }
+          } catch (cropErr) {
+            console.warn(`Failed to crop photo for "${d.name}":`, cropErr);
           }
-          return { ...d, selected: true, photoUrl };
-        })
-      );
+        }
 
-      const photosCount = dishesWithPhotos.filter((d: { photoUrl?: string }) => d.photoUrl).length;
-      setParsedDishes(dishesWithPhotos);
-      setParseNotes(
-        (data.notes || `已辨識 ${data.dishes.length} 道菜品`) +
-        (photosCount > 0 ? ` · 已擷取 ${photosCount} 張菜品照片` : '')
-      );
+        setParseNotes(
+          `已辨識 ${data.dishes.length} 道菜品` +
+          (photosSuccess > 0 ? ` · 已擷取 ${photosSuccess} 張菜品照片` : ' · 未偵測到可擷取的菜品照片')
+        );
+      } else {
+        setParseNotes(data.notes || `已辨識 ${data.dishes.length} 道菜品（此菜單未偵測到菜品照片）`);
+      }
     } catch (err) {
       setParseNotes(err instanceof Error ? err.message : '辨識失敗，請重試');
     } finally {

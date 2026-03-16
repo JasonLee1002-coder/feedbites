@@ -44,14 +44,25 @@ export async function POST(request: NextRequest) {
 
     const contentParts = [
       { inlineData: { mimeType, data: base64Image } },
-      { text: `你是餐廳菜單辨識 AI。請分析這張菜單圖片。最多辨識 30 道菜（優先招牌/主食）。description 15 字以內。英文翻中文。
+      { text: `你是餐廳菜單辨識 AI。請分析這張菜單圖片。
 
-**重要：如果菜單上有菜品的照片，請用 bbox 標示每道菜照片的位置。**
-bbox 格式：[y_min, x_min, y_max, x_max]，數值範圍 0-1000（正規化座標）。
-如果某道菜沒有照片，則不需要 bbox 欄位。
+規則：
+1. 最多辨識 30 道菜（優先招牌/主食）
+2. **菜名一律用中文**。如果原文是英文，翻譯成中文
+3. description 用中文，15 字以內
+4. **每道菜如果在圖片中有對應的餐點照片，必須提供 bbox**
 
-格式：{"dishes":[{"name":"菜名","description":"描述","category":"分類","price":"價格","bbox":[y_min,x_min,y_max,x_max]}],"total":數量,"notes":"說明"}
-category：主食/前菜/湯品/甜點/飲品/小吃/套餐/其他。只回覆 JSON。` },
+bbox 說明：
+- 格式：[y_min, x_min, y_max, x_max]
+- 數值為 0~1000 的整數，代表照片在整張圖片中的正規化位置
+- 例如圖片左上角的照片可能是 [10, 10, 300, 400]
+- 只標示「餐點食物照片」，不要標示文字、價格、裝飾
+- 沒有照片的菜品不需要 bbox
+
+回覆格式（只回覆 JSON，不要 markdown）：
+{"dishes":[{"name":"中文菜名","description":"中文描述","category":"分類","price":"NT$xxx","bbox":[y_min,x_min,y_max,x_max]}],"total":數量,"notes":"說明"}
+
+category 從以下選擇：主食/前菜/湯品/甜點/飲品/小吃/套餐/其他` },
     ];
 
     // Retry up to 2 times
@@ -78,6 +89,12 @@ category：主食/前菜/湯品/甜點/飲品/小吃/套餐/其他。只回覆 J
 
     try {
       const parsed = JSON.parse(jsonMatch[0]);
+      // Log bbox stats for debugging
+      const bboxCount = parsed.dishes?.filter((d: { bbox?: number[] }) => d.bbox && Array.isArray(d.bbox) && d.bbox.length === 4).length || 0;
+      console.log(`Menu parse: ${parsed.dishes?.length || 0} dishes, ${bboxCount} with bbox`);
+      if (bboxCount > 0) {
+        console.log('Sample bbox:', JSON.stringify(parsed.dishes.find((d: { bbox?: number[] }) => d.bbox)?.bbox));
+      }
       return NextResponse.json(parsed);
     } catch (parseErr) {
       console.error('Menu parse: JSON parse error:', parseErr, 'raw:', jsonMatch[0].substring(0, 300));
