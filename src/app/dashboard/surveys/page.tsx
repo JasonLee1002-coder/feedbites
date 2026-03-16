@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
 import { templates } from '@/lib/templates';
-import { Plus } from 'lucide-react';
+import { Plus, QrCode, Trash2 } from 'lucide-react';
+import SurveyDeleteButton from './SurveyDeleteButton';
 import type { TemplateId } from '@/types/survey';
 import { getSelectedStore } from '@/lib/store-context';
 
@@ -123,23 +124,25 @@ export default async function SurveysPage() {
                   {/* Action Buttons */}
                   <div className="flex items-center gap-2 shrink-0">
                     <Link
-                      href={`/dashboard/surveys/${survey.id}`}
+                      href={`/dashboard/surveys/${survey.id}/qrcode`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-[#FF8C00] rounded-lg hover:bg-[#E07800] transition-colors"
+                    >
+                      <QrCode className="w-3.5 h-3.5" />
+                      列印 QR
+                    </Link>
+                    <Link
+                      href={`/dashboard/surveys/${survey.id}/edit`}
                       className="px-3 py-1.5 text-xs font-medium text-[#3A3A3A] bg-[#FAF7F2] border border-[#E8E2D8] rounded-lg hover:border-[#C5A55A] hover:text-[#A08735] transition-colors"
                     >
                       編輯
                     </Link>
                     <Link
-                      href={`/dashboard/surveys/${survey.id}#qrcode`}
-                      className="px-3 py-1.5 text-xs font-medium text-[#3A3A3A] bg-[#FAF7F2] border border-[#E8E2D8] rounded-lg hover:border-[#C5A55A] hover:text-[#A08735] transition-colors"
-                    >
-                      QR Code
-                    </Link>
-                    <Link
-                      href={`/dashboard/surveys/${survey.id}#stats`}
+                      href={`/dashboard/surveys/${survey.id}`}
                       className="px-3 py-1.5 text-xs font-medium text-white bg-[#C5A55A] rounded-lg hover:bg-[#A08735] transition-colors"
                     >
                       查看統計
                     </Link>
+                    <SurveyDeleteButton surveyId={survey.id} surveyTitle={survey.title} />
                   </div>
                 </div>
               </div>

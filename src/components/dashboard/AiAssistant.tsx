@@ -74,6 +74,8 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
   // Position — uses top/right relative to viewport, floats in content area
   const [pos, setPos] = useState({ top: 300, right: 40 });
   const [isNearInput, setIsNearInput] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef<{ x: number; y: number; top: number; right: number } | null>(null);
 
   // Content-aware home: near the content, not viewport edge
   const getHomePos = () => {
@@ -499,21 +501,42 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
         )}
       </AnimatePresence>
 
-      {/* ═══ Floating Avatar — hide on mobile when typing ═══ */}
-      <motion.button
-        onClick={() => {
-          setIsOpen(!isOpen);
-          setHasInteracted(true);
-          setShowBubble(false);
+      {/* ═══ Floating Avatar — draggable + clickable ═══ */}
+      <motion.div
+        onPointerDown={(e) => {
+          dragStartRef.current = { x: e.clientX, y: e.clientY, top: pos.top, right: pos.right };
         }}
-        className={`fixed z-[60] group cursor-pointer ${inputFocused ? 'md:block hidden' : ''}`}
+        onPointerMove={(e) => {
+          if (!dragStartRef.current) return;
+          const dx = e.clientX - dragStartRef.current.x;
+          const dy = e.clientY - dragStartRef.current.y;
+          if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+            setIsDragging(true);
+            const w = window.innerWidth;
+            setPos(clampPos({
+              top: dragStartRef.current.top + dy,
+              right: dragStartRef.current.right - dx,
+            }));
+          }
+        }}
+        onPointerUp={() => {
+          if (!isDragging) {
+            // It was a click, not a drag
+            setIsOpen(!isOpen);
+            setHasInteracted(true);
+            setShowBubble(false);
+          }
+          dragStartRef.current = null;
+          setTimeout(() => setIsDragging(false), 50);
+        }}
+        onPointerCancel={() => { dragStartRef.current = null; setIsDragging(false); }}
+        className={`fixed z-[60] group cursor-grab active:cursor-grabbing select-none touch-none ${inputFocused ? 'md:block hidden' : ''}`}
         style={{
           top: pos.top,
           right: pos.right,
-          transition: 'top 0.8s cubic-bezier(0.4,0,0.2,1), right 0.8s cubic-bezier(0.4,0,0.2,1)',
+          transition: isDragging ? 'none' : 'top 0.8s cubic-bezier(0.4,0,0.2,1), right 0.8s cubic-bezier(0.4,0,0.2,1)',
         }}
-        whileHover={{ scale: 1.15 }}
-        whileTap={{ scale: 0.85 }}
+        whileHover={isDragging ? {} : { scale: 1.1 }}
       >
         {/* Cold blue outer ring */}
         <motion.div
@@ -617,7 +640,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
             transition={{ duration: 2, repeat: Infinity }}
           />
         )}
-      </motion.button>
+      </motion.div>
     </>
   );
 }
