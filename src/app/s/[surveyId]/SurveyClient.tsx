@@ -1,13 +1,51 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { Survey, ThemeColors, TemplateId, DiscountTier } from '@/types/survey';
 import { getTemplate } from '@/lib/templates';
 import SurveyRenderer from '@/components/survey/SurveyRenderer';
 import DiscountCodeDisplay from '@/components/survey/DiscountCodeDisplay';
 
-type SurveyStep = 'survey' | 'submitting' | 'discount' | 'phone-prompt';
+type SurveyStep = 'already-submitted' | 'survey' | 'submitting' | 'discount' | 'phone-prompt';
 
+// Anti-abuse: check if user already submitted this survey
+function getSubmissionKey(surveyId: string) {
+  return `feedbites_submitted_${surveyId}`;
+}
+
+function hasAlreadySubmitted(surveyId: string): boolean {
+  try {
+    const data = localStorage.getItem(getSubmissionKey(surveyId));
+    if (!data) return false;
+    const parsed = JSON.parse(data);
+    // Check if submitted within last 24 hours
+    const submittedAt = new Date(parsed.at).getTime();
+    const now = Date.now();
+    const hoursSince = (now - submittedAt) / (1000 * 60 * 60);
+    return hoursSince < 24;
+  } catch {
+    return false;
+  }
+}
+
+function markAsSubmitted(surveyId: string, code?: string) {
+  try {
+    localStorage.setItem(getSubmissionKey(surveyId), JSON.stringify({
+      at: new Date().toISOString(),
+      code,
+    }));
+  } catch { /* ignore */ }
+}
+
+function getPreviousCode(surveyId: string): string | null {
+  try {
+    const data = localStorage.getItem(getSubmissionKey(surveyId));
+    if (!data) return null;
+    return JSON.parse(data).code || null;
+  } catch {
+    return null;
+  }
+}
 interface SurveyWithStore extends Survey {
   stores: {
     store_name: string;
@@ -27,7 +65,9 @@ interface DiscountResult {
 }
 
 export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
-  const [step, setStep] = useState<SurveyStep>('survey');
+  const [step, setStep] = useState<SurveyStep>(() =>
+    hasAlreadySubmitted(survey.id) ? 'already-submitted' : 'survey'
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [xpEarned, setXpEarned] = useState(0);
@@ -88,6 +128,10 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
           tier_emoji: data.discount_code.tier_emoji,
           response_id: data.response?.id,
         });
+        // Mark as submitted to prevent abuse
+        markAsSubmitted(survey.id, data.discount_code.code);
+      } else {
+        markAsSubmitted(survey.id);
       }
 
       setStep('discount');
@@ -121,6 +165,47 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
 
   function handleSkipPhone() {
     setStep('discount');
+  }
+
+  // ─── Step: Already Submitted (anti-abuse) ───
+  if (step === 'already-submitted') {
+    const prevCode = getPreviousCode(survey.id);
+    return (
+      <div
+        className="min-h-screen flex flex-col items-center justify-center px-6"
+        style={{ background: colors.background, fontFamily: "'Noto Sans TC', sans-serif" }}
+      >
+        <div className="text-center max-w-sm">
+          <div className="text-6xl mb-4">😊</div>
+          <h1
+            className="text-xl font-bold mb-3"
+            style={{ fontFamily: "'Noto Serif TC', serif", color: colors.text }}
+          >
+            你已經填過這份問卷囉！
+          </h1>
+          <p className="text-sm mb-4" style={{ color: colors.textLight }}>
+            感謝你的回饋，每人限填一次
+          </p>
+          {prevCode && (
+            <div
+              className="p-4 rounded-2xl mb-4"
+              style={{ background: colors.surface, border: `1px solid ${colors.border}` }}
+            >
+              <div className="text-xs mb-2" style={{ color: colors.textLight }}>你的優惠碼</div>
+              <div
+                className="text-2xl font-mono font-bold tracking-[0.2em]"
+                style={{ color: colors.primary }}
+              >
+                {prevCode}
+              </div>
+            </div>
+          )}
+          <p className="text-xs" style={{ color: colors.textLight }}>
+            24 小時後可以再次填寫
+          </p>
+        </div>
+      </div>
+    );
   }
 
   // ─── Step: Survey ───
