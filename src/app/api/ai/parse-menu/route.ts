@@ -4,7 +4,7 @@ import { createServerSupabase } from '@/lib/supabase/server';
 import { getSelectedStore } from '@/lib/store-context';
 
 // Allow longer execution for large menus
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 

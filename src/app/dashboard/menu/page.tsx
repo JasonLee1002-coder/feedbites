@@ -166,6 +166,33 @@ export default function MenuPage() {
     }
   }
 
+  // Compress large images before upload to avoid timeout/size issues
+  async function compressImage(file: File, maxWidth = 2048, quality = 0.8): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { reject(new Error('Canvas not supported')); return; }
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          blob => blob ? resolve(blob) : reject(new Error('Compression failed')),
+          'image/jpeg',
+          quality,
+        );
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
   async function handleMenuUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -175,8 +202,14 @@ export default function MenuPage() {
     setShowMenuUpload(true);
 
     try {
+      // Compress if larger than 3MB
+      let uploadFile: File | Blob = file;
+      if (file.size > 3 * 1024 * 1024) {
+        uploadFile = await compressImage(file);
+      }
+
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append('image', uploadFile, file.name);
 
       const res = await fetch('/api/ai/parse-menu', {
         method: 'POST',
@@ -189,6 +222,13 @@ export default function MenuPage() {
         data = JSON.parse(text);
       } catch {
         console.error('Menu parse response not JSON:', text.substring(0, 200));
+        // Check for common non-JSON responses
+        if (text.includes('FUNCTION_INVOCATION_TIMEOUT') || text.includes('timeout')) {
+          throw new Error('圖片太大或太複雜，AI 處理超時。請試試裁切圖片後重新上傳');
+        }
+        if (text.includes('413') || text.includes('too large') || text.includes('body size')) {
+          throw new Error('圖片檔案太大，請壓縮後再試（建議 5MB 以下）');
+        }
         throw new Error('伺服器回傳異常，請重試');
       }
 
