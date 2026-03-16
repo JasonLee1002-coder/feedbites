@@ -53,6 +53,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
   const [editStoreName, setEditStoreName] = useState(storeName);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatar);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarDeleting, setAvatarDeleting] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogo);
   const [selectedFrameId, setSelectedFrameId] = useState(initialFrameId);
@@ -323,10 +324,10 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
       <div className="bg-white rounded-2xl border border-[#E8E2D8] p-6 mb-6">
         <div className="flex items-start gap-5">
           {/* Avatar upload */}
-          <div className="shrink-0">
+          <div className="shrink-0 relative">
             <button
               onClick={() => avatarInputRef.current?.click()}
-              disabled={avatarUploading}
+              disabled={avatarUploading || avatarDeleting}
               className="relative w-16 h-16 rounded-full border-2 border-dashed border-[#E8E2D8] hover:border-[#C5A55A] transition-colors overflow-hidden bg-[#FAF7F2] group"
             >
               {avatarUrl ? (
@@ -346,6 +347,30 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
                 </div>
               )}
             </button>
+            {/* Delete avatar button */}
+            {avatarUrl && !avatarUploading && (
+              <button
+                onClick={async () => {
+                  if (!confirm('確定要刪除店長照片嗎？')) return;
+                  setAvatarDeleting(true);
+                  try {
+                    const res = await fetch('/api/stores/upload-avatar', { method: 'DELETE' });
+                    if (res.ok) setAvatarUrl(null);
+                  } catch { /* ignore */ } finally {
+                    setAvatarDeleting(false);
+                  }
+                }}
+                disabled={avatarDeleting}
+                className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md transition-colors z-10"
+                title="刪除店長照片"
+              >
+                {avatarDeleting ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <X className="w-3 h-3" />
+                )}
+              </button>
+            )}
             <input
               ref={avatarInputRef}
               type="file"

@@ -16,12 +16,19 @@ export async function POST(request: NextRequest) {
     const { address, storeName } = await request.json();
     if (!address) return NextResponse.json({ error: '請輸入地址或店名' }, { status: 400 });
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      tools: [{ googleSearch: {} } as any],
+    });
 
     const result = await model.generateContent([
       {
         text: `你是台灣餐飲商圈分析 AI。用戶輸入了以下資訊，可能是地址、店名、或兩者皆有。
-請根據你的知識分析這家店可能的位置和商圈特性。
+
+**重要：請先用 Google 搜尋確認這家店的真實資訊（地址、城市、料理類型等）。**
+- 如果搜尋到真實店家資料，請根據搜尋結果填寫。
+- 如果搜尋不到確切的店家，請在 area_insight 中註明「未找到確切店家資訊，以下為根據名稱的推測」，並盡量合理推測。
+- **絕對不要捏造不存在的地址或店家資訊。**
 
 用戶輸入：${address}
 店家名稱：${storeName || '未提供'}
@@ -36,7 +43,7 @@ export async function POST(request: NextRequest) {
   "area_insight": "一句話描述這個地區或這家店的特色（20-40字）"
 }
 
-只回覆 JSON，不要 markdown 標記。即使資訊不完整也盡量給出合理推測。`,
+只回覆 JSON，不要 markdown 標記。`,
       },
     ]);
 

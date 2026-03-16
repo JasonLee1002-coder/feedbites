@@ -59,3 +59,37 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 });
   }
 }
+
+export async function DELETE() {
+  try {
+    const supabase = await createServerSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: '未授權' }, { status: 401 });
+
+    const adminDb = createServiceSupabase();
+    const store = await getSelectedStore(user.id);
+    if (!store) return NextResponse.json({ error: '找不到店家' }, { status: 404 });
+
+    // Remove all avatar files for this user (could be .png, .jpg, .webp)
+    const { data: files } = await adminDb.storage
+      .from('store-assets')
+      .list('avatars', { search: user.id });
+
+    if (files && files.length > 0) {
+      await adminDb.storage
+        .from('store-assets')
+        .remove(files.map(f => `avatars/${f.name}`));
+    }
+
+    // Clear avatar URL in store
+    await adminDb
+      .from('stores')
+      .update({ owner_avatar_url: null })
+      .eq('id', store.id);
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error('Avatar delete error:', err);
+    return NextResponse.json({ error: '刪除失敗' }, { status: 500 });
+  }
+}
