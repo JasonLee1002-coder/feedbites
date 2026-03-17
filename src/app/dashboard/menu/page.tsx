@@ -280,10 +280,12 @@ export default function MenuPage() {
     setShowMenuUpload(true);
 
     try {
-      // Compress if larger than 3MB
+      // Always compress menu images — large files cause Vercel timeouts
       let uploadFile: File | Blob = file;
-      if (file.size > 3 * 1024 * 1024) {
-        uploadFile = await compressImage(file);
+      try {
+        uploadFile = await compressImage(file, 1600, 0.7);
+      } catch {
+        // If compression fails, try with original (might timeout for large files)
       }
 
       const formData = new FormData();
