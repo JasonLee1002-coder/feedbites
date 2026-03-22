@@ -300,7 +300,12 @@ export default function MenuPage() {
       // Always compress menu images — large files cause Vercel timeouts
       let uploadFile: File | Blob = file;
       try {
-        uploadFile = await compressImage(file, 1600, 0.7);
+        // Compress more aggressively: 1200px max, 0.6 quality (target < 1MB)
+        uploadFile = await compressImage(file, 1200, 0.6);
+        // If still too big, compress harder
+        if (uploadFile.size > 1.5 * 1024 * 1024) {
+          uploadFile = await compressImage(file, 800, 0.5);
+        }
       } catch {
         // If compression fails, try with original (might timeout for large files)
       }
@@ -308,10 +313,24 @@ export default function MenuPage() {
       const formData = new FormData();
       formData.append('image', uploadFile, file.name);
 
-      const res = await fetch('/api/ai/parse-menu', {
-        method: 'POST',
-        body: formData,
-      });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 55000); // 55s timeout
+
+      let res: Response;
+      try {
+        res = await fetch('/api/ai/parse-menu', {
+          method: 'POST',
+          body: formData,
+          signal: controller.signal,
+        });
+      } catch (fetchErr) {
+        clearTimeout(timeout);
+        if (fetchErr instanceof DOMException && fetchErr.name === 'AbortError') {
+          throw new Error('AI 辨識超時，請試較小或較清晰的圖片');
+        }
+        throw new Error('網路連線失敗，請檢查網路後重試');
+      }
+      clearTimeout(timeout);
 
       const text = await res.text();
       let data;

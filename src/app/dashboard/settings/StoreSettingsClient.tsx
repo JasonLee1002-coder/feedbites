@@ -955,6 +955,9 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
         )}
       </div>
 
+      {/* ═══ Clear Test Data (測試期間清空資料) ═══ */}
+      {isOwner && <ResetDataSection storeId={storeId} />}
+
       {/* ═══ Danger Zone ═══ */}
       <div className="bg-white rounded-2xl border border-red-200 p-6 mb-6">
         <h2 className="font-bold text-red-600 mb-4 flex items-center gap-2">
@@ -1028,6 +1031,123 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════
+   Reset Data Section — 測試期間清空資料
+   ═══════════════════════════════════════════════ */
+function ResetDataSection({ storeId }: { storeId: string }) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [clearing, setClearing] = useState(false);
+  const [result, setResult] = useState<Record<string, number> | null>(null);
+
+  const options = [
+    { key: 'responses', label: '問卷回覆 + 折扣碼', desc: '清空所有顧客回覆和已發的折扣碼，保留問卷本身', icon: '📋' },
+    { key: 'surveys', label: '所有問卷', desc: '刪除所有問卷（含回覆和折扣碼）', icon: '📝' },
+    { key: 'dishes', label: '所有菜品', desc: '清空菜單，含菜品照片', icon: '🍽️' },
+    { key: 'feedback', label: '回報紀錄', desc: '清空所有意見回報', icon: '💬' },
+  ];
+
+  const toggle = (key: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      // If selecting surveys, auto-deselect responses (surveys cascade includes responses)
+      if (key === 'surveys' && next.has('surveys')) next.delete('responses');
+      if (key === 'responses' && next.has('responses')) next.delete('surveys');
+      return next;
+    });
+    setResult(null);
+  };
+
+  const handleClear = async () => {
+    if (selected.size === 0) return;
+    const labels = options.filter(o => selected.has(o.key)).map(o => o.label).join('、');
+    if (!confirm(`確定要清空：${labels}？\n\n此操作無法復原。`)) return;
+
+    setClearing(true);
+    setResult(null);
+    try {
+      const res = await fetch(`/api/stores/${storeId}/reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targets: Array.from(selected) }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || '清空失敗');
+        return;
+      }
+      const data = await res.json();
+      setResult(data.cleared);
+      setSelected(new Set());
+    } catch {
+      alert('清空失敗，請重試');
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-amber-200 p-6 mb-6">
+      <h2 className="font-bold text-amber-600 mb-1 flex items-center gap-2">
+        <Trash2 className="w-4 h-4" />
+        清空測試資料
+      </h2>
+      <p className="text-xs text-[#8A8585] mb-4">測試期間可快速清空特定資料，正式營運前建議清一次</p>
+
+      <div className="space-y-2 mb-4">
+        {options.map(opt => (
+          <button
+            key={opt.key}
+            onClick={() => toggle(opt.key)}
+            className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+              selected.has(opt.key)
+                ? 'border-amber-400 bg-amber-50'
+                : 'border-[#E8E2D8] bg-[#FAF7F2] hover:border-amber-300'
+            }`}
+          >
+            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${
+              selected.has(opt.key) ? 'bg-amber-500 border-amber-500' : 'border-[#E8E2D8]'
+            }`}>
+              {selected.has(opt.key) && <Check className="w-3 h-3 text-white" />}
+            </div>
+            <span className="text-lg shrink-0">{opt.icon}</span>
+            <div className="min-w-0">
+              <div className="text-sm font-medium text-[#3A3A3A]">{opt.label}</div>
+              <div className="text-[10px] text-[#8A8585]">{opt.desc}</div>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {result && (
+        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 mb-4">
+          <p className="text-sm text-emerald-700 font-medium">✅ 清空完成</p>
+          <div className="text-xs text-emerald-600 mt-1">
+            {Object.entries(result).map(([key, count]) => (
+              <span key={key} className="mr-3">
+                {key === 'surveys' ? '問卷' : key === 'responses' ? '回覆' : key === 'dishes' ? '菜品' : '回報'}：{count} 筆
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <button
+        onClick={handleClear}
+        disabled={selected.size === 0 || clearing}
+        className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl text-white bg-amber-500 hover:bg-amber-600 transition-colors disabled:opacity-40"
+      >
+        {clearing ? (
+          <><Loader2 className="w-4 h-4 animate-spin" />清空中...</>
+        ) : (
+          <><Trash2 className="w-4 h-4" />清空選取的資料</>
+        )}
+      </button>
     </div>
   );
 }
