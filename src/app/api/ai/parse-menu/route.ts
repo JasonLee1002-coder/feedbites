@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import sharp from 'sharp';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { getSelectedStore } from '@/lib/store-context';
 
@@ -25,20 +26,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '請上傳菜單圖片' }, { status: 400 });
     }
 
-    // Convert image to base64
-    const bytes = await image.arrayBuffer();
-    const base64Image = Buffer.from(bytes).toString('base64');
-
-    // Normalize MIME type — Gemini supports jpeg, png, webp, gif
-    let mimeType = image.type || 'image/jpeg';
-    // Some browsers send empty or wrong MIME for webp
-    if (!mimeType.startsWith('image/')) {
-      const name = image.name.toLowerCase();
-      if (name.endsWith('.webp')) mimeType = 'image/webp';
-      else if (name.endsWith('.png')) mimeType = 'image/png';
-      else if (name.endsWith('.jpg') || name.endsWith('.jpeg')) mimeType = 'image/jpeg';
-      else mimeType = 'image/jpeg';
-    }
+    // Server-side resize: shrink large images before sending to Gemini
+    const rawBytes = Buffer.from(await image.arrayBuffer());
+    const resized = await sharp(rawBytes)
+      .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 70 })
+      .toBuffer();
+    const base64Image = resized.toString('base64');
+    const mimeType = 'image/jpeg';
 
     // Use Gemini 2.0 Flash for speed (2.5 Flash thinking mode is too slow for 60s timeout)
     const model = genAI.getGenerativeModel({
