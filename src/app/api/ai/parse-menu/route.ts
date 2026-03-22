@@ -40,52 +40,28 @@ export async function POST(request: NextRequest) {
       else mimeType = 'image/jpeg';
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      generationConfig: {
+        maxOutputTokens: 4096,
+      },
+    });
 
     const contentParts = [
       { inlineData: { mimeType, data: base64Image } },
-      { text: `你是餐廳菜單與食品辨識 AI。你正在分析的圖片可能是：傳統菜單、展示櫃/陳列櫃、價格板/黑板、或任何顯示食品項目與價格的格式。請辨識圖中所有食品項目。
-
-圖片類型判斷與處理：
-- **傳統菜單**：依照菜單排版辨識菜名、價格
-- **展示櫃/陳列櫃**（如麵包店、蛋糕店、熟食櫃）：辨識每個獨立的食品項目，讀取其價格標籤，並為每個食品項目提供精確的 bounding box
-- **價格板/黑板**：擷取品項名稱與對應價格
-- **其他格式**（傳單、海報、看板等）：盡力辨識所有食品項目與價格
-
-規則：
-1. 最多辨識 30 道菜（優先招牌/主食）
-2. **菜名一律用中文**。如果原文是英文，翻譯成中文
-3. description 用中文，15 字以內
-4. **如果食品項目名稱在圖中不清楚或沒有標示**，請根據食物外觀推斷合理的中文名稱（例如看起來像巧克力馬芬就寫「巧克力馬芬」，看起來像原味司康就寫「原味司康」）
-5. **每個在圖片中可見的食品項目都必須提供 bbox**（不限於有照片的菜品）
-
-bbox 說明：
-- 格式：[y_min, x_min, y_max, x_max]
-- 數值為 0~1000 的整數，代表該食品項目在整張圖片中的正規化位置
-- 請精確框選每個「個別食品項目」本身，盡量貼合食物邊緣
-- 展示櫃場景：每個麵包/蛋糕/食品分別給一個獨立的 bbox，不要把多個品項框在一起
-- 傳統菜單場景：如果有餐點照片就框選照片區域
-- 數值必須合理：y_min < y_max, x_min < x_max，且都在 0~1000 範圍內
-- 沒有視覺上可辨識位置的品項（如純文字價格板）不需要 bbox
-
-回覆格式（只回覆 JSON，不要 markdown）：
-{"dishes":[{"name":"中文菜名","description":"中文描述","category":"分類","price":"NT$xxx","bbox":[y_min,x_min,y_max,x_max]}],"total":數量,"notes":"說明"}
-
-category 從以下選擇：主食/前菜/湯品/甜點/飲品/小吃/套餐/其他` },
+      { text: `辨識圖中所有食品（菜單、展示櫃、價格板皆可）。最多20項，菜名用中文（英文翻譯），看不到名字就根據外觀推斷。description中文15字內。每項提供bbox[y_min,x_min,y_max,x_max]（0-1000正規化座標，框選該食品位置）。只回JSON不要markdown：
+{"dishes":[{"name":"中文名","description":"描述","category":"分類","price":"NT$xx","bbox":[0,0,0,0]}],"total":數量,"notes":""}
+category：主食/前菜/湯品/甜點/飲品/小吃/套餐/其他` },
     ];
 
-    // Retry up to 2 times
+    // Single attempt (retries eat into the 60s timeout)
     let text = '';
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const result = await model.generateContent(contentParts);
-        text = result.response.text();
-        break;
-      } catch (retryErr) {
-        console.error(`Menu parse attempt ${attempt + 1} failed:`, retryErr instanceof Error ? retryErr.message : retryErr);
-        if (attempt === 2) throw retryErr;
-        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
-      }
+    try {
+      const result = await model.generateContent(contentParts);
+      text = result.response.text();
+    } catch (genErr) {
+      console.error('Menu parse Gemini error:', genErr instanceof Error ? genErr.message : genErr);
+      throw genErr;
     }
     // Try to extract JSON from response (may be wrapped in ```json blocks)
     const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');

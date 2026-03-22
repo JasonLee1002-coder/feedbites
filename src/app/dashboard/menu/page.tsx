@@ -297,17 +297,16 @@ export default function MenuPage() {
     setShowMenuUpload(true);
 
     try {
-      // Always compress menu images — large files cause Vercel timeouts
+      // Aggressively compress — Vercel has 60s timeout + 4.5MB body limit
       let uploadFile: File | Blob = file;
       try {
-        // Compress more aggressively: 1200px max, 0.6 quality (target < 1MB)
-        uploadFile = await compressImage(file, 1200, 0.6);
-        // If still too big, compress harder
-        if (uploadFile.size > 1.5 * 1024 * 1024) {
-          uploadFile = await compressImage(file, 800, 0.5);
+        uploadFile = await compressImage(file, 800, 0.5);
+        // If still over 800KB, go even smaller
+        if (uploadFile.size > 800 * 1024) {
+          uploadFile = await compressImage(file, 600, 0.4);
         }
       } catch {
-        // If compression fails, try with original (might timeout for large files)
+        // If compression fails, try with original
       }
 
       const formData = new FormData();
