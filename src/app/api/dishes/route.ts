@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     const store = await getSelectedStore(user.id);
     if (!store) return NextResponse.json({ error: '找不到店家' }, { status: 404 });
 
-    const { name, description, category, photo_url } = await request.json();
+    const { name, description, category, photo_url, price } = await request.json();
 
     if (!name?.trim()) {
       return NextResponse.json({ error: '請輸入菜品名稱' }, { status: 400 });
@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
         description: description?.trim() || null,
         category: category || '主食',
         photo_url: photo_url || null,
+        price: price?.trim() || null,
       })
       .select()
       .single();

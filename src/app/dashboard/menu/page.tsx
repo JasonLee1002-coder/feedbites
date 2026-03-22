@@ -10,6 +10,7 @@ interface Dish {
   description: string | null;
   photo_url: string | null;
   category: string;
+  price: string | null;
   is_active: boolean;
   created_at: string;
 }
@@ -27,6 +28,7 @@ export default function MenuPage() {
   const [formName, setFormName] = useState('');
   const [formDesc, setFormDesc] = useState('');
   const [formCategory, setFormCategory] = useState('主食');
+  const [formPrice, setFormPrice] = useState('');
   const [formPhotoUrl, setFormPhotoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -35,6 +37,7 @@ export default function MenuPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const menuUploadRef = useRef<HTMLInputElement>(null);
+  const menuCameraRef = useRef<HTMLInputElement>(null);
 
   // Smart menu upload state
   const [showMenuUpload, setShowMenuUpload] = useState(false);
@@ -68,6 +71,7 @@ export default function MenuPage() {
     setFormName('');
     setFormDesc('');
     setFormCategory('主食');
+    setFormPrice('');
     setFormPhotoUrl(null);
     setShowAddForm(false);
     setEditingId(null);
@@ -78,6 +82,7 @@ export default function MenuPage() {
     setFormName(dish.name);
     setFormDesc(dish.description || '');
     setFormCategory(dish.category);
+    setFormPrice(dish.price || '');
     setFormPhotoUrl(dish.photo_url);
     setShowAddForm(false);
   }
@@ -124,6 +129,7 @@ export default function MenuPage() {
             name: formName.trim(),
             description: formDesc.trim() || null,
             category: formCategory,
+            price: formPrice.trim() || null,
             photo_url: formPhotoUrl,
           }),
         });
@@ -141,6 +147,7 @@ export default function MenuPage() {
             name: formName.trim(),
             description: formDesc.trim() || null,
             category: formCategory,
+            price: formPrice.trim() || null,
             photo_url: formPhotoUrl,
           }),
         });
@@ -370,6 +377,7 @@ export default function MenuPage() {
     } finally {
       setMenuParsing(false);
       if (menuUploadRef.current) menuUploadRef.current.value = '';
+      if (menuCameraRef.current) menuCameraRef.current.value = '';
     }
   }
 
@@ -389,6 +397,7 @@ export default function MenuPage() {
             name: d.name,
             description: d.description || null,
             category: d.category || '其他',
+            price: d.price || null,
             photo_url: d.photoUrl || null,
           }),
         });
@@ -452,11 +461,18 @@ export default function MenuPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => menuUploadRef.current?.click()}
+            onClick={() => menuCameraRef.current?.click()}
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] text-white rounded-full text-sm font-medium hover:shadow-lg hover:shadow-[#FF8C00]/20 transition-all shadow-sm"
           >
-            <Sparkles className="w-4 h-4" />
-            上傳現有菜單
+            <Camera className="w-4 h-4" />
+            拍菜單
+          </button>
+          <button
+            onClick={() => menuUploadRef.current?.click()}
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#FF8C00]/10 text-[#FF8C00] border border-[#FF8C00]/30 rounded-full text-sm font-medium hover:bg-[#FF8C00]/20 transition-all"
+          >
+            <ImageIcon className="w-4 h-4" />
+            選照片
           </button>
           <button
             onClick={() => { resetForm(); setShowAddForm(true); }}
@@ -466,6 +482,16 @@ export default function MenuPage() {
             新增菜品
           </button>
         </div>
+        {/* AI 菜單上傳：拍照 */}
+        <input
+          ref={menuCameraRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={handleMenuUpload}
+        />
+        {/* AI 菜單上傳：從相簿選 */}
         <input
           ref={menuUploadRef}
           type="file"
@@ -731,6 +757,17 @@ export default function MenuPage() {
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-[#3A3A3A] mb-1">價格</label>
+                <input
+                  type="text"
+                  value={formPrice}
+                  onChange={e => setFormPrice(e.target.value)}
+                  placeholder="例如：NT$140、140、NT$140-180"
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] transition-colors bg-[#FAF7F2]"
+                />
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-[#3A3A3A] mb-1">分類</label>
                 <div className="flex flex-wrap gap-2">
                   {CATEGORIES.map(cat => (
@@ -848,7 +885,12 @@ export default function MenuPage() {
 
                 {/* Info */}
                 <div className="p-3">
-                  <h4 className="font-bold text-sm text-[#3A3A3A] mb-0.5 truncate">{dish.name}</h4>
+                  <div className="flex items-center justify-between mb-0.5">
+                    <h4 className="font-bold text-sm text-[#3A3A3A] truncate">{dish.name}</h4>
+                    {dish.price && (
+                      <span className="text-xs font-medium text-[#FF8C00] shrink-0 ml-1">{dish.price}</span>
+                    )}
+                  </div>
                   {dish.description && (
                     <p className="text-xs text-[#8A8585] line-clamp-2 leading-relaxed">{dish.description}</p>
                   )}
