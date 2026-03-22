@@ -67,6 +67,15 @@ export const metadata: Metadata = {
     },
   },
   metadataBase: new URL(siteUrl),
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'FeedBites',
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
+  },
 };
 
 export default function RootLayout({
@@ -107,6 +116,7 @@ export default function RootLayout({
   return (
     <html lang="zh-TW">
       <head>
+        <meta name="theme-color" content="#FF8C00" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

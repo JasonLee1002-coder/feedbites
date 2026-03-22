@@ -1,0 +1,17 @@
+{
+  "name": "FeedBites — 問卷回饋系統",
+  "short_name": "FeedBites",
+  "description": "Bite. Rate. Save. 掃碼填問卷，立即拿折扣",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF7F2",
+  "theme_color": "#FF8C00",
+  "icons": [
+    {
+      "src": "/icon",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
