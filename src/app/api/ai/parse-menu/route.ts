@@ -28,40 +28,56 @@ export async function POST(request: NextRequest) {
     // Frontend already compresses to ~800px JPEG. Just convert to base64.
     const bytes = await image.arrayBuffer();
     const base64Image = Buffer.from(bytes).toString('base64');
-    console.log(`Menu image received: ${bytes.byteLength} bytes (${(bytes.byteLength / 1024).toFixed(0)}KB)`);
+    console.log(`Menu image: ${(bytes.byteLength / 1024).toFixed(0)}KB, type=${image.type}, name=${image.name}`);
 
     // Detect MIME type
-    const name = (image.name || '').toLowerCase();
+    const fileName = (image.name || '').toLowerCase();
     const mimeType = image.type && image.type.startsWith('image/')
       ? image.type
-      : name.endsWith('.png') ? 'image/png'
-      : name.endsWith('.webp') ? 'image/webp'
+      : fileName.endsWith('.png') ? 'image/png'
+      : fileName.endsWith('.webp') ? 'image/webp'
       : 'image/jpeg';
 
-    // Use Gemini 2.0 Flash for speed (2.5 Flash thinking mode is too slow for 60s timeout)
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
-      generationConfig: {
-        maxOutputTokens: 4096,
-      },
-    });
+    // Try gemini-2.5-flash first, fallback to gemini-2.0-flash-001
+    const models = ['gemini-2.5-flash', 'gemini-2.0-flash-001', 'gemini-1.5-flash'];
+
+    const prompt = `辨識圖中所有食品（菜單、展示櫃、價格板皆可）。最多20項，菜名用中文（英文翻譯），看不到名字就根據外觀推斷。description中文15字內。每項提供bbox[y_min,x_min,y_max,x_max]（0-1000正規化座標，框選該食品位置）。只回JSON不要markdown：
+{"dishes":[{"name":"中文名","description":"描述","category":"分類","price":"NT$xx","bbox":[0,0,0,0]}],"total":數量,"notes":""}
+category：主食/前菜/湯品/甜點/飲品/小吃/套餐/其他`;
 
     const contentParts = [
       { inlineData: { mimeType, data: base64Image } },
-      { text: `辨識圖中所有食品（菜單、展示櫃、價格板皆可）。最多20項，菜名用中文（英文翻譯），看不到名字就根據外觀推斷。description中文15字內。每項提供bbox[y_min,x_min,y_max,x_max]（0-1000正規化座標，框選該食品位置）。只回JSON不要markdown：
-{"dishes":[{"name":"中文名","description":"描述","category":"分類","price":"NT$xx","bbox":[0,0,0,0]}],"total":數量,"notes":""}
-category：主食/前菜/湯品/甜點/飲品/小吃/套餐/其他` },
+      { text: prompt },
     ];
 
-    // Single attempt (retries eat into the 60s timeout)
     let text = '';
-    try {
-      const result = await model.generateContent(contentParts);
-      text = result.response.text();
-    } catch (genErr) {
-      console.error('Menu parse Gemini error:', genErr instanceof Error ? genErr.message : genErr);
-      throw genErr;
+    let lastError = '';
+
+    for (const modelName of models) {
+      try {
+        console.log(`Trying model: ${modelName}`);
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          generationConfig: { maxOutputTokens: 4096 },
+        });
+        const result = await model.generateContent(contentParts);
+        text = result.response.text();
+        console.log(`Success with ${modelName}, response length: ${text.length}`);
+        break;
+      } catch (genErr) {
+        lastError = genErr instanceof Error ? genErr.message : String(genErr);
+        console.error(`Model ${modelName} failed:`, lastError);
+        // Try next model
+      }
     }
+
+    if (!text) {
+      console.error('All models failed. Last error:', lastError);
+      return NextResponse.json({
+        error: `AI 辨識失敗：${lastError.substring(0, 100)}`,
+      }, { status: 500 });
+    }
+
     // Try to extract JSON from response (may be wrapped in ```json blocks)
     const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
     const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
@@ -73,12 +89,8 @@ category：主食/前菜/湯品/甜點/飲品/小吃/套餐/其他` },
 
     try {
       const parsed = JSON.parse(jsonMatch[0]);
-      // Log bbox stats for debugging
       const bboxCount = parsed.dishes?.filter((d: { bbox?: number[] }) => d.bbox && Array.isArray(d.bbox) && d.bbox.length === 4).length || 0;
       console.log(`Menu parse: ${parsed.dishes?.length || 0} dishes, ${bboxCount} with bbox`);
-      if (bboxCount > 0) {
-        console.log('Sample bbox:', JSON.stringify(parsed.dishes.find((d: { bbox?: number[] }) => d.bbox)?.bbox));
-      }
       return NextResponse.json(parsed);
     } catch (parseErr) {
       console.error('Menu parse: JSON parse error:', parseErr, 'raw:', jsonMatch[0].substring(0, 300));
@@ -91,10 +103,7 @@ category：主食/前菜/湯品/甜點/飲品/小吃/套餐/其他` },
     if (errMsg.includes('SAFETY') || errMsg.includes('blocked')) {
       return NextResponse.json({ error: '圖片內容無法處理，請換一張菜單圖片' }, { status: 422 });
     }
-    if (errMsg.includes('too large') || errMsg.includes('size')) {
-      return NextResponse.json({ error: '圖片太大，請壓縮後再試（建議 5MB 以下）' }, { status: 413 });
-    }
 
-    return NextResponse.json({ error: '菜單辨識失敗，請重試' }, { status: 500 });
+    return NextResponse.json({ error: `菜單辨識失敗：${errMsg.substring(0, 80)}` }, { status: 500 });
   }
 }
