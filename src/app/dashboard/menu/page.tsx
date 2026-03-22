@@ -61,6 +61,13 @@ export default function MenuPage() {
   const cropCanvasRef = useRef<HTMLCanvasElement>(null);
   const [cropUploading, setCropUploading] = useState(false);
 
+  // Zoom & pan for crop mode
+  const [cropZoom, setCropZoom] = useState(1);
+  const [cropPan, setCropPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [cropMode, setCropMode] = useState<'crop' | 'pan'>('crop'); // toggle between crop and pan
+
   useEffect(() => {
     fetchDishes();
   }, []);
@@ -539,6 +546,19 @@ export default function MenuPage() {
         />
       </div>
 
+      {/* Tips — always visible when no dishes */}
+      {dishes.length === 0 && !showMenuUpload && (
+        <div className="bg-[#FFF8F0] rounded-2xl border border-[#FF8C00]/15 p-5 mb-6">
+          <p className="text-sm font-bold text-[#FF8C00] mb-2">📸 AI 菜單辨識 — 拍照就能建菜單</p>
+          <ul className="text-xs text-[#8A8585] space-y-1 leading-relaxed">
+            <li>✅ 菜單、展示櫃、價格板、黑板都能辨識</li>
+            <li>✅ 確保文字和價格清晰可讀</li>
+            <li>✅ 一次拍一頁效果最好，最多辨識 15 道</li>
+            <li>✅ 辨識後可修改名稱、價格、重新圈選照片</li>
+          </ul>
+        </div>
+      )}
+
       {/* Smart Menu Upload Panel */}
       {showMenuUpload && (
         <div className="bg-white rounded-2xl border border-[#FF8C00]/20 p-6 mb-6 shadow-sm">
@@ -558,21 +578,10 @@ export default function MenuPage() {
           </div>
 
           {menuParsing ? (
-            <div className="py-8">
+            <div className="py-10 text-center">
               <Loader2 className="w-10 h-10 text-[#FF8C00] animate-spin mx-auto mb-4" />
-              <p className="text-sm text-[#3A3A3A] font-medium text-center">AI 正在辨識菜單 + 擷取菜品照片...</p>
-              <p className="text-xs text-[#8A8585] mt-1 text-center mb-6">通常需要 10-30 秒</p>
-
-              <div className="bg-[#FAF7F2] rounded-xl p-4 border border-[#E8E2D8]">
-                <p className="text-xs font-bold text-[#A08735] mb-2">📸 拍照小技巧</p>
-                <ul className="text-[11px] text-[#8A8585] space-y-1.5 leading-relaxed">
-                  <li>✅ 拍清楚的菜單、展示櫃、價格板都可以</li>
-                  <li>✅ 確保文字和價格清晰可讀</li>
-                  <li>✅ 一次拍一頁，效果最好</li>
-                  <li>⚠️ 最多辨識 15 道菜，太多請分次上傳</li>
-                  <li>⚠️ 照片太暗、模糊、反光可能影響辨識</li>
-                </ul>
-              </div>
+              <p className="text-sm text-[#3A3A3A] font-medium">AI 正在辨識菜單 + 擷取菜品照片...</p>
+              <p className="text-xs text-[#8A8585] mt-1">通常需要 10-30 秒</p>
             </div>
           ) : parsedDishes.length > 0 ? (
             <>
@@ -1112,43 +1121,124 @@ export default function MenuPage() {
               </div>
 
               {manualCropping ? (
-                /* ──── Manual crop mode ──── */
+                /* ──── Manual crop mode with zoom/pan ──── */
                 <div className="p-4">
-                  <p className="text-xs text-[#8A8585] mb-3 text-center">
-                    👇 這是你上傳的原圖，用手指拖曳框選「{dish.name}」的範圍
+                  <p className="text-xs text-[#8A8585] mb-2 text-center">
+                    👇 上傳的原圖 — {cropMode === 'crop' ? '拖曳框選' : '拖曳平移'}「{dish.name}」
                   </p>
-                  <div
-                    className="relative w-full rounded-xl overflow-hidden border border-[#E8E2D8] cursor-crosshair select-none touch-none"
-                    onMouseDown={handleCropMouseDown}
-                    onMouseMove={handleCropMouseMove}
-                    onMouseUp={handleCropMouseUp}
-                    onMouseLeave={handleCropMouseUp}
-                    onTouchStart={handleCropTouchStart}
-                    onTouchMove={handleCropTouchMove}
-                    onTouchEnd={() => setIsDragging(false)}
-                  >
-                    {menuImageUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={menuImageUrl} alt="原始菜單" className="w-full" draggable={false} />
-                    )}
-                    {/* Crop selection rectangle */}
-                    {cropStart && cropEnd && (
-                      <div
-                        className="absolute border-2 border-[#FF8C00] bg-[#FF8C00]/10 pointer-events-none"
-                        style={{
-                          left: `${Math.min(cropStart.x, cropEnd.x)}%`,
-                          top: `${Math.min(cropStart.y, cropEnd.y)}%`,
-                          width: `${Math.abs(cropEnd.x - cropStart.x)}%`,
-                          height: `${Math.abs(cropEnd.y - cropStart.y)}%`,
-                        }}
+
+                  {/* Toolbar: zoom + mode toggle */}
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                    <button
+                      onClick={() => { setCropMode('crop'); }}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        cropMode === 'crop' ? 'bg-[#FF8C00] text-white' : 'bg-[#FAF7F2] text-[#8A8585] border border-[#E8E2D8]'
+                      }`}
+                    >
+                      <Crop className="w-3 h-3" />
+                      圈選
+                    </button>
+                    <button
+                      onClick={() => { setCropMode('pan'); }}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        cropMode === 'pan' ? 'bg-[#FF8C00] text-white' : 'bg-[#FAF7F2] text-[#8A8585] border border-[#E8E2D8]'
+                      }`}
+                    >
+                      <Move className="w-3 h-3" />
+                      平移
+                    </button>
+                    <div className="w-px h-5 bg-[#E8E2D8] mx-1" />
+                    <button
+                      onClick={() => setCropZoom(z => Math.max(1, z - 0.5))}
+                      disabled={cropZoom <= 1}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#FAF7F2] border border-[#E8E2D8] text-[#3A3A3A] text-sm font-bold disabled:opacity-30 hover:bg-[#E8E2D8] transition-colors"
+                    >
+                      −
+                    </button>
+                    <span className="text-xs text-[#8A8585] w-10 text-center">{Math.round(cropZoom * 100)}%</span>
+                    <button
+                      onClick={() => setCropZoom(z => Math.min(4, z + 0.5))}
+                      disabled={cropZoom >= 4}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#FAF7F2] border border-[#E8E2D8] text-[#3A3A3A] text-sm font-bold disabled:opacity-30 hover:bg-[#E8E2D8] transition-colors"
+                    >
+                      +
+                    </button>
+                    {cropZoom > 1 && (
+                      <button
+                        onClick={() => { setCropZoom(1); setCropPan({ x: 0, y: 0 }); }}
+                        className="text-[10px] text-[#FF8C00] hover:text-[#E07800] ml-1"
                       >
-                        {/* Corner handles */}
-                        <div className="absolute -top-1 -left-1 w-3 h-3 border-2 border-[#FF8C00] bg-white rounded-full" />
-                        <div className="absolute -top-1 -right-1 w-3 h-3 border-2 border-[#FF8C00] bg-white rounded-full" />
-                        <div className="absolute -bottom-1 -left-1 w-3 h-3 border-2 border-[#FF8C00] bg-white rounded-full" />
-                        <div className="absolute -bottom-1 -right-1 w-3 h-3 border-2 border-[#FF8C00] bg-white rounded-full" />
-                      </div>
+                        重置
+                      </button>
                     )}
+                  </div>
+
+                  <div
+                    className="relative w-full rounded-xl overflow-hidden border border-[#E8E2D8] select-none touch-none"
+                    style={{ cursor: cropMode === 'pan' ? 'grab' : 'crosshair', maxHeight: '60vh' }}
+                    onMouseDown={(e) => {
+                      if (cropMode === 'pan') {
+                        setIsPanning(true);
+                        setPanStart({ x: e.clientX - cropPan.x, y: e.clientY - cropPan.y });
+                      } else {
+                        handleCropMouseDown(e);
+                      }
+                    }}
+                    onMouseMove={(e) => {
+                      if (cropMode === 'pan' && isPanning) {
+                        setCropPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
+                      } else if (cropMode === 'crop') {
+                        handleCropMouseMove(e);
+                      }
+                    }}
+                    onMouseUp={() => { setIsPanning(false); if (cropMode === 'crop') handleCropMouseUp(); }}
+                    onMouseLeave={() => { setIsPanning(false); if (cropMode === 'crop') handleCropMouseUp(); }}
+                    onTouchStart={(e) => {
+                      if (cropMode === 'pan') {
+                        const t = e.touches[0];
+                        setIsPanning(true);
+                        setPanStart({ x: t.clientX - cropPan.x, y: t.clientY - cropPan.y });
+                      } else {
+                        handleCropTouchStart(e);
+                      }
+                    }}
+                    onTouchMove={(e) => {
+                      if (cropMode === 'pan' && isPanning) {
+                        const t = e.touches[0];
+                        setCropPan({ x: t.clientX - panStart.x, y: t.clientY - panStart.y });
+                      } else if (cropMode === 'crop') {
+                        handleCropTouchMove(e);
+                      }
+                    }}
+                    onTouchEnd={() => { setIsPanning(false); if (cropMode === 'crop') setIsDragging(false); }}
+                  >
+                    <div style={{
+                      transform: `scale(${cropZoom}) translate(${cropPan.x / cropZoom}px, ${cropPan.y / cropZoom}px)`,
+                      transformOrigin: 'top left',
+                      transition: isPanning || isDragging ? 'none' : 'transform 0.2s ease',
+                    }}>
+                      {menuImageUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={menuImageUrl} alt="原始菜單" className="w-full" draggable={false} />
+                      )}
+                      {/* Crop selection rectangle */}
+                      {cropStart && cropEnd && (
+                        <div
+                          className="absolute border-2 border-[#FF8C00] bg-[#FF8C00]/10 pointer-events-none"
+                          style={{
+                            left: `${Math.min(cropStart.x, cropEnd.x)}%`,
+                            top: `${Math.min(cropStart.y, cropEnd.y)}%`,
+                            width: `${Math.abs(cropEnd.x - cropStart.x)}%`,
+                            height: `${Math.abs(cropEnd.y - cropStart.y)}%`,
+                          }}
+                        >
+                          <div className="absolute -top-1 -left-1 w-3 h-3 border-2 border-[#FF8C00] bg-white rounded-full" />
+                          <div className="absolute -top-1 -right-1 w-3 h-3 border-2 border-[#FF8C00] bg-white rounded-full" />
+                          <div className="absolute -bottom-1 -left-1 w-3 h-3 border-2 border-[#FF8C00] bg-white rounded-full" />
+                          <div className="absolute -bottom-1 -right-1 w-3 h-3 border-2 border-[#FF8C00] bg-white rounded-full" />
+                        </div>
+                      )}
+                    </div>
                     <canvas ref={cropCanvasRef} className="hidden" />
                   </div>
                   <div className="flex items-center gap-3 mt-4">
@@ -1160,7 +1250,7 @@ export default function MenuPage() {
                       {cropUploading ? <><Loader2 className="w-4 h-4 animate-spin" />裁切中...</> : <><Crop className="w-4 h-4" />確定裁切</>}
                     </button>
                     <button
-                      onClick={() => { setManualCropping(false); setCropStart(null); setCropEnd(null); }}
+                      onClick={() => { setManualCropping(false); setCropStart(null); setCropEnd(null); setCropZoom(1); setCropPan({ x: 0, y: 0 }); setCropMode('crop'); }}
                       className="px-4 py-2.5 text-sm text-[#8A8585] hover:text-[#3A3A3A] transition-colors"
                     >
                       取消
@@ -1187,7 +1277,7 @@ export default function MenuPage() {
                   {menuImageUrl && (
                     <div className="flex gap-2 mb-4">
                       <button
-                        onClick={() => { setManualCropping(true); setCropStart(null); setCropEnd(null); }}
+                        onClick={() => { setManualCropping(true); setCropStart(null); setCropEnd(null); setCropZoom(1); setCropPan({ x: 0, y: 0 }); setCropMode('crop'); }}
                         className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-[#FF8C00]/30 text-[#FF8C00] rounded-xl text-xs font-medium hover:bg-[#FF8C00]/5 transition-colors"
                       >
                         <Crop className="w-3.5 h-3.5" />

@@ -161,9 +161,7 @@ export async function POST(request: NextRequest) {
 
     if (!parsed) {
       console.error('JSON parse failed. jsonStr (first 500):', jsonStr.substring(0, 500));
-      // Return raw AI response snippet so user can report it
-      const snippet = text.substring(0, 300).replace(/\n/g, ' ');
-      return NextResponse.json({ error: `DEBUG: AI原始回應：${snippet}` }, { status: 422 });
+      return NextResponse.json({ error: '辨識結果解析失敗，請重新上傳試試' }, { status: 422 });
     }
 
     const bboxCount = parsed.dishes?.filter((d: { bbox?: number[] }) => d.bbox && Array.isArray(d.bbox) && d.bbox.length === 4).length || 0;
