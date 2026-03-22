@@ -78,23 +78,42 @@ category：主食/前菜/湯品/甜點/飲品/小吃/套餐/其他`;
       }, { status: 500 });
     }
 
-    // Try to extract JSON from response (may be wrapped in ```json blocks)
-    const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    // Extract JSON from response — handle various AI output formats
+    console.log('Raw AI response (first 500):', text.substring(0, 500));
 
-    if (!jsonMatch) {
+    // Strip markdown code blocks, thinking tags, and other wrappers
+    let cleaned = text
+      .replace(/```json\s*/g, '')
+      .replace(/```\s*/g, '')
+      .replace(/<think>[\s\S]*?<\/think>/g, '')  // Gemini 2.5 thinking blocks
+      .trim();
+
+    // Find the outermost JSON object
+    const jsonStart = cleaned.indexOf('{');
+    const jsonEnd = cleaned.lastIndexOf('}');
+
+    if (jsonStart === -1 || jsonEnd === -1 || jsonEnd <= jsonStart) {
       console.error('Menu parse: no JSON found in response:', text.substring(0, 500));
       return NextResponse.json({ error: '無法辨識菜單內容，請換一張更清晰的圖片' }, { status: 422 });
     }
 
+    let jsonStr = cleaned.substring(jsonStart, jsonEnd + 1);
+
+    // Fix common JSON issues from AI
+    jsonStr = jsonStr
+      .replace(/,\s*}/g, '}')     // trailing comma before }
+      .replace(/,\s*]/g, ']')     // trailing comma before ]
+      .replace(/'/g, '"')         // single quotes → double quotes
+      .replace(/\n/g, ' ');       // newlines inside strings
+
     try {
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = JSON.parse(jsonStr);
       const bboxCount = parsed.dishes?.filter((d: { bbox?: number[] }) => d.bbox && Array.isArray(d.bbox) && d.bbox.length === 4).length || 0;
-      console.log(`Menu parse: ${parsed.dishes?.length || 0} dishes, ${bboxCount} with bbox`);
+      console.log(`Menu parse OK: ${parsed.dishes?.length || 0} dishes, ${bboxCount} with bbox`);
       return NextResponse.json(parsed);
     } catch (parseErr) {
-      console.error('Menu parse: JSON parse error:', parseErr, 'raw:', jsonMatch[0].substring(0, 300));
-      return NextResponse.json({ error: 'AI 回傳格式異常，請重試' }, { status: 422 });
+      console.error('JSON parse error:', parseErr, 'jsonStr (first 300):', jsonStr.substring(0, 300));
+      return NextResponse.json({ error: `AI 回傳格式異常（${(parseErr as Error).message?.substring(0, 50)}）` }, { status: 422 });
     }
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
