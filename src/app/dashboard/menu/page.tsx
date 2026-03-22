@@ -550,10 +550,21 @@ export default function MenuPage() {
           </div>
 
           {menuParsing ? (
-            <div className="py-12 text-center">
+            <div className="py-8">
               <Loader2 className="w-10 h-10 text-[#FF8C00] animate-spin mx-auto mb-4" />
-              <p className="text-sm text-[#3A3A3A] font-medium">AI 正在辨識菜單 + 擷取菜品照片...</p>
-              <p className="text-xs text-[#8A8585] mt-1">通常需要 10-20 秒</p>
+              <p className="text-sm text-[#3A3A3A] font-medium text-center">AI 正在辨識菜單 + 擷取菜品照片...</p>
+              <p className="text-xs text-[#8A8585] mt-1 text-center mb-6">通常需要 10-30 秒</p>
+
+              <div className="bg-[#FAF7F2] rounded-xl p-4 border border-[#E8E2D8]">
+                <p className="text-xs font-bold text-[#A08735] mb-2">📸 拍照小技巧</p>
+                <ul className="text-[11px] text-[#8A8585] space-y-1.5 leading-relaxed">
+                  <li>✅ 拍清楚的菜單、展示櫃、價格板都可以</li>
+                  <li>✅ 確保文字和價格清晰可讀</li>
+                  <li>✅ 一次拍一頁，效果最好</li>
+                  <li>⚠️ 最多辨識 15 道菜，太多請分次上傳</li>
+                  <li>⚠️ 照片太暗、模糊、反光可能影響辨識</li>
+                </ul>
+              </div>
             </div>
           ) : parsedDishes.length > 0 ? (
             <>
