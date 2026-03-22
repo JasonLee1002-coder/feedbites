@@ -311,6 +311,7 @@ export default function MenuPage() {
 
       const formData = new FormData();
       formData.append('image', uploadFile, file.name);
+      console.log(`Menu upload: original ${(file.size / 1024).toFixed(0)}KB → compressed ${(uploadFile.size / 1024).toFixed(0)}KB`);
 
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 55000); // 55s timeout

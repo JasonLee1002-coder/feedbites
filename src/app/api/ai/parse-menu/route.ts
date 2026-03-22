@@ -26,14 +26,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '請上傳菜單圖片' }, { status: 400 });
     }
 
-    // Server-side resize: shrink large images before sending to Gemini
+    // Server-side resize with sharp (shrink large images before Gemini)
     const rawBytes = Buffer.from(await image.arrayBuffer());
-    const resized = await sharp(rawBytes)
-      .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 70 })
-      .toBuffer();
-    const base64Image = resized.toString('base64');
-    const mimeType = 'image/jpeg';
+    let imageBuffer: Buffer;
+    let mimeType = 'image/jpeg';
+    try {
+      imageBuffer = await sharp(rawBytes)
+        .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 70 })
+        .toBuffer();
+      console.log(`Image resized: ${rawBytes.length} → ${imageBuffer.length} bytes`);
+    } catch (sharpErr) {
+      console.warn('Sharp resize failed, using original:', sharpErr instanceof Error ? sharpErr.message : sharpErr);
+      imageBuffer = rawBytes;
+      // Guess MIME from original
+      const name = (image.name || '').toLowerCase();
+      mimeType = image.type || (name.endsWith('.png') ? 'image/png' : name.endsWith('.webp') ? 'image/webp' : 'image/jpeg');
+    }
+    const base64Image = imageBuffer.toString('base64');
 
     // Use Gemini 2.0 Flash for speed (2.5 Flash thinking mode is too slow for 60s timeout)
     const model = genAI.getGenerativeModel({
