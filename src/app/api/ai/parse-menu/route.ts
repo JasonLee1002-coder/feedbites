@@ -40,8 +40,9 @@ export async function POST(request: NextRequest) {
       else mimeType = 'image/jpeg';
     }
 
+    // Use Gemini 2.0 Flash for speed (2.5 Flash thinking mode is too slow for 60s timeout)
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.0-flash',
       generationConfig: {
         maxOutputTokens: 4096,
       },
