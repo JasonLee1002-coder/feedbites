@@ -356,6 +356,11 @@ export default function MenuPage() {
         throw new Error('未辨識到任何菜品，請換一張更清晰的圖片');
       }
 
+      // Always store original image for manual crop later
+      const originalImg = await loadImage(file);
+      menuImageRef.current = originalImg;
+      setMenuImageUrl(URL.createObjectURL(file));
+
       // First show the parsed dishes immediately (no photos yet)
       const initialDishes = data.dishes.map((d: { name: string; description: string; category: string; price: string; bbox?: [number, number, number, number] }) => ({
         ...d, selected: true, photoUrl: undefined,
@@ -368,11 +373,6 @@ export default function MenuPage() {
 
       if (bboxCount > 0) {
         setParseNotes(`已辨識 ${data.dishes.length} 道菜品，正在擷取 ${bboxCount} 張照片...`);
-
-        // Load original image for cropping
-        const originalImg = await loadImage(file);
-        menuImageRef.current = originalImg;
-        setMenuImageUrl(URL.createObjectURL(file));
 
         // Sequential crop + upload (one at a time, update UI progressively)
         let photosSuccess = 0;
@@ -1107,7 +1107,7 @@ export default function MenuPage() {
                 /* ──── Manual crop mode ──── */
                 <div className="p-4">
                   <p className="text-xs text-[#8A8585] mb-3 text-center">
-                    在原圖上拖曳框選「{dish.name}」的照片範圍
+                    👇 這是你上傳的原圖，用手指拖曳框選「{dish.name}」的範圍
                   </p>
                   <div
                     className="relative w-full rounded-xl overflow-hidden border border-[#E8E2D8] cursor-crosshair select-none touch-none"
