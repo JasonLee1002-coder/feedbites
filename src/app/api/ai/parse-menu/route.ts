@@ -99,22 +99,58 @@ category：主食/前菜/湯品/甜點/飲品/小吃/套餐/其他`;
 
     let jsonStr = cleaned.substring(jsonStart, jsonEnd + 1);
 
-    // Fix common JSON issues from AI
+    // Aggressive JSON repair
     jsonStr = jsonStr
-      .replace(/,\s*}/g, '}')     // trailing comma before }
-      .replace(/,\s*]/g, ']')     // trailing comma before ]
-      .replace(/'/g, '"')         // single quotes → double quotes
-      .replace(/\n/g, ' ');       // newlines inside strings
+      .replace(/\n/g, ' ')            // newlines → spaces
+      .replace(/\r/g, '')             // carriage returns
+      .replace(/\t/g, ' ')            // tabs → spaces
+      .replace(/,\s*}/g, '}')         // trailing comma before }
+      .replace(/,\s*]/g, ']')         // trailing comma before ]
+      .replace(/(\d)\s+(\d)/g, '$1, $2')  // "123 456" → "123, 456" (bbox missing commas)
+      .replace(/]\s*\[/g, '], [')     // "][" → "], [" (missing comma between arrays)
+      .replace(/}\s*{/g, '}, {')      // "}{" → "}, {" (missing comma between objects)
+      .replace(/"\s*"/g, '", "')      // "" "" → "", "" (missing comma between strings)
+      .replace(/(\d)\s*"/g, '$1, "')  // '123"' → '123, "' (missing comma after number)
+      .replace(/"\s*(\d)/g, '", $1')  // '"abc"123' → '"abc", 123'
+      .replace(/"\s*\[/g, '": [')     // Fix missing colon (rare)
+      .replace(/"\s*{/g, '": {');     // Fix missing colon (rare)
 
+    // Don't blindly replace all single quotes (breaks apostrophes in text)
+
+    // Try parsing
+    let parsed;
     try {
-      const parsed = JSON.parse(jsonStr);
-      const bboxCount = parsed.dishes?.filter((d: { bbox?: number[] }) => d.bbox && Array.isArray(d.bbox) && d.bbox.length === 4).length || 0;
-      console.log(`Menu parse OK: ${parsed.dishes?.length || 0} dishes, ${bboxCount} with bbox`);
-      return NextResponse.json(parsed);
-    } catch (parseErr) {
-      console.error('JSON parse error:', parseErr, 'jsonStr (first 300):', jsonStr.substring(0, 300));
-      return NextResponse.json({ error: `AI 回傳格式異常（${(parseErr as Error).message?.substring(0, 50)}）` }, { status: 422 });
+      parsed = JSON.parse(jsonStr);
+    } catch {
+      // Second attempt: try to extract just the dishes array
+      console.log('First parse failed, trying dishes array extraction...');
+      const dishesMatch = jsonStr.match(/"dishes"\s*:\s*\[([\s\S]*)\]/);
+      if (dishesMatch) {
+        try {
+          // Wrap each {...} object individually
+          const objMatches = dishesMatch[1].match(/\{[^{}]*\}/g);
+          if (objMatches) {
+            const dishes = objMatches.map(obj => {
+              try { return JSON.parse(obj); }
+              catch { return null; }
+            }).filter(Boolean);
+            if (dishes.length > 0) {
+              parsed = { dishes, total: dishes.length, notes: '' };
+              console.log(`Recovered ${dishes.length} dishes from broken JSON`);
+            }
+          }
+        } catch { /* give up */ }
+      }
     }
+
+    if (!parsed) {
+      console.error('JSON parse failed. jsonStr (first 500):', jsonStr.substring(0, 500));
+      return NextResponse.json({ error: '辨識結果解析失敗，請重新上傳試試' }, { status: 422 });
+    }
+
+    const bboxCount = parsed.dishes?.filter((d: { bbox?: number[] }) => d.bbox && Array.isArray(d.bbox) && d.bbox.length === 4).length || 0;
+    console.log(`Menu parse OK: ${parsed.dishes?.length || 0} dishes, ${bboxCount} with bbox`);
+    return NextResponse.json(parsed);
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
     console.error('Menu parse error:', errMsg);
