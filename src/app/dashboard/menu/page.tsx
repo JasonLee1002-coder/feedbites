@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, Camera, Pencil, Trash2, X, Check, ImageIcon, Star, ChefHat, Upload, Sparkles, Loader2 } from 'lucide-react';
+import { Plus, Camera, Pencil, Trash2, X, Check, ImageIcon, Star, ChefHat, Upload, Sparkles, Loader2, ZoomIn, Crop, Move } from 'lucide-react';
 import VoiceRecorder from '@/components/shared/VoiceRecorder';
 
 interface Dish {
@@ -50,6 +50,16 @@ export default function MenuPage() {
   const [batchSaving, setBatchSaving] = useState(false);
   const [batchProgress, setBatchProgress] = useState(0);
   const menuImageRef = useRef<HTMLImageElement | null>(null);
+  const [menuImageUrl, setMenuImageUrl] = useState<string | null>(null); // ObjectURL for original image
+
+  // Review modal state
+  const [reviewingIndex, setReviewingIndex] = useState<number | null>(null);
+  const [manualCropping, setManualCropping] = useState(false);
+  const [cropStart, setCropStart] = useState<{ x: number; y: number } | null>(null);
+  const [cropEnd, setCropEnd] = useState<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const cropCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [cropUploading, setCropUploading] = useState(false);
 
   useEffect(() => {
     fetchDishes();
@@ -343,6 +353,7 @@ export default function MenuPage() {
         // Load original image for cropping
         const originalImg = await loadImage(file);
         menuImageRef.current = originalImg;
+        setMenuImageUrl(URL.createObjectURL(file));
 
         // Sequential crop + upload (one at a time, update UI progressively)
         let photosSuccess = 0;
@@ -547,37 +558,70 @@ export default function MenuPage() {
                 </div>
               </div>
 
-              <div className="space-y-2 max-h-[400px] overflow-y-auto mb-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-[500px] overflow-y-auto mb-4">
                 {parsedDishes.map((dish, i) => (
                   <div
                     key={i}
-                    onClick={() => setParsedDishes(prev => prev.map((d, j) => j === i ? { ...d, selected: !d.selected } : d))}
-                    className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                    className={`rounded-xl border overflow-hidden transition-all ${
                       dish.selected
-                        ? 'border-[#FF8C00]/30 bg-[#FF8C00]/5'
-                        : 'border-[#E8E2D8] bg-white opacity-50'
+                        ? 'border-[#FF8C00]/40 shadow-sm'
+                        : 'border-[#E8E2D8] opacity-40'
                     }`}
                   >
-                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
-                      dish.selected ? 'bg-[#FF8C00] border-[#FF8C00]' : 'border-[#E8E2D8]'
-                    }`}>
-                      {dish.selected && <Check className="w-3 h-3 text-white" />}
-                    </div>
-                    {/* Dish photo thumbnail */}
-                    {dish.photoUrl && (
-                      <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 border border-[#E8E2D8]">
-                        <img src={dish.photoUrl} alt={dish.name} className="w-full h-full object-cover" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-[#3A3A3A]">{dish.name}</span>
-                        <span className="text-[10px] px-2 py-0.5 bg-[#FAF7F2] text-[#A08735] rounded-full">{dish.category}</span>
-                        {dish.price && <span className="text-[10px] text-[#FF8C00]">{dish.price}</span>}
-                      </div>
-                      {dish.description && (
-                        <p className="text-xs text-[#8A8585] mt-0.5 line-clamp-2">{dish.description}</p>
+                    {/* Photo area — clickable to enlarge */}
+                    <div
+                      className="relative w-full cursor-pointer group"
+                      style={{ aspectRatio: '4/3', background: '#F5F0E8' }}
+                      onClick={() => setReviewingIndex(i)}
+                    >
+                      {dish.photoUrl ? (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={dish.photoUrl} alt={dish.name} className="w-full h-full object-cover" />
+                          {/* Hover overlay */}
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
+                            <ZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                        </>
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-[#8A8585]">
+                          <ImageIcon className="w-8 h-8 mb-1 opacity-30" />
+                          <span className="text-[10px]">點擊設定照片</span>
+                        </div>
                       )}
+                      {/* Price badge */}
+                      {dish.price && (
+                        <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-white/90 text-[#FF8C00] text-[11px] font-bold shadow-sm">
+                          {dish.price}
+                        </div>
+                      )}
+                    </div>
+                    {/* Info + checkbox */}
+                    <div className="p-2.5">
+                      <div className="flex items-start gap-2">
+                        <button
+                          onClick={() => setParsedDishes(prev => prev.map((d, j) => j === i ? { ...d, selected: !d.selected } : d))}
+                          className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
+                            dish.selected ? 'bg-[#FF8C00] border-[#FF8C00]' : 'border-[#E8E2D8]'
+                          }`}
+                        >
+                          {dish.selected && <Check className="w-3 h-3 text-white" />}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-[#3A3A3A] leading-tight line-clamp-2">{dish.name}</p>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <span className="text-[10px] px-1.5 py-0.5 bg-[#FAF7F2] text-[#A08735] rounded-full">{dish.category}</span>
+                          </div>
+                        </div>
+                        {/* Edit button */}
+                        <button
+                          onClick={() => setReviewingIndex(i)}
+                          className="p-1.5 text-[#8A8585] hover:text-[#FF8C00] hover:bg-[#FF8C00]/10 rounded-lg transition-colors shrink-0"
+                          title="檢視/編輯"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -592,7 +636,7 @@ export default function MenuPage() {
 
               <div className="mb-4 p-3 bg-[#FAF7F2] rounded-xl border border-[#E8E2D8]">
                 <p className="text-xs text-[#8A8585] leading-relaxed">
-                  💡 加入後若需修改菜品名稱、描述或分類，請到下方<strong className="text-[#C5A55A]">菜單列表</strong>點擊菜品卡片的 ✏️ 編輯按鈕進行修改
+                  💡 點擊照片可放大檢視，點 ✏️ 可修改名稱、價格、分類。也可以從原圖重新圈選照片
                 </p>
               </div>
 
@@ -926,6 +970,276 @@ export default function MenuPage() {
           </div>
         </div>
       )}
+
+      {/* ═══════ Dish Review Modal ═══════ */}
+      {reviewingIndex !== null && parsedDishes[reviewingIndex] && (() => {
+        const dish = parsedDishes[reviewingIndex];
+        const updateField = (field: string, value: string) => {
+          setParsedDishes(prev => prev.map((d, j) => j === reviewingIndex ? { ...d, [field]: value } : d));
+        };
+
+        // Manual crop handlers
+        const handleCropMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = ((e.clientX - rect.left) / rect.width) * 100;
+          const y = ((e.clientY - rect.top) / rect.height) * 100;
+          setCropStart({ x, y });
+          setCropEnd({ x, y });
+          setIsDragging(true);
+        };
+        const handleCropMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+          if (!isDragging) return;
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+          const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+          setCropEnd({ x, y });
+        };
+        const handleCropMouseUp = () => setIsDragging(false);
+
+        // Touch handlers for mobile crop
+        const handleCropTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+          const touch = e.touches[0];
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = ((touch.clientX - rect.left) / rect.width) * 100;
+          const y = ((touch.clientY - rect.top) / rect.height) * 100;
+          setCropStart({ x, y });
+          setCropEnd({ x, y });
+          setIsDragging(true);
+        };
+        const handleCropTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+          if (!isDragging) return;
+          const touch = e.touches[0];
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = Math.max(0, Math.min(100, ((touch.clientX - rect.left) / rect.width) * 100));
+          const y = Math.max(0, Math.min(100, ((touch.clientY - rect.top) / rect.height) * 100));
+          setCropEnd({ x, y });
+        };
+
+        const handleCropConfirm = async () => {
+          if (!cropStart || !cropEnd || !menuImageRef.current) return;
+          setCropUploading(true);
+          try {
+            const xMin = Math.min(cropStart.x, cropEnd.x) * 10; // Convert % to 0-1000
+            const yMin = Math.min(cropStart.y, cropEnd.y) * 10;
+            const xMax = Math.max(cropStart.x, cropEnd.x) * 10;
+            const yMax = Math.max(cropStart.y, cropEnd.y) * 10;
+            const bbox: [number, number, number, number] = [yMin, xMin, yMax, xMax];
+            const blob = await cropDishPhoto(menuImageRef.current, bbox);
+            if (blob && blob.size > 500) {
+              const url = await uploadDishPhotoBlob(blob, dish.name);
+              if (url) {
+                setParsedDishes(prev => prev.map((d, j) => j === reviewingIndex ? { ...d, photoUrl: url, bbox } : d));
+              }
+            }
+          } catch { /* ignore */ }
+          setCropUploading(false);
+          setManualCropping(false);
+          setCropStart(null);
+          setCropEnd(null);
+        };
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => { setReviewingIndex(null); setManualCropping(false); setCropStart(null); setCropEnd(null); }}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              {/* Modal header */}
+              <div className="sticky top-0 bg-white rounded-t-2xl border-b border-[#E8E2D8] px-5 py-3 flex items-center justify-between z-10">
+                <h3 className="font-bold text-[#3A3A3A]">
+                  {manualCropping ? '📐 圈選照片' : '🔍 檢視 / 編輯菜品'}
+                </h3>
+                <div className="flex items-center gap-2">
+                  {/* Navigate between dishes */}
+                  {!manualCropping && (
+                    <>
+                      <button
+                        onClick={() => setReviewingIndex(Math.max(0, reviewingIndex - 1))}
+                        disabled={reviewingIndex === 0}
+                        className="p-1.5 text-[#8A8585] hover:text-[#3A3A3A] disabled:opacity-30 rounded-lg"
+                      >
+                        ◀
+                      </button>
+                      <span className="text-xs text-[#8A8585]">{reviewingIndex + 1}/{parsedDishes.length}</span>
+                      <button
+                        onClick={() => setReviewingIndex(Math.min(parsedDishes.length - 1, reviewingIndex + 1))}
+                        disabled={reviewingIndex === parsedDishes.length - 1}
+                        className="p-1.5 text-[#8A8585] hover:text-[#3A3A3A] disabled:opacity-30 rounded-lg"
+                      >
+                        ▶
+                      </button>
+                    </>
+                  )}
+                  <button onClick={() => { setReviewingIndex(null); setManualCropping(false); setCropStart(null); setCropEnd(null); }} className="p-1.5 text-[#8A8585] hover:text-[#3A3A3A]">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {manualCropping ? (
+                /* ──── Manual crop mode ──── */
+                <div className="p-4">
+                  <p className="text-xs text-[#8A8585] mb-3 text-center">
+                    在原圖上拖曳框選「{dish.name}」的照片範圍
+                  </p>
+                  <div
+                    className="relative w-full rounded-xl overflow-hidden border border-[#E8E2D8] cursor-crosshair select-none touch-none"
+                    onMouseDown={handleCropMouseDown}
+                    onMouseMove={handleCropMouseMove}
+                    onMouseUp={handleCropMouseUp}
+                    onMouseLeave={handleCropMouseUp}
+                    onTouchStart={handleCropTouchStart}
+                    onTouchMove={handleCropTouchMove}
+                    onTouchEnd={() => setIsDragging(false)}
+                  >
+                    {menuImageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={menuImageUrl} alt="原始菜單" className="w-full" draggable={false} />
+                    )}
+                    {/* Crop selection rectangle */}
+                    {cropStart && cropEnd && (
+                      <div
+                        className="absolute border-2 border-[#FF8C00] bg-[#FF8C00]/10 pointer-events-none"
+                        style={{
+                          left: `${Math.min(cropStart.x, cropEnd.x)}%`,
+                          top: `${Math.min(cropStart.y, cropEnd.y)}%`,
+                          width: `${Math.abs(cropEnd.x - cropStart.x)}%`,
+                          height: `${Math.abs(cropEnd.y - cropStart.y)}%`,
+                        }}
+                      >
+                        {/* Corner handles */}
+                        <div className="absolute -top-1 -left-1 w-3 h-3 border-2 border-[#FF8C00] bg-white rounded-full" />
+                        <div className="absolute -top-1 -right-1 w-3 h-3 border-2 border-[#FF8C00] bg-white rounded-full" />
+                        <div className="absolute -bottom-1 -left-1 w-3 h-3 border-2 border-[#FF8C00] bg-white rounded-full" />
+                        <div className="absolute -bottom-1 -right-1 w-3 h-3 border-2 border-[#FF8C00] bg-white rounded-full" />
+                      </div>
+                    )}
+                    <canvas ref={cropCanvasRef} className="hidden" />
+                  </div>
+                  <div className="flex items-center gap-3 mt-4">
+                    <button
+                      onClick={handleCropConfirm}
+                      disabled={!cropStart || !cropEnd || cropUploading || Math.abs((cropEnd?.x || 0) - (cropStart?.x || 0)) < 3}
+                      className="flex-1 flex items-center justify-center gap-2 px-5 py-2.5 bg-[#FF8C00] text-white rounded-xl text-sm font-bold disabled:opacity-40 transition-all"
+                    >
+                      {cropUploading ? <><Loader2 className="w-4 h-4 animate-spin" />裁切中...</> : <><Crop className="w-4 h-4" />確定裁切</>}
+                    </button>
+                    <button
+                      onClick={() => { setManualCropping(false); setCropStart(null); setCropEnd(null); }}
+                      className="px-4 py-2.5 text-sm text-[#8A8585] hover:text-[#3A3A3A] transition-colors"
+                    >
+                      取消
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* ──── Review/edit mode ──── */
+                <div className="p-4">
+                  {/* Large photo preview */}
+                  <div className="relative w-full rounded-xl overflow-hidden border border-[#E8E2D8] mb-4" style={{ aspectRatio: '4/3', background: '#F5F0E8' }}>
+                    {dish.photoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={dish.photoUrl} alt={dish.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-[#8A8585]">
+                        <ImageIcon className="w-12 h-12 mb-2 opacity-30" />
+                        <span className="text-sm">尚無照片</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Photo actions */}
+                  {menuImageUrl && (
+                    <div className="flex gap-2 mb-4">
+                      <button
+                        onClick={() => { setManualCropping(true); setCropStart(null); setCropEnd(null); }}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-[#FF8C00]/30 text-[#FF8C00] rounded-xl text-xs font-medium hover:bg-[#FF8C00]/5 transition-colors"
+                      >
+                        <Crop className="w-3.5 h-3.5" />
+                        從原圖重新圈選
+                      </button>
+                      {dish.photoUrl && (
+                        <button
+                          onClick={() => updateField('photoUrl', '')}
+                          className="flex items-center justify-center gap-2 px-3 py-2 border border-red-200 text-red-400 rounded-xl text-xs font-medium hover:bg-red-50 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          移除照片
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Editable fields */}
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-[#8A8585] mb-1">菜品名稱</label>
+                      <input
+                        type="text"
+                        value={dish.name}
+                        onChange={e => updateField('name', e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-[#E8E2D8] text-sm font-medium outline-none focus:border-[#FF8C00] bg-[#FAF7F2] text-[#3A3A3A]"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-[#8A8585] mb-1">價格</label>
+                        <input
+                          type="text"
+                          value={dish.price || ''}
+                          onChange={e => updateField('price', e.target.value)}
+                          placeholder="NT$..."
+                          className="w-full px-3 py-2 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-[#FF8C00] bg-[#FAF7F2] text-[#FF8C00] font-medium"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-[#8A8585] mb-1">分類</label>
+                        <select
+                          value={dish.category}
+                          onChange={e => updateField('category', e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-[#FF8C00] bg-[#FAF7F2] text-[#3A3A3A]"
+                        >
+                          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-[#8A8585] mb-1">描述</label>
+                      <input
+                        type="text"
+                        value={dish.description || ''}
+                        onChange={e => updateField('description', e.target.value)}
+                        placeholder="簡短描述..."
+                        className="w-full px-3 py-2 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-[#FF8C00] bg-[#FAF7F2] text-[#3A3A3A]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Confirm / toggle selection */}
+                  <div className="flex items-center gap-3 mt-5">
+                    <button
+                      onClick={() => {
+                        setParsedDishes(prev => prev.map((d, j) => j === reviewingIndex ? { ...d, selected: true } : d));
+                        setReviewingIndex(null);
+                      }}
+                      className="flex-1 flex items-center justify-center gap-2 px-5 py-2.5 bg-[#FF8C00] text-white rounded-xl text-sm font-bold hover:bg-[#E07800] transition-colors"
+                    >
+                      <Check className="w-4 h-4" />
+                      確定加入
+                    </button>
+                    <button
+                      onClick={() => {
+                        setParsedDishes(prev => prev.map((d, j) => j === reviewingIndex ? { ...d, selected: false } : d));
+                        setReviewingIndex(null);
+                      }}
+                      className="px-4 py-2.5 text-sm text-red-400 hover:text-red-600 transition-colors"
+                    >
+                      不加入
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
