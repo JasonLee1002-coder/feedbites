@@ -145,7 +145,9 @@ category：主食/前菜/湯品/甜點/飲品/小吃/套餐/其他`;
 
     if (!parsed) {
       console.error('JSON parse failed. jsonStr (first 500):', jsonStr.substring(0, 500));
-      return NextResponse.json({ error: '辨識結果解析失敗，請重新上傳試試' }, { status: 422 });
+      // Return raw AI response snippet so user can report it
+      const snippet = text.substring(0, 300).replace(/\n/g, ' ');
+      return NextResponse.json({ error: `DEBUG: AI原始回應：${snippet}` }, { status: 422 });
     }
 
     const bboxCount = parsed.dishes?.filter((d: { bbox?: number[] }) => d.bbox && Array.isArray(d.bbox) && d.bbox.length === 4).length || 0;
