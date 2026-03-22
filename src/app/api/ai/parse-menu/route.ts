@@ -41,9 +41,13 @@ export async function POST(request: NextRequest) {
     // Try gemini-2.5-flash first, fallback to gemini-2.0-flash-001
     const models = ['gemini-2.5-flash', 'gemini-2.0-flash-001', 'gemini-1.5-flash'];
 
-    const prompt = `辨識圖中所有食品（菜單、展示櫃、價格板皆可）。最多20項，菜名用中文（英文翻譯），看不到名字就根據外觀推斷。description中文15字內。每項提供bbox[y_min,x_min,y_max,x_max]（0-1000正規化座標，框選該食品位置）。只回JSON不要markdown：
-{"dishes":[{"name":"中文名","description":"描述","category":"分類","price":"NT$xx","bbox":[0,0,0,0]}],"total":數量,"notes":""}
-category：主食/前菜/湯品/甜點/飲品/小吃/套餐/其他`;
+    const prompt = `辨識圖中食品，最多15項。規則：
+- name：只要中文，不要英文
+- description：中文10字內
+- price：如"NT$140"或""
+- bbox：[y_min,x_min,y_max,x_max] 0~1000座標
+- category：主食/前菜/湯品/甜點/飲品/小吃/套餐/其他
+只回JSON：{"dishes":[{"name":"","description":"","category":"","price":"","bbox":[0,0,0,0]}],"total":0}`;
 
     const contentParts = [
       { inlineData: { mimeType, data: base64Image } },
@@ -58,7 +62,7 @@ category：主食/前菜/湯品/甜點/飲品/小吃/套餐/其他`;
         console.log(`Trying model: ${modelName}`);
         const model = genAI.getGenerativeModel({
           model: modelName,
-          generationConfig: { maxOutputTokens: 4096 },
+          generationConfig: { maxOutputTokens: 8192 },
         });
         const result = await model.generateContent(contentParts);
         text = result.response.text();
@@ -99,23 +103,35 @@ category：主食/前菜/湯品/甜點/飲品/小吃/套餐/其他`;
 
     let jsonStr = cleaned.substring(jsonStart, jsonEnd + 1);
 
-    // Aggressive JSON repair
+    // Basic cleanup
     jsonStr = jsonStr
-      .replace(/\n/g, ' ')            // newlines → spaces
-      .replace(/\r/g, '')             // carriage returns
-      .replace(/\t/g, ' ')            // tabs → spaces
-      .replace(/,\s*}/g, '}')         // trailing comma before }
-      .replace(/,\s*]/g, ']')         // trailing comma before ]
-      .replace(/(\d)\s+(\d)/g, '$1, $2')  // "123 456" → "123, 456" (bbox missing commas)
-      .replace(/]\s*\[/g, '], [')     // "][" → "], [" (missing comma between arrays)
-      .replace(/}\s*{/g, '}, {')      // "}{" → "}, {" (missing comma between objects)
-      .replace(/"\s*"/g, '", "')      // "" "" → "", "" (missing comma between strings)
-      .replace(/(\d)\s*"/g, '$1, "')  // '123"' → '123, "' (missing comma after number)
-      .replace(/"\s*(\d)/g, '", $1')  // '"abc"123' → '"abc", 123'
-      .replace(/"\s*\[/g, '": [')     // Fix missing colon (rare)
-      .replace(/"\s*{/g, '": {');     // Fix missing colon (rare)
+      .replace(/\n/g, ' ')
+      .replace(/\r/g, '')
+      .replace(/\t/g, ' ')
+      .replace(/,\s*}/g, '}')
+      .replace(/,\s*]/g, ']');
 
-    // Don't blindly replace all single quotes (breaks apostrophes in text)
+    // If JSON is truncated (no proper closing), try to fix it
+    const openBraces = (jsonStr.match(/{/g) || []).length;
+    const closeBraces = (jsonStr.match(/}/g) || []).length;
+    const openBrackets = (jsonStr.match(/\[/g) || []).length;
+    const closeBrackets = (jsonStr.match(/]/g) || []).length;
+
+    if (openBraces > closeBraces || openBrackets > closeBrackets) {
+      console.log(`JSON truncated: { ${openBraces}/${closeBraces}, [ ${openBrackets}/${closeBrackets}. Attempting repair...`);
+      // Remove the last incomplete item (after last complete })
+      const lastCompleteObj = jsonStr.lastIndexOf('}');
+      if (lastCompleteObj > 0) {
+        jsonStr = jsonStr.substring(0, lastCompleteObj + 1);
+        // Close remaining brackets
+        const remainingBrackets = openBrackets - (jsonStr.match(/]/g) || []).length;
+        const remainingBraces = openBraces - (jsonStr.match(/}/g) || []).length;
+        for (let i = 0; i < remainingBrackets; i++) jsonStr += ']';
+        for (let i = 0; i < remainingBraces; i++) jsonStr += '}';
+        // Clean trailing commas again
+        jsonStr = jsonStr.replace(/,\s*]/g, ']').replace(/,\s*}/g, '}');
+      }
+    }
 
     // Try parsing
     let parsed;
