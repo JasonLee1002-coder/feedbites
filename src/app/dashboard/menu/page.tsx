@@ -434,12 +434,20 @@ export default function MenuPage() {
         if (res.ok) {
           const newDish = await res.json();
           setDishes(prev => [newDish, ...prev]);
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          console.error(`Dish create failed for "${d.name}":`, errData);
+          alert(`菜品「${d.name}」建立失敗：${errData.error || res.statusText}`);
+          break;
         }
         setBatchProgress(Math.round(((i + 1) / selected.length) * 100));
       }
       setShowMenuUpload(false);
       setParsedDishes([]);
-    } catch { /* ignore */ } finally {
+    } catch (err) {
+      console.error('Batch create error:', err);
+      alert('批次建立失敗，請重試');
+    } finally {
       setBatchSaving(false);
     }
   }
