@@ -170,13 +170,17 @@ export default function SurveyRenderer({
   const [floatingXp, setFloatingXp] = useState<{ amount: number; id: number } | null>(null);
   const floatingIdRef = useRef(0);
   const prevLevelRef = useRef(1);
-  const [levelUpVisible, setLevelUpVisible] = useState(false);
 
   // Track which questions already awarded XP (prevents text input giving XP per keystroke)
   const xpAwardedRef = useRef<Set<string>>(new Set());
 
-  // AI Companion
-  const [companionMsg, setCompanionMsg] = useState<string>('嗨！完成問卷就能獲得折扣碼喔 🪙');
+  // AI Companion — more conversational & contextual
+  const companionGreetings = [
+    '嗨！完成問卷就能獲得折扣碼喔 🪙',
+    '歡迎光臨！花幾分鐘填問卷，馬上拿優惠 🎫',
+    '嗨嗨～回答問題就能解鎖獎勵喔 ✨',
+  ];
+  const [companionMsg, setCompanionMsg] = useState<string>(companionGreetings[Math.floor(Math.random() * companionGreetings.length)]);
   const [companionVisible, setCompanionVisible] = useState(true);
   const [companionTyped, setCompanionTyped] = useState('');
   const companionTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -317,6 +321,8 @@ export default function SurveyRenderer({
       '快完成了！填完就能拿到折扣碼喔 🎫',
       '只需要你的真實感受，怎麼選都對 👍',
       '文字題可以用語音輸入，AI 會幫你整理成漂亮的回饋 ✨',
+      '選一個最符合感受的表情就好，超快的！ 😄',
+      '每個回饋都會被店家認真看過喔，謝謝你 🙏',
     ];
 
     function resetIdleTimer() {
@@ -341,9 +347,6 @@ export default function SurveyRenderer({
   }, []);
 
   const isLastSection = currentSection === sections.length - 1;
-  const currentLevel = getLevel(xp);
-  const { min: lvMin, max: lvMax } = getLevelXpRange(currentLevel);
-  const levelProgress = Math.min(100, ((xp - lvMin) / (lvMax - lvMin)) * 100);
 
   /* ───── Animate XP counter rolling up ───── */
   useEffect(() => {
@@ -356,16 +359,23 @@ export default function SurveyRenderer({
     return () => clearTimeout(timer);
   }, [displayXp, xp]);
 
-  /* ───── Level-up detection ───── */
+  /* ───── XP milestone companion (replaces level system) ───── */
   useEffect(() => {
     const newLevel = getLevel(xp);
     if (newLevel > prevLevelRef.current) {
       prevLevelRef.current = newLevel;
-      setLevelUpVisible(true);
-      miniConfetti(colors);
-      setTimeout(() => setLevelUpVisible(false), 2000);
+      // Encourage via companion instead of confetti/level-up overlay
+      const msgs = [
+        '',
+        '回答速度超快的！繼續保持 🔥',
+        '越來越上手了，你的回饋很有價值 💪',
+        '哇！超認真的你，店家一定很感動 ✨',
+      ];
+      if (msgs[newLevel]) {
+        showCompanionRef.current({ text: msgs[newLevel], priority: 5 });
+      }
     }
-  }, [xp, colors]);
+  }, [xp]);
 
   /* ───── Companion typing effect ───── */
   useEffect(() => {
@@ -636,9 +646,11 @@ export default function SurveyRenderer({
   function goNext() {
     setDirection(1);
     setCurrentSection(prev => prev + 1);
-    // Last section companion message
-    if (currentSection + 1 === sections.length - 1) {
-      showCompanionMessage({ text: '最後一步了！看看你能拿到什麼等級的獎勵 🎊', priority: 7 });
+    const nextIdx = currentSection + 1;
+    if (nextIdx === sections.length - 1) {
+      showCompanionMessage({ text: '最後一步了！馬上就能拿到獎勵了 🎊', priority: 7 });
+    } else if (nextIdx === 1 && sections.length > 2) {
+      showCompanionMessage({ text: '進入下一個部分了，繼續加油！ 💪', priority: 4 });
     }
   }
 
@@ -657,22 +669,89 @@ export default function SurveyRenderer({
     exit: (dir: number) => ({ x: dir > 0 ? -200 : 200, opacity: 0 }),
   };
 
-  /* ───── helper: render option button (card-style, not boring pill) ───── */
-  // Map satisfaction words to emojis
-  const satisfactionEmoji: Record<string, string> = {
-    '非常滿意': '🤩', '滿意': '😊', '普通': '😐', '不太滿意': '😕', '不滿意': '😞', '很差': '😫',
-    '非常好': '🤩', '好': '😊', '還好': '😐', '不好': '😕',
-    '非常願意': '😍', '願意': '😊', '不願意': '😕',
-    '太多（適合分享）': '😅', '剛好': '👌', '稍微偏少': '🤏',
+  /* ───── helper: render option button (card-style with animated emojis) ───── */
+  // Map satisfaction words to emojis + colors
+  const satisfactionEmoji: Record<string, { emoji: string; color: string }> = {
+    '非常滿意': { emoji: '🤩', color: '#FFD700' },
+    '滿意': { emoji: '😊', color: '#66BB6A' },
+    '普通': { emoji: '😐', color: '#90A4AE' },
+    '不太滿意': { emoji: '😕', color: '#FFB74D' },
+    '不滿意': { emoji: '😞', color: '#FF8A65' },
+    '很差': { emoji: '😫', color: '#FF6B6B' },
+    '非常好': { emoji: '🤩', color: '#FFD700' },
+    '好': { emoji: '😊', color: '#66BB6A' },
+    '還好': { emoji: '😐', color: '#90A4AE' },
+    '不好': { emoji: '😕', color: '#FFB74D' },
+    '非常願意': { emoji: '😍', color: '#FF69B4' },
+    '願意': { emoji: '😊', color: '#66BB6A' },
+    '不願意': { emoji: '😕', color: '#FFB74D' },
+    '太多（適合分享）': { emoji: '😅', color: '#FFB74D' },
+    '剛好': { emoji: '👌', color: '#66BB6A' },
+    '稍微偏少': { emoji: '🤏', color: '#90A4AE' },
   };
+
+  // Check if ALL options in a question have emoji mappings → use card layout
+  const allOptionsHaveEmoji = (options: string[]) =>
+    options.length > 0 && options.every(opt => satisfactionEmoji[opt]);
 
   const renderPill = (
     opt: string,
     isSelected: boolean,
     onClick: () => void,
     size: 'sm' | 'md' = 'md',
+    useCardStyle = false,
   ) => {
-    const emoji = satisfactionEmoji[opt];
+    const emojiData = satisfactionEmoji[opt];
+
+    // Animated emoji card style (for satisfaction-type options)
+    if (useCardStyle && emojiData) {
+      const { emoji, color } = emojiData;
+      return (
+        <motion.button
+          key={opt}
+          onClick={onClick}
+          whileTap={{ scale: 0.88 }}
+          animate={isSelected ? { scale: [1, 1.12, 1.04] } : { scale: 1 }}
+          transition={springBounce}
+          className="flex-1 flex flex-col items-center gap-1.5 py-3 rounded-2xl relative overflow-hidden min-w-0"
+          style={{
+            background: isSelected ? `${color}20` : 'transparent',
+            border: `2.5px solid ${isSelected ? color : colors.border}`,
+            boxShadow: isSelected ? `0 4px 16px ${color}30` : 'none',
+          }}
+        >
+          {/* Glow ring behind emoji when selected */}
+          {isSelected && (
+            <motion.div
+              className="absolute inset-0 rounded-2xl"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0.3, 0.1, 0.3] }}
+              transition={{ repeat: Infinity, duration: 2 }}
+              style={{ background: `radial-gradient(circle, ${color}30, transparent 70%)` }}
+            />
+          )}
+          <motion.span
+            className="text-3xl relative z-10"
+            animate={isSelected
+              ? { scale: [1, 1.2, 1], rotate: [0, -8, 8, 0] }
+              : { scale: 1 }}
+            transition={isSelected
+              ? { repeat: Infinity, duration: 2.5, ease: 'easeInOut' }
+              : {}}
+          >
+            {emoji}
+          </motion.span>
+          <span
+            className="text-[10px] font-medium relative z-10 leading-tight text-center px-1"
+            style={{ color: isSelected ? color : colors.textLight }}
+          >
+            {opt}
+          </span>
+        </motion.button>
+      );
+    }
+
+    // Standard pill style (for non-satisfaction options)
     return (
     <motion.button
       key={opt}
@@ -691,17 +770,16 @@ export default function SurveyRenderer({
         boxShadow: isSelected ? `0 4px 12px ${colors.primary}30` : 'none',
       }}
     >
-      {/* Selection checkmark */}
-      {emoji && (
+      {emojiData && (
         <motion.span
           className="inline-block mr-1 text-base"
           animate={isSelected ? { scale: [1, 1.3, 1] } : { scale: 1 }}
           transition={{ duration: 0.3 }}
         >
-          {emoji}
+          {emojiData.emoji}
         </motion.span>
       )}
-      {!emoji && isSelected && (
+      {!emojiData && isSelected && (
         <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="inline-block mr-1">✓</motion.span>
       )}
       {opt}
@@ -1163,13 +1241,16 @@ export default function SurveyRenderer({
                                 {subQ.description}
                               </p>
                             )}
-                            {(subQ.type === 'radio' || subQ.type === 'radio-with-reason') && subQ.options && (
-                              <div className="flex flex-wrap gap-2">
-                                {subQ.options.map(opt =>
-                                  renderPill(opt, answers[subKey] === opt, () => setAnswer(subKey, opt, subQ.type), 'sm'),
-                                )}
-                              </div>
-                            )}
+                            {(subQ.type === 'radio' || subQ.type === 'radio-with-reason') && subQ.options && (() => {
+                              const useCards = allOptionsHaveEmoji(subQ.options);
+                              return (
+                                <div className={useCards ? 'flex gap-1.5 justify-between' : 'flex flex-wrap gap-2'}>
+                                  {subQ.options.map(opt =>
+                                    renderPill(opt, answers[subKey] === opt, () => setAnswer(subKey, opt, subQ.type), 'sm', useCards),
+                                  )}
+                                </div>
+                              );
+                            })()}
                             {(subQ.type === 'rating' || subQ.type === 'rating-with-reason') &&
                               renderRating(subKey, true)}
                             {(subQ.type === 'radio-with-reason' || subQ.type === 'rating-with-reason') && (
@@ -1241,25 +1322,31 @@ export default function SurveyRenderer({
                   {!q.description && <div className="mb-3" />}
 
                   {/* Radio */}
-                  {q.type === 'radio' && q.options && (
-                    <div className="flex flex-wrap gap-2">
-                      {q.options.map(opt =>
-                        renderPill(opt, answers[q.id] === opt, () => setAnswer(q.id, opt, 'radio')),
-                      )}
-                    </div>
-                  )}
-
-                  {/* Radio with reason */}
-                  {q.type === 'radio-with-reason' && q.options && (
-                    <>
-                      <div className="flex flex-wrap gap-2">
+                  {q.type === 'radio' && q.options && (() => {
+                    const useCards = allOptionsHaveEmoji(q.options);
+                    return (
+                      <div className={useCards ? 'flex gap-2 justify-between' : 'flex flex-wrap gap-2'}>
                         {q.options.map(opt =>
-                          renderPill(opt, answers[q.id] === opt, () => setAnswer(q.id, opt, 'radio-with-reason')),
+                          renderPill(opt, answers[q.id] === opt, () => setAnswer(q.id, opt, 'radio'), 'md', useCards),
                         )}
                       </div>
-                      {renderReasonField(q.id, q.reasonPlaceholder)}
-                    </>
-                  )}
+                    );
+                  })()}
+
+                  {/* Radio with reason */}
+                  {q.type === 'radio-with-reason' && q.options && (() => {
+                    const useCards = allOptionsHaveEmoji(q.options);
+                    return (
+                      <>
+                        <div className={useCards ? 'flex gap-2 justify-between' : 'flex flex-wrap gap-2'}>
+                          {q.options.map(opt =>
+                            renderPill(opt, answers[q.id] === opt, () => setAnswer(q.id, opt, 'radio-with-reason'), 'md', useCards),
+                          )}
+                        </div>
+                        {renderReasonField(q.id, q.reasonPlaceholder)}
+                      </>
+                    );
+                  })()}
 
                   {/* Checkbox */}
                   {q.type === 'checkbox' && q.options && (

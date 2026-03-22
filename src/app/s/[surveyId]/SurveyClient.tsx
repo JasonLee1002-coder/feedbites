@@ -13,19 +13,9 @@ function getSubmissionKey(surveyId: string) {
   return `feedbites_submitted_${surveyId}`;
 }
 
-function hasAlreadySubmitted(surveyId: string): boolean {
-  try {
-    const data = localStorage.getItem(getSubmissionKey(surveyId));
-    if (!data) return false;
-    const parsed = JSON.parse(data);
-    // Check if submitted within last 24 hours
-    const submittedAt = new Date(parsed.at).getTime();
-    const now = Date.now();
-    const hoursSince = (now - submittedAt) / (1000 * 60 * 60);
-    return hoursSince < 24;
-  } catch {
-    return false;
-  }
+function hasAlreadySubmitted(_surveyId: string): boolean {
+  // Disabled: allow unlimited submissions for testing
+  return false;
 }
 
 function markAsSubmitted(surveyId: string, code?: string) {

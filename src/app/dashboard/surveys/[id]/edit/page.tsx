@@ -28,6 +28,7 @@ export default function SurveyEditPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
   const [title, setTitle] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [discountValue, setDiscountValue] = useState('');
@@ -35,13 +36,17 @@ export default function SurveyEditPage() {
 
   useEffect(() => {
     fetch(`/api/surveys/${surveyId}`)
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(r.status === 404 ? '找不到這份問卷' : '載入失敗，請稍後再試');
+        return r.json();
+      })
       .then(data => {
         setTitle(data.title || '');
         setQuestions(data.questions || []);
         setDiscountValue(data.discount_value || '');
         setDiscountEnabled(data.discount_enabled ?? true);
       })
+      .catch(err => setError(err.message || '載入失敗'))
       .finally(() => setLoading(false));
   }, [surveyId]);
 
@@ -99,6 +104,32 @@ export default function SurveyEditPage() {
           <div className="h-12 bg-[#E8E2D8] rounded" />
           <div className="space-y-3">
             {[...Array(5)].map((_, i) => <div key={i} className="h-16 bg-[#E8E2D8] rounded-xl" />)}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 lg:p-8 max-w-4xl mx-auto">
+        <div className="text-center py-16">
+          <div className="text-5xl mb-4">😵</div>
+          <h1 className="text-xl font-bold text-[#3A3A3A] mb-2 font-serif">{error}</h1>
+          <p className="text-sm text-[#8A8585] mb-6">請確認問卷是否存在，或重新整理頁面</p>
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={() => { setError(''); setLoading(true); window.location.reload(); }}
+              className="px-5 py-2.5 bg-[#C5A55A] text-white text-sm font-bold rounded-xl hover:bg-[#A08735]"
+            >
+              重新整理
+            </button>
+            <Link
+              href="/dashboard/surveys"
+              className="px-5 py-2.5 border border-[#E8E2D8] text-sm font-medium rounded-xl text-[#8A8585] hover:text-[#3A3A3A]"
+            >
+              返回問卷列表
+            </Link>
           </div>
         </div>
       </div>
