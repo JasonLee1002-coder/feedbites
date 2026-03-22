@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import sharp from 'sharp';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { getSelectedStore } from '@/lib/store-context';
 
@@ -26,24 +25,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '請上傳菜單圖片' }, { status: 400 });
     }
 
-    // Server-side resize with sharp (shrink large images before Gemini)
-    const rawBytes = Buffer.from(await image.arrayBuffer());
-    let imageBuffer: Buffer;
-    let mimeType = 'image/jpeg';
-    try {
-      imageBuffer = await sharp(rawBytes)
-        .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: 70 })
-        .toBuffer();
-      console.log(`Image resized: ${rawBytes.length} → ${imageBuffer.length} bytes`);
-    } catch (sharpErr) {
-      console.warn('Sharp resize failed, using original:', sharpErr instanceof Error ? sharpErr.message : sharpErr);
-      imageBuffer = rawBytes;
-      // Guess MIME from original
-      const name = (image.name || '').toLowerCase();
-      mimeType = image.type || (name.endsWith('.png') ? 'image/png' : name.endsWith('.webp') ? 'image/webp' : 'image/jpeg');
-    }
-    const base64Image = imageBuffer.toString('base64');
+    // Frontend already compresses to ~800px JPEG. Just convert to base64.
+    const bytes = await image.arrayBuffer();
+    const base64Image = Buffer.from(bytes).toString('base64');
+    console.log(`Menu image received: ${bytes.byteLength} bytes (${(bytes.byteLength / 1024).toFixed(0)}KB)`);
+
+    // Detect MIME type
+    const name = (image.name || '').toLowerCase();
+    const mimeType = image.type && image.type.startsWith('image/')
+      ? image.type
+      : name.endsWith('.png') ? 'image/png'
+      : name.endsWith('.webp') ? 'image/webp'
+      : 'image/jpeg';
 
     // Use Gemini 2.0 Flash for speed (2.5 Flash thinking mode is too slow for 60s timeout)
     const model = genAI.getGenerativeModel({
