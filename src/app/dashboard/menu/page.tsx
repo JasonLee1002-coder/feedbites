@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, Camera, Pencil, Trash2, X, Check, ImageIcon, Star, ChefHat, Upload, Sparkles, Loader2, ZoomIn, Crop, Move } from 'lucide-react';
+import { Plus, Camera, Pencil, Trash2, X, Check, ImageIcon, Star, ChefHat, Upload, Sparkles, Loader2, ZoomIn, Crop, Move, PartyPopper } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import confetti from 'canvas-confetti';
 import VoiceRecorder from '@/components/shared/VoiceRecorder';
 
 interface Dish {
@@ -67,6 +69,9 @@ export default function MenuPage() {
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [cropMode, setCropMode] = useState<'crop' | 'pan'>('crop'); // toggle between crop and pan
+
+  // Batch create success state
+  const [batchSuccess, setBatchSuccess] = useState<{ count: number } | null>(null);
 
   useEffect(() => {
     fetchDishes();
@@ -449,8 +454,16 @@ export default function MenuPage() {
         }
         setBatchProgress(Math.round(((i + 1) / selected.length) * 100));
       }
-      setShowMenuUpload(false);
       setParsedDishes([]);
+      setShowMenuUpload(false);
+      // 成功慶祝
+      setBatchSuccess({ count: selected.length });
+      confetti({
+        particleCount: 80,
+        spread: 80,
+        origin: { y: 0.5 },
+        colors: ['#FF8C00', '#FFD700', '#FF6B00', '#C5A55A'],
+      });
     } catch (err) {
       console.error('Batch create error:', err);
       alert('批次建立失敗，請重試');
@@ -720,6 +733,46 @@ export default function MenuPage() {
           ) : null}
         </div>
       )}
+
+      {/* Batch success banner */}
+      <AnimatePresence>
+        {batchSuccess && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="mb-6 p-5 bg-gradient-to-r from-emerald-50 to-green-50 rounded-2xl border border-emerald-200 text-center"
+          >
+            <motion.div
+              className="text-4xl mb-2"
+              animate={{ scale: [1, 1.2, 1], rotate: [0, 8, -8, 0] }}
+              transition={{ duration: 0.6 }}
+            >
+              🎉
+            </motion.div>
+            <h3 className="text-lg font-bold text-emerald-700 mb-1">
+              菜單建立完成！
+            </h3>
+            <p className="text-sm text-emerald-600 mb-4">
+              成功新增 {batchSuccess.count} 道菜品，太棒了！
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <a
+                href="/dashboard/surveys/new"
+                className="px-5 py-2.5 bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] text-white rounded-xl text-sm font-bold shadow-lg shadow-[#FF8C00]/20 hover:shadow-xl transition-all"
+              >
+                下一步：建立問卷 →
+              </a>
+              <button
+                onClick={() => setBatchSuccess(null)}
+                className="px-4 py-2.5 text-sm text-emerald-600 hover:text-emerald-800 transition-colors"
+              >
+                繼續編輯菜單
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Category Filter */}
       {dishes.length > 0 && (
