@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X, Send, Loader2 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import confetti from 'canvas-confetti';
@@ -11,6 +11,7 @@ interface BubbleMessage {
   text: string;
   link?: string;  // clickable navigation
   linkLabel?: string;
+  role?: 'assistant' | 'user';
 }
 
 function getPageMessages(pathname: string, context?: { dishCount?: number; surveyCount?: number }): string[] {
@@ -69,7 +70,11 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
   const [showBubble, setShowBubble] = useState(false);
   const [displayedText, setDisplayedText] = useState('');
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatHistory, setChatHistory] = useState<{ role: 'assistant' | 'user'; content: string }[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLInputElement>(null);
 
   // Position — uses top/right relative to viewport, floats in content area
   const [pos, setPos] = useState({ top: 300, right: 40 });
@@ -309,6 +314,51 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // AI 對話功能
+  const sendChat = useCallback(async (text: string) => {
+    if (!text.trim() || chatLoading) return;
+    const userMsg: BubbleMessage = { text: text.trim(), role: 'user' };
+    setMessages(prev => [...prev, userMsg]);
+    setChatInput('');
+    setChatLoading(true);
+
+    const newHistory = [...chatHistory, { role: 'user' as const, content: text.trim() }];
+    setChatHistory(newHistory);
+
+    try {
+      const res = await fetch('/api/ai/assistant-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text.trim(),
+          history: newHistory,
+          currentPage: pathname,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const aiMsg: BubbleMessage = { text: data.reply, role: 'assistant' };
+        setMessages(prev => [...prev, aiMsg]);
+        setChatHistory(prev => [...prev, { role: 'assistant', content: data.reply }]);
+      } else {
+        setMessages(prev => [...prev, { text: '抱歉，我剛剛走神了 😅 再說一次？', role: 'assistant' }]);
+      }
+    } catch {
+      setMessages(prev => [...prev, { text: '網路好像有點問題，等等再試？', role: 'assistant' }]);
+    } finally {
+      setChatLoading(false);
+      setTimeout(() => chatInputRef.current?.focus(), 100);
+    }
+  }, [chatLoading, chatHistory, pathname]);
+
+  const handleChatKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendChat(chatInput);
+    }
+  };
+
   return (
     <>
       {/* ═══ Bubble tip ═══ */}
@@ -418,20 +468,26 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
               {messages.map((msg, i) => (
                 <motion.div
                   key={i}
-                  initial={{ opacity: 0, x: -10 }}
+                  initial={{ opacity: 0, x: msg.role === 'user' ? 10 : -10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.12 }}
-                  className="flex gap-2"
+                  transition={{ delay: i < 3 ? i * 0.12 : 0 }}
+                  className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : ''}`}
                 >
-                  <div className="w-5 h-5 rounded-full overflow-hidden bg-[#FF8C00]/10 flex items-center justify-center shrink-0 mt-0.5">
-                    {avatarUrl ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-[9px] font-black text-[#FF8C00]" style={{ fontFamily: 'Georgia, serif' }}>F</span>
-                    )}
-                  </div>
-                  <div className="bg-[#FAF7F2] rounded-2xl rounded-tl-md px-3.5 py-2.5 text-xs text-[#3A3A3A] leading-relaxed max-w-[260px]">
+                  {msg.role !== 'user' && (
+                    <div className="w-5 h-5 rounded-full overflow-hidden bg-[#FF8C00]/10 flex items-center justify-center shrink-0 mt-0.5">
+                      {avatarUrl ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-[9px] font-black text-[#FF8C00]" style={{ fontFamily: 'Georgia, serif' }}>F</span>
+                      )}
+                    </div>
+                  )}
+                  <div className={`rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed max-w-[260px] ${
+                    msg.role === 'user'
+                      ? 'rounded-br-md bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] text-white'
+                      : 'rounded-tl-md bg-[#FAF7F2] text-[#3A3A3A]'
+                  }`}>
                     <span>{msg.text}</span>
                     {msg.link && (
                       <Link
@@ -445,6 +501,27 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
                   </div>
                 </motion.div>
               ))}
+
+              {/* AI loading indicator */}
+              {chatLoading && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-2">
+                  <div className="w-5 h-5 rounded-full bg-[#FF8C00]/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <span className="text-[9px] font-black text-[#FF8C00]" style={{ fontFamily: 'Georgia, serif' }}>F</span>
+                  </div>
+                  <div className="bg-[#FAF7F2] rounded-2xl rounded-tl-md px-4 py-3">
+                    <div className="flex gap-1">
+                      {[0, 1, 2].map(i => (
+                        <motion.div
+                          key={i}
+                          className="w-1.5 h-1.5 rounded-full bg-[#FF8C00]"
+                          animate={{ y: [0, -4, 0], opacity: [0.4, 1, 0.4] }}
+                          transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.12 }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
 
               {/* Onboarding checklist */}
               {isDashboardHome && !onboardingDone && (
@@ -492,10 +569,28 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="px-4 py-2.5 border-t border-[#E8E2D8] bg-[#FAF7F2]">
-              <p className="text-[10px] text-[#8A8585] text-center">
-                {isDashboardHome && !onboardingDone ? '完成以上步驟，解鎖完整分析功能 ✨' : '副店長會根據你所在的頁面給出建議'}
-              </p>
+            {/* Chat input */}
+            <div className="px-3 py-2.5 border-t border-[#E8E2D8] bg-white">
+              <div className="flex items-center gap-2">
+                <input
+                  ref={chatInputRef}
+                  type="text"
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={handleChatKeyDown}
+                  placeholder="跟副店長聊聊..."
+                  disabled={chatLoading}
+                  className="flex-1 px-3 py-2 rounded-full border border-[#E8E2D8] text-xs outline-none focus:border-[#FF8C00] focus:ring-1 focus:ring-[#FF8C00]/20 bg-[#FAF7F2] transition-all disabled:opacity-50"
+                />
+                <motion.button
+                  onClick={() => sendChat(chatInput)}
+                  disabled={!chatInput.trim() || chatLoading}
+                  className="w-8 h-8 rounded-full flex items-center justify-center bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] text-white disabled:opacity-30 shrink-0"
+                  whileTap={{ scale: 0.9 }}
+                >
+                  {chatLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                </motion.button>
+              </div>
             </div>
           </motion.div>
         )}
