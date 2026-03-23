@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { getTemplate } from '@/lib/templates';
 import type { TemplateId, ThemeColors } from '@/types/survey';
+import FeedbackGenie from '@/components/feedback-genie/FeedbackGenie';
 
 // ─── Types ───
 interface Store {
@@ -301,6 +302,16 @@ export default function MenuClient({ store, dishes }: { store: Store; dishes: Di
           Bite. Rate. Save.
         </p>
       </footer>
+
+      {/* ─── 回報精靈 ─── */}
+      <FeedbackGenie
+        storeId={store.id}
+        storeName={store.store_name}
+        avatarUrl={store.logo_url}
+        source="widget"
+        genieName={`${store.store_name} 回報精靈`}
+        primaryColor={colors.primary}
+      />
 
       {/* ─── Hide scrollbar CSS ─── */}
       <style jsx global>{`
