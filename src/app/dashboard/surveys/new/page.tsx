@@ -4,7 +4,8 @@ import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { templateList } from '@/lib/templates';
-import { ArrowLeft, Check, ChevronUp, ChevronDown, X, Plus, GripVertical, Upload, Sparkles, Loader2, FileText } from 'lucide-react';
+import { surveyTemplates } from '@/lib/survey-templates';
+import { ArrowLeft, Check, ChevronUp, ChevronDown, X, Plus, GripVertical, Upload, Sparkles, Loader2, FileText, LayoutTemplate } from 'lucide-react';
 import type { TemplateId, Question, DiscountTier } from '@/types/survey';
 
 // Animated progress for survey upload
@@ -842,6 +843,54 @@ export default function NewSurveyPage() {
               </p>
             )}
           </div>
+
+          {/* Quick-apply content template */}
+          {blocks.length === 0 && (
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-[#3A3A3A] mb-2 flex items-center gap-1.5">
+                <LayoutTemplate className="w-4 h-4 text-[#C5A55A]" />
+                快速套用問卷模板
+              </label>
+              <p className="text-xs text-[#8A8585] mb-3">選擇一個模板，一鍵填入所有問題。也可以跳過，自己組合區塊。</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {surveyTemplates.map((tpl) => (
+                  <button
+                    key={tpl.id}
+                    onClick={() => {
+                      // Auto-fill title if empty
+                      if (!title.trim()) setTitle(tpl.name);
+                      // Create a custom block with all template questions
+                      const newBlock: SurveyBlock = {
+                        id: `tpl-${Date.now()}`,
+                        type: 'custom',
+                        customQuestions: tpl.questions.map((q) => ({
+                          id: q.id,
+                          type: q.type,
+                          label: q.label || q.title || '',
+                          required: q.required,
+                          options: q.options,
+                          min: q.min,
+                          max: q.max,
+                          placeholder: q.placeholder,
+                        })),
+                      };
+                      setBlocks([newBlock]);
+                    }}
+                    className="text-left px-4 py-3 rounded-xl border border-[#E8E2D8] hover:border-[#C5A55A] hover:bg-[#C5A55A]/5 transition-all group"
+                  >
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs px-1.5 py-0.5 bg-[#C5A55A]/10 text-[#A08735] rounded font-medium shrink-0 mt-0.5">{tpl.category}</span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-[#3A3A3A] group-hover:text-[#A08735] transition-colors">{tpl.name}</p>
+                        <p className="text-[11px] text-[#8A8585] leading-tight mt-0.5 line-clamp-2">{tpl.description}</p>
+                        <p className="text-[10px] text-[#B0AAA0] mt-1">{tpl.questions.filter(q => q.type !== 'section-header').length} 題</p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Two-column layout on larger screens */}
           <div className="flex flex-col lg:flex-row gap-6">
