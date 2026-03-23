@@ -27,7 +27,7 @@ const navItems = [
   { href: '/dashboard/discounts', label: '折扣碼', icon: Ticket },
   { href: '/dashboard/settings', label: '店家設定', icon: Settings },
   { href: '/dashboard/feedback', label: '意見回報', icon: MessageSquareWarning },
-  { href: '/dashboard/insights', label: '情報中心', icon: Brain },
+  { href: '/dashboard/insights', label: '回報精靈', icon: Brain },
 ];
 
 export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: SidebarProps) {

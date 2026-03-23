@@ -172,7 +172,7 @@ export default function FeedbackInsightsDashboard() {
         <div>
           <h1 className="text-2xl font-bold text-[#3A3A3A] flex items-center gap-2" style={{ fontFamily: "'Noto Serif TC', serif" }}>
             <Brain className="w-7 h-7 text-[#C5A55A]" />
-            回報精靈情報中心
+            回報精靈
           </h1>
           <p className="text-sm text-[#8A8585] mt-1">
             AI 自動分析客戶回饋，找出問題、發現亮點、提出改善方案

@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     const periodStart = new Date(insight.period_start).toLocaleDateString('zh-TW');
     const periodEnd = new Date(insight.period_end).toLocaleDateString('zh-TW');
 
-    const reportMd = `## 回報精靈情報報告
+    const reportMd = `## 回報精靈
 **期間**: ${periodStart} ~ ${periodEnd}
 **對話數**: ${insight.conversation_count} | **平均情緒**: ${insight.avg_sentiment ? (insight.avg_sentiment * 100).toFixed(0) + '%' : 'N/A'} 正面
 
@@ -97,7 +97,7 @@ ${(recommendations || []).map((rec, i) =>
       try {
         const highIssues = issues.filter(i => i.severity === 'high' || i.severity === 'critical');
         const lineMessage = [
-          `🔔 回報精靈情報報告`,
+          `🔔 回報精靈`,
           `📅 ${periodStart}~${periodEnd}`,
           `💬 ${insight.conversation_count} 筆對話`,
           `😊 情緒 ${insight.avg_sentiment ? (insight.avg_sentiment * 100).toFixed(0) + '%' : 'N/A'}`,
