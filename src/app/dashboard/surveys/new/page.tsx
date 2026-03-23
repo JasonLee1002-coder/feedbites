@@ -822,14 +822,25 @@ export default function NewSurveyPage() {
 
           {/* Title */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-[#3A3A3A] mb-2">問卷標題</label>
+            <label className="block text-sm font-medium text-[#3A3A3A] mb-2">
+              問卷標題 <span className="text-red-400">*</span>
+            </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="例如：用餐滿意度調查"
-              className="w-full px-4 py-3 rounded-xl border border-[#E8E2D8] bg-white text-[#3A3A3A] text-sm focus:outline-none focus:border-[#C5A55A] focus:ring-2 focus:ring-[#C5A55A]/20 placeholder:text-[#8A8585]/60"
+              className={`w-full px-4 py-3 rounded-xl border bg-white text-[#3A3A3A] text-sm focus:outline-none focus:ring-2 placeholder:text-[#8A8585]/60 transition-colors ${
+                title.trim() === ''
+                  ? 'border-red-300 focus:border-red-400 focus:ring-red-200/40'
+                  : 'border-[#E8E2D8] focus:border-[#C5A55A] focus:ring-[#C5A55A]/20'
+              }`}
             />
+            {title.trim() === '' && (
+              <p className="text-xs text-red-400 mt-1.5 flex items-center gap-1">
+                請輸入問卷名稱才能繼續下一步
+              </p>
+            )}
           </div>
 
           {/* Two-column layout on larger screens */}
@@ -1562,13 +1573,18 @@ export default function NewSurveyPage() {
         </button>
 
         {step < 4 ? (
-          <button
-            onClick={() => setStep((step + 1) as Step)}
-            disabled={!canProceed()}
-            className="px-6 py-2.5 bg-[#C5A55A] text-white text-sm font-medium rounded-xl hover:bg-[#A08735] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            下一步
-          </button>
+          <div className="flex items-center gap-3">
+            {!canProceed() && step === 2 && title.trim() === '' && (
+              <span className="text-xs text-red-400">← 請先填寫問卷標題</span>
+            )}
+            <button
+              onClick={() => setStep((step + 1) as Step)}
+              disabled={!canProceed()}
+              className="px-6 py-2.5 bg-[#C5A55A] text-white text-sm font-medium rounded-xl hover:bg-[#A08735] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              下一步
+            </button>
+          </div>
         ) : (
           <button
             onClick={handleSubmit}
