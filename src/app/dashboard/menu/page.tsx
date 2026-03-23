@@ -1026,20 +1026,25 @@ export default function MenuPage() {
         };
 
         // Manual crop handlers
+        // Convert screen coords to image-space percentage, accounting for zoom & pan
+        const screenToImageCoords = (clientX: number, clientY: number, rect: DOMRect) => {
+          const x = ((clientX - rect.left - cropPan.x) / cropZoom / rect.width) * 100;
+          const y = ((clientY - rect.top - cropPan.y) / cropZoom / rect.height) * 100;
+          return { x, y };
+        };
+
         const handleCropMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
           const rect = e.currentTarget.getBoundingClientRect();
-          const x = ((e.clientX - rect.left) / rect.width) * 100;
-          const y = ((e.clientY - rect.top) / rect.height) * 100;
-          setCropStart({ x, y });
-          setCropEnd({ x, y });
+          const pos = screenToImageCoords(e.clientX, e.clientY, rect);
+          setCropStart(pos);
+          setCropEnd(pos);
           setIsDragging(true);
         };
         const handleCropMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
           if (!isDragging) return;
           const rect = e.currentTarget.getBoundingClientRect();
-          const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
-          const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
-          setCropEnd({ x, y });
+          const pos = screenToImageCoords(e.clientX, e.clientY, rect);
+          setCropEnd({ x: Math.max(0, Math.min(100, pos.x)), y: Math.max(0, Math.min(100, pos.y)) });
         };
         const handleCropMouseUp = () => setIsDragging(false);
 
@@ -1047,19 +1052,17 @@ export default function MenuPage() {
         const handleCropTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
           const touch = e.touches[0];
           const rect = e.currentTarget.getBoundingClientRect();
-          const x = ((touch.clientX - rect.left) / rect.width) * 100;
-          const y = ((touch.clientY - rect.top) / rect.height) * 100;
-          setCropStart({ x, y });
-          setCropEnd({ x, y });
+          const pos = screenToImageCoords(touch.clientX, touch.clientY, rect);
+          setCropStart(pos);
+          setCropEnd(pos);
           setIsDragging(true);
         };
         const handleCropTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
           if (!isDragging) return;
           const touch = e.touches[0];
           const rect = e.currentTarget.getBoundingClientRect();
-          const x = Math.max(0, Math.min(100, ((touch.clientX - rect.left) / rect.width) * 100));
-          const y = Math.max(0, Math.min(100, ((touch.clientY - rect.top) / rect.height) * 100));
-          setCropEnd({ x, y });
+          const pos = screenToImageCoords(touch.clientX, touch.clientY, rect);
+          setCropEnd({ x: Math.max(0, Math.min(100, pos.x)), y: Math.max(0, Math.min(100, pos.y)) });
         };
 
         const handleCropConfirm = async () => {
