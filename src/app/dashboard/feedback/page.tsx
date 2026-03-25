@@ -1,14 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  MessageSquareWarning, Bug, Lightbulb, HelpCircle, Send, Paperclip,
+  MessageSquareWarning, Bug, Frown, Lightbulb, HelpCircle, Send,
   Image as ImageIcon, X, Loader2, ChevronRight,
-  Clock, CheckCircle2, AlertCircle, ArrowRight, Sparkles, MessageCircle,
-  Zap, Plus,
+  Clock, CheckCircle2, AlertCircle, ArrowRight, MessageCircle, Upload,
 } from 'lucide-react';
-import VoiceRecorder from '@/components/shared/VoiceRecorder';
 
 interface Attachment {
   id: string;
@@ -16,7 +14,7 @@ interface Attachment {
   file_name: string;
 }
 
-interface Response {
+interface FeedbackResponse {
   id: string;
   responder_email: string;
   message: string;
@@ -30,24 +28,17 @@ interface Report {
   category: string;
   priority: string;
   status: string;
-  voice_transcript: string | null;
   created_at: string;
   updated_at: string;
   feedback_attachments: Attachment[];
-  feedback_responses: Response[];
+  feedback_responses: FeedbackResponse[];
 }
 
 const CATEGORIES = [
-  { id: 'bug', label: '問題回報', icon: Bug, color: '#EF4444', bgColor: '#FEF2F2', gradient: 'from-red-500 to-rose-400' },
-  { id: 'suggestion', label: '功能建議', icon: Lightbulb, color: '#C5A55A', bgColor: '#FDF8EE', gradient: 'from-[#C5A55A] to-[#A08735]' },
-  { id: 'question', label: '使用疑問', icon: HelpCircle, color: '#3B82F6', bgColor: '#EFF6FF', gradient: 'from-blue-500 to-indigo-400' },
-];
-
-const PRIORITIES = [
-  { id: 'low', label: '低', color: '#6B7280', bg: 'bg-gray-100' },
-  { id: 'medium', label: '中', color: '#C5A55A', bg: 'bg-[#C5A55A]/10' },
-  { id: 'high', label: '高', color: '#EF4444', bg: 'bg-red-50' },
-  { id: 'urgent', label: '緊急', color: '#DC2626', bg: 'bg-red-100' },
+  { id: 'bug', label: '發現 Bug', desc: '功能壞掉、錯誤訊息', icon: Bug, color: '#EF4444', bg: '#FEF2F2', border: '#FECACA' },
+  { id: 'ux', label: '操作不順', desc: '步驟太多、不好用', icon: Frown, color: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A' },
+  { id: 'suggestion', label: '功能建議', desc: '希望新增的功能', icon: Lightbulb, color: '#C5A55A', bg: '#FDF8EE', border: '#E8D5A0' },
+  { id: 'other', label: '其他', desc: '其他意見或回饋', icon: HelpCircle, color: '#6B7280', bg: '#F9FAFB', border: '#E5E7EB' },
 ];
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof Clock }> = {
@@ -57,28 +48,15 @@ const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof Cl
   closed: { label: '已關閉', color: '#6B7280', icon: AlertCircle },
 };
 
-const container = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.06 } },
-};
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 15 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4 } },
-};
-
 export default function FeedbackPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+  const [step, setStep] = useState<0 | 1 | 2>(0); // 0=closed, 1=pick category, 2=describe
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Form state
-  const [title, setTitle] = useState('');
+  // Form
+  const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('suggestion');
-  const [priority, setPriority] = useState('medium');
-  const [voiceTranscript, setVoiceTranscript] = useState('');
   const [screenshots, setScreenshots] = useState<File[]>([]);
   const [screenshotPreviews, setScreenshotPreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -94,6 +72,11 @@ export default function FeedbackPage() {
     } catch { /* ignore */ } finally {
       setLoading(false);
     }
+  }
+
+  function pickCategory(id: string) {
+    setCategory(id);
+    setStep(2);
   }
 
   function addScreenshot(e: React.ChangeEvent<HTMLInputElement>) {
@@ -113,27 +96,29 @@ export default function FeedbackPage() {
     setScreenshotPreviews(prev => prev.filter((_, i) => i !== index));
   }
 
-  const handleVoiceResult = useCallback((result: { transcript: string; description: string }) => {
-    if (result.transcript) {
-      setVoiceTranscript(result.transcript);
-      setDescription(prev => prev ? prev + '\n\n' + result.transcript : result.transcript);
-    }
-  }, []);
+  function resetForm() {
+    setStep(0);
+    setCategory('');
+    setDescription('');
+    setScreenshots([]);
+    setScreenshotPreviews([]);
+    setSubmitted(false);
+  }
 
   async function handleSubmit() {
-    if (!title.trim() || !description.trim()) return;
+    if (!description.trim()) return;
     setSubmitting(true);
 
     try {
+      const catInfo = CATEGORIES.find(c => c.id === category);
       const res = await fetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: title.trim(),
+          title: catInfo?.label || '回報',
           description: description.trim(),
-          category,
-          priority,
-          voice_transcript: voiceTranscript || null,
+          category: category === 'ux' ? 'bug' : category === 'other' ? 'question' : category,
+          priority: category === 'bug' ? 'high' : 'medium',
         }),
       });
 
@@ -149,21 +134,15 @@ export default function FeedbackPage() {
 
       setSubmitted(true);
       setTimeout(() => {
-        setShowForm(false);
-        setSubmitted(false);
-        setTitle('');
-        setDescription('');
-        setCategory('suggestion');
-        setPriority('medium');
-        setVoiceTranscript('');
-        setScreenshots([]);
-        setScreenshotPreviews([]);
+        resetForm();
         fetchReports();
       }, 2000);
     } catch { /* ignore */ } finally {
       setSubmitting(false);
     }
   }
+
+  const catInfo = CATEGORIES.find(c => c.id === category);
 
   if (loading) {
     return (
@@ -177,24 +156,7 @@ export default function FeedbackPage() {
   }
 
   return (
-    <div className="p-4 lg:p-8 max-w-4xl mx-auto relative overflow-hidden">
-      {/* Background sparkles */}
-      {[
-        { x: '90%', y: '8%', delay: 0 },
-        { x: '5%', y: '60%', delay: 1.5 },
-        { x: '85%', y: '75%', delay: 0.8 },
-      ].map((p, i) => (
-        <motion.div
-          key={i}
-          className="absolute pointer-events-none text-[#C5A55A]/15"
-          style={{ left: p.x, top: p.y }}
-          animate={{ opacity: [0, 0.5, 0], scale: [0.5, 1.2, 0.5] }}
-          transition={{ duration: 3.5, delay: p.delay, repeat: Infinity, ease: 'easeInOut' }}
-        >
-          <Sparkles className="w-4 h-4" />
-        </motion.div>
-      ))}
-
+    <div className="p-4 lg:p-8 max-w-4xl mx-auto">
       {/* Header */}
       <motion.div
         className="flex items-center justify-between mb-8"
@@ -212,177 +174,155 @@ export default function FeedbackPage() {
             系統問題回報
           </h1>
           <p className="text-sm text-[#8A8585] mt-1">
-            遇到問題或有建議？回報給我們，專屬顧問會盡快回覆
+            遇到問題或有建議？我們會盡快處理
           </p>
         </div>
-        {!showForm && (
+        {step === 0 && (
           <motion.button
-            onClick={() => setShowForm(true)}
+            onClick={() => setStep(1)}
             className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#C5A55A] to-[#A08735] text-white rounded-xl text-sm font-bold shadow-md shadow-[#C5A55A]/15 hover:shadow-lg transition-all"
             whileHover={{ scale: 1.03, y: -1 }}
             whileTap={{ scale: 0.97 }}
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
           >
-            <Plus className="w-4 h-4" />
+            <Send className="w-4 h-4" />
             新增回報
           </motion.button>
         )}
       </motion.div>
 
-      {/* ═══ Submit Form ═══ */}
-      <AnimatePresence>
-        {showForm && (
+      {/* ═══ Wizard ═══ */}
+      <AnimatePresence mode="wait">
+        {/* Success */}
+        {submitted && (
           <motion.div
-            initial={{ opacity: 0, y: -20, height: 0 }}
-            animate={{ opacity: 1, y: 0, height: 'auto' }}
-            exit={{ opacity: 0, y: -20, height: 0 }}
-            className="mb-8 overflow-hidden"
+            key="success"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="mb-8 bg-white rounded-2xl border border-emerald-200 p-12 text-center"
           >
-            {submitted ? (
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="bg-white rounded-2xl border border-emerald-200 p-12 text-center"
-              >
-                <motion.div
-                  className="text-5xl mb-4"
-                  animate={{ scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }}
-                  transition={{ duration: 0.8 }}
-                >
-                  🎉
-                </motion.div>
-                <h2 className="text-xl font-bold text-emerald-600 mb-2">回報已送出！</h2>
-                <p className="text-sm text-[#8A8585]">我們會盡快查看並回覆你</p>
-              </motion.div>
-            ) : (
-              <div className="bg-white rounded-2xl border border-[#E8E2D8] shadow-lg shadow-[#C5A55A]/5 overflow-hidden">
-                {/* Form header */}
-                <div className="relative bg-gradient-to-r from-[#1a1a2e] to-[#16213e] p-5 flex items-center justify-between overflow-hidden">
+            <motion.div
+              className="text-5xl mb-4"
+              animate={{ scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }}
+              transition={{ duration: 0.8 }}
+            >
+              🎉
+            </motion.div>
+            <h2 className="text-xl font-bold text-emerald-600 mb-2">回報已送出！</h2>
+            <p className="text-sm text-[#8A8585]">我們會盡快查看並回覆你</p>
+          </motion.div>
+        )}
+
+        {/* Step 1: Pick category */}
+        {step === 1 && !submitted && (
+          <motion.div
+            key="step1"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="mb-8"
+          >
+            <div className="bg-white rounded-2xl border border-[#E8E2D8] shadow-lg shadow-[#C5A55A]/5 overflow-hidden">
+              {/* Header */}
+              <div className="relative bg-gradient-to-r from-[#1a1a2e] to-[#16213e] px-6 py-5 flex items-center justify-between">
+                <div className="flex items-center gap-3">
                   <motion.div
-                    className="absolute inset-0 opacity-10"
-                    style={{
-                      backgroundImage: 'radial-gradient(circle at 20% 80%, rgba(197,165,90,0.4) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(197,165,90,0.2) 0%, transparent 50%)',
-                    }}
-                    animate={{ opacity: [0.05, 0.15, 0.05] }}
-                    transition={{ duration: 4, repeat: Infinity }}
-                  />
-                  <div className="flex items-center gap-3 relative">
-                    <motion.div
-                      className="w-10 h-10 rounded-xl bg-[#C5A55A]/20 flex items-center justify-center backdrop-blur-sm"
-                      animate={{ rotate: [0, 5, -5, 0] }}
-                      transition={{ duration: 4, repeat: Infinity }}
+                    className="text-2xl"
+                    animate={{ y: [0, -3, 0] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    🔍
+                  </motion.div>
+                  <h2 className="font-bold text-white text-lg">遇到什麼問題了嗎？</h2>
+                </div>
+                <button onClick={resetForm} className="text-white/40 hover:text-white transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Category cards */}
+              <div className="p-5 space-y-3">
+                {CATEGORIES.map((cat, i) => {
+                  const Icon = cat.icon;
+                  return (
+                    <motion.button
+                      key={cat.id}
+                      onClick={() => pickCategory(cat.id)}
+                      className="w-full flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all hover:shadow-md group"
+                      style={{ borderColor: cat.border, background: cat.bg }}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.08 }}
+                      whileHover={{ scale: 1.01, x: 4 }}
+                      whileTap={{ scale: 0.99 }}
                     >
-                      <Zap className="w-5 h-5 text-[#C5A55A]" />
-                    </motion.div>
-                    <div>
-                      <h2 className="font-bold text-white">新增回報</h2>
-                      <p className="text-[11px] text-white/50">描述越詳細，我們越能快速幫你解決</p>
-                    </div>
-                  </div>
-                  <button onClick={() => setShowForm(false)} className="text-white/50 hover:text-white transition-colors relative">
-                    <X className="w-5 h-5" />
-                  </button>
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                        style={{ background: cat.color + '18' }}
+                      >
+                        <Icon className="w-5 h-5" style={{ color: cat.color }} />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-bold text-[#3A3A3A]" style={{ color: cat.color }}>{cat.label}</div>
+                        <div className="text-xs text-[#8A8585] mt-0.5">{cat.desc}</div>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-[#8A8585] group-hover:translate-x-1 transition-transform" style={{ color: cat.color }} />
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Step 2: Describe */}
+        {step === 2 && !submitted && (
+          <motion.div
+            key="step2"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="mb-8"
+          >
+            <div className="bg-white rounded-2xl border border-[#E8E2D8] shadow-lg shadow-[#C5A55A]/5 overflow-hidden">
+              {/* Header */}
+              <div className="relative bg-gradient-to-r from-[#1a1a2e] to-[#16213e] px-6 py-5 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <motion.div
+                    className="text-2xl"
+                    animate={{ y: [0, -3, 0] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    ✏️
+                  </motion.div>
+                  <h2 className="font-bold text-white text-lg">告訴我們更多細節</h2>
+                </div>
+                {/* Step dots */}
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-white/30" />
+                  <div className="w-2 h-2 rounded-full bg-white" />
+                </div>
+              </div>
+
+              <div className="p-6 space-y-5">
+                {/* Selected category badge */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-[#8A8585]">類型：</span>
+                  <span
+                    className="px-3 py-1 rounded-full text-xs font-bold"
+                    style={{ background: catInfo?.bg, color: catInfo?.color, border: `1px solid ${catInfo?.border}` }}
+                  >
+                    {catInfo?.label}
+                  </span>
                 </div>
 
-                <div className="p-6 space-y-5">
-                  {/* Category */}
-                  <div>
-                    <label className="block text-sm font-bold text-[#3A3A3A] mb-2">回報類型</label>
-                    <div className="grid grid-cols-3 gap-3">
-                      {CATEGORIES.map(cat => {
-                        const Icon = cat.icon;
-                        const isActive = category === cat.id;
-                        return (
-                          <motion.button
-                            key={cat.id}
-                            onClick={() => setCategory(cat.id)}
-                            className={`relative flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl text-sm font-medium transition-all border-2 overflow-hidden ${
-                              isActive
-                                ? 'text-white shadow-lg border-transparent'
-                                : 'border-[#E8E2D8] hover:border-[#C5A55A]/40 bg-white text-[#3A3A3A]'
-                            }`}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                          >
-                            {isActive && (
-                              <motion.div
-                                className={`absolute inset-0 bg-gradient-to-r ${cat.gradient}`}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                              />
-                            )}
-                            <span className="relative flex items-center gap-2">
-                              <Icon className="w-4 h-4" />
-                              {cat.label}
-                            </span>
-                          </motion.button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Priority */}
-                  <div>
-                    <label className="block text-sm font-bold text-[#3A3A3A] mb-2">優先程度</label>
-                    <div className="flex gap-2">
-                      {PRIORITIES.map(p => (
-                        <motion.button
-                          key={p.id}
-                          onClick={() => setPriority(p.id)}
-                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                            priority === p.id
-                              ? 'text-white shadow-md'
-                              : `${p.bg} border border-[#E8E2D8]`
-                          }`}
-                          style={priority === p.id ? { background: p.color } : { color: p.color }}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          {p.label}
-                        </motion.button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Title */}
-                  <div>
-                    <label className="block text-sm font-bold text-[#3A3A3A] mb-2">標題</label>
-                    <input
-                      type="text"
-                      value={title}
-                      onChange={e => setTitle(e.target.value)}
-                      placeholder="簡短描述你遇到的問題或建議"
-                      className="w-full px-4 py-3 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] focus:ring-2 focus:ring-[#C5A55A]/20 bg-[#FAF7F2] transition-all"
-                    />
-                  </div>
-
-                  {/* Description */}
-                  <div>
-                    <label className="block text-sm font-bold text-[#3A3A3A] mb-2">詳細描述</label>
-                    <textarea
-                      value={description}
-                      onChange={e => setDescription(e.target.value)}
-                      placeholder="請詳細描述你遇到的情況，步驟、預期結果、實際結果..."
-                      rows={5}
-                      className="w-full px-4 py-3 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] focus:ring-2 focus:ring-[#C5A55A]/20 bg-[#FAF7F2] resize-none transition-all"
-                    />
-                    <div className="mt-2 flex items-center gap-2">
-                      <VoiceRecorder
-                        dishName=""
-                        onResult={handleVoiceResult}
-                        mode="transcribe"
-                      />
-                      <span className="text-[10px] text-[#8A8585]">按住說明問題，AI 自動轉文字填入</span>
-                    </div>
-                  </div>
-
-                  {/* Screenshots */}
-                  <div>
-                    <label className="block text-sm font-bold text-[#3A3A3A] mb-2">
-                      截圖附件 <span className="font-normal text-[#8A8585]">（選填，可多張）</span>
-                    </label>
-                    <div className="flex flex-wrap gap-3">
+                {/* Screenshot upload */}
+                <div>
+                  <label className="block text-sm font-bold text-[#3A3A3A] mb-2">截圖（選填）</label>
+                  {screenshotPreviews.length > 0 ? (
+                    <div className="flex flex-wrap gap-3 mb-3">
                       {screenshotPreviews.map((preview, i) => (
                         <motion.div
                           key={i}
@@ -401,54 +341,82 @@ export default function FeedbackPage() {
                       ))}
                       <motion.button
                         onClick={() => fileInputRef.current?.click()}
-                        className="w-24 h-24 rounded-xl border-2 border-dashed border-[#E8E2D8] hover:border-[#C5A55A] flex flex-col items-center justify-center gap-1 text-[#8A8585] hover:text-[#C5A55A] transition-all bg-[#FAF7F2]"
-                        whileHover={{ scale: 1.05, borderColor: '#C5A55A' }}
+                        className="w-24 h-24 rounded-xl border-2 border-dashed border-[#E8E2D8] hover:border-[#C5A55A] flex flex-col items-center justify-center gap-1 text-[#8A8585] hover:text-[#C5A55A] transition-all"
+                        whileHover={{ scale: 1.05 }}
                       >
-                        <Paperclip className="w-5 h-5" />
-                        <span className="text-[10px]">上傳截圖</span>
+                        <Upload className="w-4 h-4" />
+                        <span className="text-[9px]">再加一張</span>
                       </motion.button>
                     </div>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      className="hidden"
-                      onChange={addScreenshot}
-                    />
-                  </div>
-
-                  {/* Submit */}
-                  <div className="flex items-center gap-3 pt-2">
+                  ) : (
                     <motion.button
-                      onClick={handleSubmit}
-                      disabled={submitting || !title.trim() || !description.trim()}
-                      className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-[#C5A55A] to-[#A08735] text-white rounded-xl text-sm font-bold shadow-md shadow-[#C5A55A]/15 hover:shadow-lg disabled:opacity-50 transition-all"
-                      whileHover={{ scale: 1.02, y: -1 }}
-                      whileTap={{ scale: 0.98 }}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full py-10 rounded-xl border-2 border-dashed border-[#E8E2D8] hover:border-[#C5A55A] flex flex-col items-center justify-center gap-2 text-[#8A8585] hover:text-[#C5A55A] transition-all bg-[#FAF7F2]"
+                      whileHover={{ borderColor: '#C5A55A' }}
                     >
-                      {submitting ? (
-                        <><Loader2 className="w-4 h-4 animate-spin" />提交中...</>
-                      ) : (
-                        <><Send className="w-4 h-4" />送出回報</>
-                      )}
+                      <Upload className="w-6 h-6" />
+                      <span className="text-sm">點擊上傳截圖</span>
+                      <span className="text-[10px] text-[#8A8585]">JPG / PNG，最大 5MB</span>
                     </motion.button>
-                    <button
-                      onClick={() => setShowForm(false)}
-                      className="px-6 py-3 text-[#8A8585] text-sm hover:text-[#3A3A3A] transition-colors"
-                    >
-                      取消
-                    </button>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={addScreenshot}
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-bold text-[#3A3A3A] mb-2">
+                    描述問題 <span className="text-red-400">*</span>
+                  </label>
+                  <textarea
+                    value={description}
+                    onChange={e => setDescription(e.target.value.slice(0, 2000))}
+                    placeholder="請描述你遇到的問題或建議..."
+                    rows={6}
+                    className="w-full px-4 py-3 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] focus:ring-2 focus:ring-[#C5A55A]/20 bg-[#FAF7F2] resize-none transition-all"
+                    autoFocus
+                  />
+                  <div className="text-right text-[10px] text-[#8A8585] mt-1">
+                    {description.length}/2000
                   </div>
                 </div>
+
+                {/* Actions */}
+                <div className="flex gap-3 pt-1">
+                  <button
+                    onClick={() => setStep(1)}
+                    className="flex-1 py-3 text-sm font-medium text-[#3A3A3A] bg-[#FAF7F2] rounded-xl border border-[#E8E2D8] hover:border-[#C5A55A] transition-all"
+                  >
+                    返回
+                  </button>
+                  <motion.button
+                    onClick={handleSubmit}
+                    disabled={submitting || !description.trim()}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-[#C5A55A] to-[#A08735] text-white rounded-xl text-sm font-bold shadow-md shadow-[#C5A55A]/15 disabled:opacity-50 transition-all"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    {submitting ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" />送出中...</>
+                    ) : (
+                      <><Send className="w-4 h-4" />送出回報</>
+                    )}
+                  </motion.button>
+                </div>
               </div>
-            )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* ═══ Report History ═══ */}
-      {reports.length === 0 && !showForm ? (
+      {reports.length === 0 && step === 0 ? (
         <motion.div
           className="bg-white rounded-2xl border border-[#E8E2D8] p-12 text-center"
           initial={{ opacity: 0, y: 20 }}
@@ -463,31 +431,23 @@ export default function FeedbackPage() {
           </motion.div>
           <h2 className="text-lg font-bold text-[#3A3A3A] mb-2">還沒有任何回報</h2>
           <p className="text-sm text-[#8A8585] max-w-sm mx-auto">
-            使用過程中遇到問題或有建議？點擊上方按鈕告訴我們，我們會盡快處理。
+            使用過程中遇到問題或有建議？點擊上方按鈕告訴我們。
           </p>
         </motion.div>
       ) : reports.length > 0 && (
-        <motion.div
-          className="space-y-3"
-          variants={container}
-          initial="hidden"
-          animate="show"
-        >
-          <motion.h2
-            className="text-sm font-bold text-[#8A8585] mb-3 flex items-center gap-2"
-            variants={fadeUp}
-          >
+        <div className="space-y-3">
+          <h2 className="text-sm font-bold text-[#8A8585] mb-3 flex items-center gap-2">
             回報紀錄
             <span className="px-2 py-0.5 bg-[#C5A55A]/10 text-[#A08735] rounded-full text-[11px]">
               {reports.length}
             </span>
-          </motion.h2>
+          </h2>
           {reports.map(report => {
             const isExpanded = expandedId === report.id;
             const statusInfo = STATUS_MAP[report.status] || STATUS_MAP.pending;
             const StatusIcon = statusInfo.icon;
-            const catInfo = CATEGORIES.find(c => c.id === report.category);
-            const CatIcon = catInfo?.icon || HelpCircle;
+            const catInfo2 = CATEGORIES.find(c => c.id === report.category) || CATEGORIES[3];
+            const CatIcon = catInfo2.icon;
             const hasResponses = report.feedback_responses?.length > 0;
             const hasNewResponse = hasResponses && report.feedback_responses.some(r =>
               new Date(r.created_at) > new Date(report.updated_at || report.created_at)
@@ -496,23 +456,23 @@ export default function FeedbackPage() {
             return (
               <motion.div
                 key={report.id}
-                variants={fadeUp}
                 layout
                 className={`bg-white rounded-2xl border overflow-hidden transition-all hover:shadow-md hover:shadow-[#C5A55A]/5 ${
                   hasNewResponse ? 'border-[#C5A55A]/40 shadow-md shadow-[#C5A55A]/10' : 'border-[#E8E2D8]'
                 }`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
               >
                 <button
                   onClick={() => setExpandedId(isExpanded ? null : report.id)}
                   className="w-full p-4 flex items-center gap-3 text-left hover:bg-[#FAF7F2]/50 transition-colors"
                 >
-                  <motion.div
+                  <div
                     className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: catInfo?.bgColor || '#F3F4F6' }}
-                    whileHover={{ rotate: 5, scale: 1.1 }}
+                    style={{ background: catInfo2.bg }}
                   >
-                    <CatIcon className="w-5 h-5" style={{ color: catInfo?.color || '#6B7280' }} />
-                  </motion.div>
+                    <CatIcon className="w-5 h-5" style={{ color: catInfo2.color }} />
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-bold text-[#3A3A3A] truncate">{report.title}</span>
@@ -594,17 +554,15 @@ export default function FeedbackPage() {
                               FeedBites 團隊回覆
                             </div>
                             {report.feedback_responses.map(resp => (
-                              <motion.div
+                              <div
                                 key={resp.id}
                                 className="p-3 bg-[#C5A55A]/5 rounded-xl border border-[#C5A55A]/20"
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
                               >
                                 <p className="text-sm text-[#3A3A3A] whitespace-pre-wrap">{resp.message}</p>
                                 <p className="text-[10px] text-[#8A8585] mt-2">
                                   {new Date(resp.created_at).toLocaleString('zh-TW')}
                                 </p>
-                              </motion.div>
+                              </div>
                             ))}
                           </div>
                         )}
@@ -615,7 +573,7 @@ export default function FeedbackPage() {
               </motion.div>
             );
           })}
-        </motion.div>
+        </div>
       )}
     </div>
   );
