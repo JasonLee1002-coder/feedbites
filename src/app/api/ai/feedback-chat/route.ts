@@ -12,7 +12,7 @@ interface ChatMessage {
 // POST: 對話式回饋收集 — AI 引導客戶表達意見
 export async function POST(request: NextRequest) {
   try {
-    const { storeId, storeName, conversationId, sessionId, message, history, source } = await request.json();
+    const { storeId, storeName, conversationId, sessionId, message, history, source, metadata } = await request.json();
 
     if (!storeId || !message?.trim()) {
       return NextResponse.json({ error: '缺少必要參數' }, { status: 400 });
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
           store_id: storeId,
           session_id: sessionId || crypto.randomUUID(),
           source: source || 'chat',
-          metadata: {},
+          metadata: metadata || {},
         })
         .select()
         .single();
@@ -44,6 +44,12 @@ export async function POST(request: NextRequest) {
       role: 'customer',
       content: message.trim(),
     });
+
+    // 表單模式：直接儲存，不產生 AI 回應
+    if (metadata?.formMode) {
+      analyzeSentimentAsync(db, convId, message, []);
+      return NextResponse.json({ conversationId: convId, reply: '感謝你的回報！' });
+    }
 
     // 用 AI 產生回應
     const chatHistory: ChatMessage[] = history || [];

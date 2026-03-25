@@ -311,6 +311,7 @@ export default function MenuClient({ store, dishes }: { store: Store; dishes: Di
         source="widget"
         genieName={`${store.store_name} 回報精靈`}
         primaryColor={colors.primary}
+        mode="customer"
       />
 
       {/* ─── Hide scrollbar CSS ─── */}
