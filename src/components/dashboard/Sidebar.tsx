@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, ClipboardList, Ticket, LogOut, Menu, Settings, ChevronDown, Plus, Store, UtensilsCrossed, MessageSquareWarning, Brain } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, LogOut, Menu, Settings, ChevronDown, Plus, Store, UtensilsCrossed, MessageSquareWarning, Brain } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -24,10 +24,9 @@ const navItems = [
   { href: '/dashboard', label: '總覽', icon: LayoutDashboard },
   { href: '/dashboard/menu', label: '菜單管理', icon: UtensilsCrossed },
   { href: '/dashboard/surveys', label: '問卷管理', icon: ClipboardList },
-  { href: '/dashboard/discounts', label: '折扣碼', icon: Ticket },
   { href: '/dashboard/settings', label: '店家設定', icon: Settings },
-  { href: '/dashboard/feedback', label: '意見回報', icon: MessageSquareWarning },
-  { href: '/dashboard/insights', label: '回報精靈', icon: Brain },
+  { href: '/dashboard/feedback', label: '系統問題回報', icon: MessageSquareWarning },
+  { href: '/dashboard/insights', label: 'AI 洞察分析', icon: Brain },
 ];
 
 export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: SidebarProps) {
