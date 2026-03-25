@@ -5,7 +5,7 @@ import { getSelectedStore } from '@/lib/store-context';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-// POST: AI 情報分析 — 分析一段時間的回饋對話，產出洞察報告
+// POST: AI 洞察分析 — 分析問卷回覆，產出洞察報告
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerSupabase();
@@ -22,74 +22,103 @@ export async function POST(request: NextRequest) {
     const periodStart = new Date();
     periodStart.setDate(periodStart.getDate() - days);
 
-    // 撈取這段期間的所有對話 + 訊息
-    const { data: conversations } = await db
-      .from('feedback_conversations')
-      .select('*, feedback_messages(*)')
-      .eq('store_id', store.id)
-      .gte('created_at', periodStart.toISOString())
-      .lte('created_at', periodEnd.toISOString())
-      .order('created_at', { ascending: false });
+    // 撈取店家的問卷
+    const { data: surveys } = await db
+      .from('surveys')
+      .select('id, title, questions')
+      .eq('store_id', store.id);
 
-    if (!conversations || conversations.length === 0) {
+    if (!surveys || surveys.length === 0) {
       return NextResponse.json({
-        summary: '這段期間沒有收到任何回饋對話',
+        summary: '尚未建立任何問卷',
         issues: [],
-        self_review: { what_worked: '', what_failed: '', improvement_plan: '' },
+        highlights: [],
         recommendations: [],
-        conversation_count: 0,
+        kpi: { total_conversations: 0, avg_sentiment: 0.5, top_topics: [], response_rate_change: '無資料' },
       });
     }
 
-    // 也撈取舊的回報（現有 feedback_reports 表）
-    const { data: legacyReports } = await db
-      .from('feedback_reports')
-      .select('title, description, category, priority, status')
-      .eq('store_id', store.id)
-      .gte('created_at', periodStart.toISOString())
-      .lte('created_at', periodEnd.toISOString());
+    const surveyIds = surveys.map(s => s.id);
+    const surveyMap = new Map(surveys.map(s => [s.id, s]));
 
-    // 整理對話摘要（RAG 原則：只送必要片段給 AI）
-    const conversationSummaries = conversations.map((conv: Record<string, unknown>) => {
-      const messages = (conv.feedback_messages as Array<{ role: string; content: string }>) || [];
-      const customerMsgs = messages
-        .filter((m) => m.role === 'customer')
-        .map((m) => m.content);
+    // 撈取期間內的問卷回覆
+    const { data: responses } = await db
+      .from('responses')
+      .select('id, survey_id, respondent_name, answers, submitted_at, xp_earned')
+      .in('survey_id', surveyIds)
+      .gte('submitted_at', periodStart.toISOString())
+      .lte('submitted_at', periodEnd.toISOString())
+      .order('submitted_at', { ascending: false });
+
+    if (!responses || responses.length === 0) {
+      return NextResponse.json({
+        summary: '這段期間沒有收到任何問卷回覆',
+        issues: [],
+        highlights: [],
+        recommendations: [],
+        kpi: { total_conversations: 0, avg_sentiment: 0.5, top_topics: [], response_rate_change: '無資料' },
+      });
+    }
+
+    // 整理回覆摘要給 AI 分析
+    const responseSummaries = responses.map(r => {
+      const survey = surveyMap.get(r.survey_id);
+      const questions = (survey?.questions || []) as Array<{ id: string; type: string; title: string; options?: string[] }>;
+      const answerDetails: Record<string, string> = {};
+
+      for (const q of questions) {
+        const val = r.answers?.[q.id];
+        if (val !== undefined && val !== null && val !== '') {
+          answerDetails[q.title] = Array.isArray(val) ? val.join(', ') : String(val);
+        }
+      }
+
       return {
-        id: conv.id,
-        sentiment: conv.sentiment_score,
-        topics: conv.topics,
-        severity: conv.severity,
-        customer_said: customerMsgs.join(' | '),
-        date: conv.created_at,
+        survey_title: survey?.title || '未知問卷',
+        respondent: r.respondent_name || '匿名',
+        date: r.submitted_at,
+        answers: answerDetails,
       };
     });
 
-    const legacySummaries = (legacyReports || []).map((r: Record<string, unknown>) => ({
-      title: r.title,
-      description: r.description,
-      category: r.category,
-      priority: r.priority,
-    }));
+    // 計算整體評分
+    let totalScore = 0;
+    let totalVotes = 0;
+    for (const survey of surveys) {
+      const qs = (survey.questions || []) as Array<{ id: string; type: string }>;
+      const ratingQIds = qs.filter(q => q.type === 'rating' || q.type === 'emoji-rating').map(q => q.id);
+      for (const r of responses) {
+        if (r.survey_id !== survey.id) continue;
+        for (const qId of ratingQIds) {
+          const v = Number(r.answers?.[qId]);
+          if (!isNaN(v) && v > 0) {
+            totalScore += v;
+            totalVotes++;
+          }
+        }
+      }
+    }
+    const avgRating = totalVotes > 0 ? totalScore / totalVotes : 0;
+    // Convert 1-5 rating to 0-1 sentiment
+    const avgSentiment = totalVotes > 0 ? (avgRating - 1) / 4 : 0.5;
 
     // AI 深度分析
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const result = await model.generateContent(
-      `你是餐廳經營分析師。請分析以下客戶回饋資料，產出一份全面的情報報告。
+      `你是餐廳經營分析師。請分析以下問卷回覆資料，產出洞察報告。
 
-## 分析期間
-${periodStart.toLocaleDateString('zh-TW')} ~ ${periodEnd.toLocaleDateString('zh-TW')}
+## 店家：${store.store_name}
+## 分析期間：${periodStart.toLocaleDateString('zh-TW')} ~ ${periodEnd.toLocaleDateString('zh-TW')}
+## 回覆數量：${responses.length} 筆
+## 平均評分：${avgRating > 0 ? avgRating.toFixed(1) + ' / 5' : '無評分資料'}
 
-## 對話式回饋 (${conversationSummaries.length} 筆)
-${JSON.stringify(conversationSummaries, null, 2)}
-
-## 傳統回報 (${legacySummaries.length} 筆)
-${JSON.stringify(legacySummaries, null, 2)}
+## 問卷回覆明細
+${JSON.stringify(responseSummaries, null, 2)}
 
 ## 請產出以下 JSON 格式的分析報告
 
 {
-  "summary": "一段話總結本期回饋狀況（包含數量、整體情緒、關鍵發現）",
+  "summary": "一段話總結本期回覆狀況（包含數量、整體滿意度、關鍵發現）",
   "issues": [
     {
       "title": "問題標題",
@@ -98,7 +127,7 @@ ${JSON.stringify(legacySummaries, null, 2)}
       "sentiment_avg": 0.0~1.0,
       "root_cause_guess": "推測的根本原因",
       "affected_areas": ["受影響的區域"],
-      "customer_quotes": ["具代表性的客戶原話（最多3句）"],
+      "customer_quotes": ["具代表性的客戶回答（最多3句）"],
       "proposed_fix": "建議的改善方案"
     }
   ],
@@ -106,14 +135,9 @@ ${JSON.stringify(legacySummaries, null, 2)}
     {
       "title": "正面亮點",
       "frequency": 被提及次數,
-      "customer_quotes": ["客戶原話"]
+      "customer_quotes": ["客戶回答原文"]
     }
   ],
-  "self_review": {
-    "what_worked": "回饋收集過程中哪些做得好（例如：對話式收集讓客戶更願意分享）",
-    "what_failed": "哪些收集方式效果不佳或有盲點",
-    "improvement_plan": "下一期的收集策略調整建議"
-  },
   "recommendations": [
     {
       "priority": "high/medium/low",
@@ -123,14 +147,18 @@ ${JSON.stringify(legacySummaries, null, 2)}
     }
   ],
   "kpi": {
-    "total_conversations": 總對話數,
-    "avg_sentiment": 平均情緒分數,
-    "top_topics": ["最常被提到的話題"],
-    "response_rate_change": "與上期相比的變化描述"
+    "total_conversations": ${responses.length},
+    "avg_sentiment": ${avgSentiment.toFixed(2)},
+    "top_topics": ["從回答中歸納出的熱門話題，最多5個"],
+    "response_rate_change": "趨勢描述"
   }
 }
 
-只回覆 JSON，不要其他文字。確保 JSON 合法。`
+注意：
+- 如果回覆中有文字回答，仔細分析其中的正面/負面訊號
+- 如果只有數字評分，根據分數高低判斷滿意/不滿意的面向
+- issues 和 highlights 至少各列出一項（即使要從評分推斷）
+- 只回覆 JSON，不要其他文字。確保 JSON 合法。`
     );
 
     const text = result.response.text().replace(/```json\s*/g, '').replace(/```\s*/g, '');
@@ -149,18 +177,10 @@ ${JSON.stringify(legacySummaries, null, 2)}
       period_end: periodEnd.toISOString(),
       summary: analysis.summary,
       issues: analysis.issues,
-      self_review: analysis.self_review,
       recommendations: analysis.recommendations,
-      conversation_count: conversations.length,
-      avg_sentiment: analysis.kpi?.avg_sentiment,
+      conversation_count: responses.length,
+      avg_sentiment: analysis.kpi?.avg_sentiment ?? avgSentiment,
     });
-
-    // 標記已分析的對話
-    const convIds = conversations.map((c: Record<string, unknown>) => c.id);
-    await db.from('feedback_conversations')
-      .update({ status: 'analyzed' })
-      .in('id', convIds)
-      .eq('status', 'new');
 
     return NextResponse.json(analysis);
   } catch (err) {

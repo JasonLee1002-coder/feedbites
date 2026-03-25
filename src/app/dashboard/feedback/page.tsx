@@ -4,8 +4,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquareWarning, Bug, Lightbulb, HelpCircle, Send, Paperclip,
-  Image as ImageIcon, X, Check, Loader2, ChevronDown, ChevronRight,
+  Image as ImageIcon, X, Loader2, ChevronRight,
   Clock, CheckCircle2, AlertCircle, ArrowRight, Sparkles, MessageCircle,
+  Zap, Plus,
 } from 'lucide-react';
 import VoiceRecorder from '@/components/shared/VoiceRecorder';
 
@@ -37,16 +38,16 @@ interface Report {
 }
 
 const CATEGORIES = [
-  { id: 'bug', label: '問題回報', icon: Bug, color: '#EF4444', bgColor: '#FEF2F2' },
-  { id: 'suggestion', label: '功能建議', icon: Lightbulb, color: '#F59E0B', bgColor: '#FFFBEB' },
-  { id: 'question', label: '使用疑問', icon: HelpCircle, color: '#3B82F6', bgColor: '#EFF6FF' },
+  { id: 'bug', label: '問題回報', icon: Bug, color: '#EF4444', bgColor: '#FEF2F2', gradient: 'from-red-500 to-rose-400' },
+  { id: 'suggestion', label: '功能建議', icon: Lightbulb, color: '#C5A55A', bgColor: '#FDF8EE', gradient: 'from-[#C5A55A] to-[#A08735]' },
+  { id: 'question', label: '使用疑問', icon: HelpCircle, color: '#3B82F6', bgColor: '#EFF6FF', gradient: 'from-blue-500 to-indigo-400' },
 ];
 
 const PRIORITIES = [
-  { id: 'low', label: '低', color: '#6B7280' },
-  { id: 'medium', label: '中', color: '#F59E0B' },
-  { id: 'high', label: '高', color: '#EF4444' },
-  { id: 'urgent', label: '緊急', color: '#DC2626' },
+  { id: 'low', label: '低', color: '#6B7280', bg: 'bg-gray-100' },
+  { id: 'medium', label: '中', color: '#C5A55A', bg: 'bg-[#C5A55A]/10' },
+  { id: 'high', label: '高', color: '#EF4444', bg: 'bg-red-50' },
+  { id: 'urgent', label: '緊急', color: '#DC2626', bg: 'bg-red-100' },
 ];
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof Clock }> = {
@@ -54,6 +55,16 @@ const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof Cl
   'in-progress': { label: '處理中', color: '#3B82F6', icon: ArrowRight },
   resolved: { label: '已解決', color: '#10B981', icon: CheckCircle2 },
   closed: { label: '已關閉', color: '#6B7280', icon: AlertCircle },
+};
+
+const container = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.06 } },
+};
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 15 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.4 } },
 };
 
 export default function FeedbackPage() {
@@ -114,7 +125,6 @@ export default function FeedbackPage() {
     setSubmitting(true);
 
     try {
-      // 1. Create report
       const res = await fetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -130,7 +140,6 @@ export default function FeedbackPage() {
       if (!res.ok) throw new Error('提交失敗');
       const report = await res.json();
 
-      // 2. Upload screenshots
       for (const file of screenshots) {
         const formData = new FormData();
         formData.append('file', file);
@@ -138,7 +147,6 @@ export default function FeedbackPage() {
         await fetch('/api/feedback/upload', { method: 'POST', body: formData });
       }
 
-      // 3. Success
       setSubmitted(true);
       setTimeout(() => {
         setShowForm(false);
@@ -163,20 +171,45 @@ export default function FeedbackPage() {
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-[#E8E2D8] rounded w-48" />
           <div className="h-40 bg-[#E8E2D8] rounded-2xl" />
-          <div className="h-24 bg-[#E8E2D8] rounded-2xl" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 lg:p-8 max-w-4xl mx-auto">
+    <div className="p-4 lg:p-8 max-w-4xl mx-auto relative overflow-hidden">
+      {/* Background sparkles */}
+      {[
+        { x: '90%', y: '8%', delay: 0 },
+        { x: '5%', y: '60%', delay: 1.5 },
+        { x: '85%', y: '75%', delay: 0.8 },
+      ].map((p, i) => (
+        <motion.div
+          key={i}
+          className="absolute pointer-events-none text-[#C5A55A]/15"
+          style={{ left: p.x, top: p.y }}
+          animate={{ opacity: [0, 0.5, 0], scale: [0.5, 1.2, 0.5] }}
+          transition={{ duration: 3.5, delay: p.delay, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <Sparkles className="w-4 h-4" />
+        </motion.div>
+      ))}
+
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <motion.div
+        className="flex items-center justify-between mb-8"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
         <div>
           <h1 className="text-2xl font-bold text-[#3A3A3A] flex items-center gap-2" style={{ fontFamily: "'Noto Serif TC', serif" }}>
-            <MessageSquareWarning className="w-7 h-7 text-[#C5A55A]" />
-            測試建議回報
+            <motion.div
+              className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#C5A55A] to-[#A08735] flex items-center justify-center"
+              whileHover={{ rotate: 10, scale: 1.1 }}
+            >
+              <MessageSquareWarning className="w-5 h-5 text-white" />
+            </motion.div>
+            系統問題回報
           </h1>
           <p className="text-sm text-[#8A8585] mt-1">
             遇到問題或有建議？回報給我們，專屬顧問會盡快回覆
@@ -185,15 +218,17 @@ export default function FeedbackPage() {
         {!showForm && (
           <motion.button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] text-white rounded-full text-sm font-bold shadow-lg shadow-[#FF8C00]/20 hover:shadow-xl hover:shadow-[#FF8C00]/30 transition-all"
-            whileHover={{ scale: 1.03 }}
+            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#C5A55A] to-[#A08735] text-white rounded-xl text-sm font-bold shadow-md shadow-[#C5A55A]/15 hover:shadow-lg transition-all"
+            whileHover={{ scale: 1.03, y: -1 }}
             whileTap={{ scale: 0.97 }}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
           >
-            <Send className="w-4 h-4" />
-            提交新回報
+            <Plus className="w-4 h-4" />
+            新增回報
           </motion.button>
         )}
-      </div>
+      </motion.div>
 
       {/* ═══ Submit Form ═══ */}
       <AnimatePresence>
@@ -218,22 +253,34 @@ export default function FeedbackPage() {
                   🎉
                 </motion.div>
                 <h2 className="text-xl font-bold text-emerald-600 mb-2">回報已送出！</h2>
-                <p className="text-sm text-[#8A8585]">我們的專屬顧問會盡快查看並回覆你</p>
+                <p className="text-sm text-[#8A8585]">我們會盡快查看並回覆你</p>
               </motion.div>
             ) : (
-              <div className="bg-white rounded-2xl border border-[#E8E2D8] shadow-sm overflow-hidden">
+              <div className="bg-white rounded-2xl border border-[#E8E2D8] shadow-lg shadow-[#C5A55A]/5 overflow-hidden">
                 {/* Form header */}
-                <div className="bg-gradient-to-r from-[#FF8C00]/5 to-[#C5A55A]/5 p-5 border-b border-[#E8E2D8] flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FF8C00] to-[#FF6B00] flex items-center justify-center">
-                      <Sparkles className="w-5 h-5 text-white" />
-                    </div>
+                <div className="relative bg-gradient-to-r from-[#1a1a2e] to-[#16213e] p-5 flex items-center justify-between overflow-hidden">
+                  <motion.div
+                    className="absolute inset-0 opacity-10"
+                    style={{
+                      backgroundImage: 'radial-gradient(circle at 20% 80%, rgba(197,165,90,0.4) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(197,165,90,0.2) 0%, transparent 50%)',
+                    }}
+                    animate={{ opacity: [0.05, 0.15, 0.05] }}
+                    transition={{ duration: 4, repeat: Infinity }}
+                  />
+                  <div className="flex items-center gap-3 relative">
+                    <motion.div
+                      className="w-10 h-10 rounded-xl bg-[#C5A55A]/20 flex items-center justify-center backdrop-blur-sm"
+                      animate={{ rotate: [0, 5, -5, 0] }}
+                      transition={{ duration: 4, repeat: Infinity }}
+                    >
+                      <Zap className="w-5 h-5 text-[#C5A55A]" />
+                    </motion.div>
                     <div>
-                      <h2 className="font-bold text-[#3A3A3A]">新增回報</h2>
-                      <p className="text-[11px] text-[#8A8585]">描述越詳細，我們越能快速幫你解決</p>
+                      <h2 className="font-bold text-white">新增回報</h2>
+                      <p className="text-[11px] text-white/50">描述越詳細，我們越能快速幫你解決</p>
                     </div>
                   </div>
-                  <button onClick={() => setShowForm(false)} className="text-[#8A8585] hover:text-[#3A3A3A]">
+                  <button onClick={() => setShowForm(false)} className="text-white/50 hover:text-white transition-colors relative">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -242,24 +289,34 @@ export default function FeedbackPage() {
                   {/* Category */}
                   <div>
                     <label className="block text-sm font-bold text-[#3A3A3A] mb-2">回報類型</label>
-                    <div className="flex gap-3">
+                    <div className="grid grid-cols-3 gap-3">
                       {CATEGORIES.map(cat => {
                         const Icon = cat.icon;
                         const isActive = category === cat.id;
                         return (
-                          <button
+                          <motion.button
                             key={cat.id}
                             onClick={() => setCategory(cat.id)}
-                            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all border-2 ${
+                            className={`relative flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl text-sm font-medium transition-all border-2 overflow-hidden ${
                               isActive
-                                ? 'shadow-md scale-[1.02]'
-                                : 'border-[#E8E2D8] hover:border-[#C5A55A] bg-white'
+                                ? 'text-white shadow-lg border-transparent'
+                                : 'border-[#E8E2D8] hover:border-[#C5A55A]/40 bg-white text-[#3A3A3A]'
                             }`}
-                            style={isActive ? { borderColor: cat.color, background: cat.bgColor, color: cat.color } : {}}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
                           >
-                            <Icon className="w-4 h-4" />
-                            {cat.label}
-                          </button>
+                            {isActive && (
+                              <motion.div
+                                className={`absolute inset-0 bg-gradient-to-r ${cat.gradient}`}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                              />
+                            )}
+                            <span className="relative flex items-center gap-2">
+                              <Icon className="w-4 h-4" />
+                              {cat.label}
+                            </span>
+                          </motion.button>
                         );
                       })}
                     </div>
@@ -270,18 +327,20 @@ export default function FeedbackPage() {
                     <label className="block text-sm font-bold text-[#3A3A3A] mb-2">優先程度</label>
                     <div className="flex gap-2">
                       {PRIORITIES.map(p => (
-                        <button
+                        <motion.button
                           key={p.id}
                           onClick={() => setPriority(p.id)}
-                          className={`px-4 py-2 rounded-lg text-xs font-medium transition-all ${
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                             priority === p.id
-                              ? 'text-white shadow-sm'
-                              : 'bg-[#FAF7F2] text-[#8A8585] border border-[#E8E2D8] hover:border-[#C5A55A]'
+                              ? 'text-white shadow-md'
+                              : `${p.bg} border border-[#E8E2D8]`
                           }`}
-                          style={priority === p.id ? { background: p.color } : {}}
+                          style={priority === p.id ? { background: p.color } : { color: p.color }}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
                         >
                           {p.label}
-                        </button>
+                        </motion.button>
                       ))}
                     </div>
                   </div>
@@ -294,7 +353,7 @@ export default function FeedbackPage() {
                       value={title}
                       onChange={e => setTitle(e.target.value)}
                       placeholder="簡短描述你遇到的問題或建議"
-                      className="w-full px-4 py-3 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-[#FF8C00] focus:ring-2 focus:ring-[#FF8C00]/20 bg-[#FAF7F2] transition-all"
+                      className="w-full px-4 py-3 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] focus:ring-2 focus:ring-[#C5A55A]/20 bg-[#FAF7F2] transition-all"
                     />
                   </div>
 
@@ -306,9 +365,8 @@ export default function FeedbackPage() {
                       onChange={e => setDescription(e.target.value)}
                       placeholder="請詳細描述你遇到的情況，步驟、預期結果、實際結果..."
                       rows={5}
-                      className="w-full px-4 py-3 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-[#FF8C00] focus:ring-2 focus:ring-[#FF8C00]/20 bg-[#FAF7F2] resize-none transition-all"
+                      className="w-full px-4 py-3 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] focus:ring-2 focus:ring-[#C5A55A]/20 bg-[#FAF7F2] resize-none transition-all"
                     />
-                    {/* Voice input */}
                     <div className="mt-2 flex items-center gap-2">
                       <VoiceRecorder
                         dishName=""
@@ -326,7 +384,12 @@ export default function FeedbackPage() {
                     </label>
                     <div className="flex flex-wrap gap-3">
                       {screenshotPreviews.map((preview, i) => (
-                        <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden border border-[#E8E2D8] group">
+                        <motion.div
+                          key={i}
+                          className="relative w-24 h-24 rounded-xl overflow-hidden border border-[#E8E2D8] group"
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                        >
                           <img src={preview} alt="" className="w-full h-full object-cover" />
                           <button
                             onClick={() => removeScreenshot(i)}
@@ -334,15 +397,16 @@ export default function FeedbackPage() {
                           >
                             <X className="w-3 h-3" />
                           </button>
-                        </div>
+                        </motion.div>
                       ))}
-                      <button
+                      <motion.button
                         onClick={() => fileInputRef.current?.click()}
-                        className="w-24 h-24 rounded-xl border-2 border-dashed border-[#E8E2D8] hover:border-[#FF8C00] flex flex-col items-center justify-center gap-1 text-[#8A8585] hover:text-[#FF8C00] transition-all bg-[#FAF7F2]"
+                        className="w-24 h-24 rounded-xl border-2 border-dashed border-[#E8E2D8] hover:border-[#C5A55A] flex flex-col items-center justify-center gap-1 text-[#8A8585] hover:text-[#C5A55A] transition-all bg-[#FAF7F2]"
+                        whileHover={{ scale: 1.05, borderColor: '#C5A55A' }}
                       >
                         <Paperclip className="w-5 h-5" />
                         <span className="text-[10px]">上傳截圖</span>
-                      </button>
+                      </motion.button>
                     </div>
                     <input
                       ref={fileInputRef}
@@ -359,8 +423,8 @@ export default function FeedbackPage() {
                     <motion.button
                       onClick={handleSubmit}
                       disabled={submitting || !title.trim() || !description.trim()}
-                      className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] text-white rounded-xl text-sm font-bold shadow-lg shadow-[#FF8C00]/20 hover:shadow-xl disabled:opacity-50 transition-all"
-                      whileHover={{ scale: 1.02 }}
+                      className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-[#C5A55A] to-[#A08735] text-white rounded-xl text-sm font-bold shadow-md shadow-[#C5A55A]/15 hover:shadow-lg disabled:opacity-50 transition-all"
+                      whileHover={{ scale: 1.02, y: -1 }}
                       whileTap={{ scale: 0.98 }}
                     >
                       {submitting ? (
@@ -385,18 +449,39 @@ export default function FeedbackPage() {
 
       {/* ═══ Report History ═══ */}
       {reports.length === 0 && !showForm ? (
-        <div className="bg-white rounded-2xl border border-[#E8E2D8] p-16 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-[#FF8C00]/10 flex items-center justify-center mx-auto mb-4">
-            <MessageSquareWarning className="w-8 h-8 text-[#FF8C00]" />
-          </div>
+        <motion.div
+          className="bg-white rounded-2xl border border-[#E8E2D8] p-12 text-center"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <motion.div
+            className="w-20 h-20 rounded-full bg-[#C5A55A]/10 flex items-center justify-center mx-auto mb-5"
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 3, repeat: Infinity }}
+          >
+            <MessageSquareWarning className="w-10 h-10 text-[#C5A55A]" />
+          </motion.div>
           <h2 className="text-lg font-bold text-[#3A3A3A] mb-2">還沒有任何回報</h2>
-          <p className="text-sm text-[#8A8585] mb-6">
-            測試過程中遇到問題或有建議？點擊上方按鈕告訴我們
+          <p className="text-sm text-[#8A8585] max-w-sm mx-auto">
+            使用過程中遇到問題或有建議？點擊上方按鈕告訴我們，我們會盡快處理。
           </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <h2 className="text-sm font-bold text-[#8A8585] mb-3">回報紀錄 ({reports.length})</h2>
+        </motion.div>
+      ) : reports.length > 0 && (
+        <motion.div
+          className="space-y-3"
+          variants={container}
+          initial="hidden"
+          animate="show"
+        >
+          <motion.h2
+            className="text-sm font-bold text-[#8A8585] mb-3 flex items-center gap-2"
+            variants={fadeUp}
+          >
+            回報紀錄
+            <span className="px-2 py-0.5 bg-[#C5A55A]/10 text-[#A08735] rounded-full text-[11px]">
+              {reports.length}
+            </span>
+          </motion.h2>
           {reports.map(report => {
             const isExpanded = expandedId === report.id;
             const statusInfo = STATUS_MAP[report.status] || STATUS_MAP.pending;
@@ -411,29 +496,34 @@ export default function FeedbackPage() {
             return (
               <motion.div
                 key={report.id}
+                variants={fadeUp}
                 layout
-                className={`bg-white rounded-2xl border overflow-hidden transition-all ${
-                  hasNewResponse ? 'border-[#FF8C00]/40 shadow-md shadow-[#FF8C00]/10' : 'border-[#E8E2D8]'
+                className={`bg-white rounded-2xl border overflow-hidden transition-all hover:shadow-md hover:shadow-[#C5A55A]/5 ${
+                  hasNewResponse ? 'border-[#C5A55A]/40 shadow-md shadow-[#C5A55A]/10' : 'border-[#E8E2D8]'
                 }`}
               >
-                {/* Report header */}
                 <button
                   onClick={() => setExpandedId(isExpanded ? null : report.id)}
                   className="w-full p-4 flex items-center gap-3 text-left hover:bg-[#FAF7F2]/50 transition-colors"
                 >
-                  <div
-                    className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                  <motion.div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                     style={{ background: catInfo?.bgColor || '#F3F4F6' }}
+                    whileHover={{ rotate: 5, scale: 1.1 }}
                   >
-                    <CatIcon className="w-4 h-4" style={{ color: catInfo?.color || '#6B7280' }} />
-                  </div>
+                    <CatIcon className="w-5 h-5" style={{ color: catInfo?.color || '#6B7280' }} />
+                  </motion.div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-bold text-[#3A3A3A] truncate">{report.title}</span>
                       {hasNewResponse && (
-                        <span className="px-1.5 py-0.5 bg-[#FF8C00] text-white text-[9px] font-bold rounded-full animate-pulse">
+                        <motion.span
+                          className="px-1.5 py-0.5 bg-gradient-to-r from-[#C5A55A] to-[#A08735] text-white text-[9px] font-bold rounded-full"
+                          animate={{ scale: [1, 1.1, 1] }}
+                          transition={{ duration: 1.5, repeat: Infinity }}
+                        >
                           NEW
-                        </span>
+                        </motion.span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
@@ -446,7 +536,7 @@ export default function FeedbackPage() {
                         </span>
                       )}
                       {hasResponses && (
-                        <span className="text-[10px] text-[#FF8C00] flex items-center gap-0.5">
+                        <span className="text-[10px] text-[#C5A55A] flex items-center gap-0.5 font-medium">
                           <MessageCircle className="w-3 h-3" />{report.feedback_responses.length} 回覆
                         </span>
                       )}
@@ -454,7 +544,7 @@ export default function FeedbackPage() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span
-                      className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium"
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold"
                       style={{ background: statusInfo.color + '15', color: statusInfo.color }}
                     >
                       <StatusIcon className="w-3 h-3" />
@@ -466,7 +556,6 @@ export default function FeedbackPage() {
                   </div>
                 </button>
 
-                {/* Expanded detail */}
                 <AnimatePresence>
                   {isExpanded && (
                     <motion.div
@@ -476,14 +565,12 @@ export default function FeedbackPage() {
                       className="overflow-hidden"
                     >
                       <div className="px-4 pb-4 border-t border-[#E8E2D8]">
-                        {/* Description */}
-                        <div className="mt-4 p-3 bg-[#FAF7F2] rounded-xl">
+                        <div className="mt-4 p-4 bg-[#FAF7F2] rounded-xl">
                           <p className="text-sm text-[#3A3A3A] whitespace-pre-wrap leading-relaxed">
                             {report.description}
                           </p>
                         </div>
 
-                        {/* Screenshots */}
                         {report.feedback_attachments?.length > 0 && (
                           <div className="mt-3 flex flex-wrap gap-2">
                             {report.feedback_attachments.map(att => (
@@ -492,7 +579,7 @@ export default function FeedbackPage() {
                                 href={att.file_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="w-20 h-20 rounded-lg overflow-hidden border border-[#E8E2D8] hover:border-[#FF8C00] transition-colors"
+                                className="w-20 h-20 rounded-xl overflow-hidden border border-[#E8E2D8] hover:border-[#C5A55A] transition-colors hover:shadow-md"
                               >
                                 <img src={att.file_url} alt={att.file_name || ''} className="w-full h-full object-cover" />
                               </a>
@@ -500,7 +587,6 @@ export default function FeedbackPage() {
                           </div>
                         )}
 
-                        {/* Responses */}
                         {report.feedback_responses?.length > 0 && (
                           <div className="mt-4 space-y-3">
                             <div className="text-xs font-bold text-[#C5A55A] flex items-center gap-1">
@@ -508,15 +594,17 @@ export default function FeedbackPage() {
                               FeedBites 團隊回覆
                             </div>
                             {report.feedback_responses.map(resp => (
-                              <div
+                              <motion.div
                                 key={resp.id}
                                 className="p-3 bg-[#C5A55A]/5 rounded-xl border border-[#C5A55A]/20"
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
                               >
                                 <p className="text-sm text-[#3A3A3A] whitespace-pre-wrap">{resp.message}</p>
                                 <p className="text-[10px] text-[#8A8585] mt-2">
                                   {new Date(resp.created_at).toLocaleString('zh-TW')}
                                 </p>
-                              </div>
+                              </motion.div>
                             ))}
                           </div>
                         )}
@@ -527,7 +615,7 @@ export default function FeedbackPage() {
               </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       )}
     </div>
   );
