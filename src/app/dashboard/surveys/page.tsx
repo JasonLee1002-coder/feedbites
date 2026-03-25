@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
 import { templates } from '@/lib/templates';
-import { Plus, QrCode, Trash2 } from 'lucide-react';
+import { Plus, QrCode, Trash2, Eye } from 'lucide-react';
 import SurveyDeleteButton from './SurveyDeleteButton';
 import type { TemplateId } from '@/types/survey';
 import { getSelectedStore } from '@/lib/store-context';
@@ -122,7 +122,16 @@ export default async function SurveysPage() {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                    <a
+                      href={`/s/${survey.id}?preview=1`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-emerald-500 rounded-lg hover:bg-emerald-600 transition-colors"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      體驗問卷
+                    </a>
                     <Link
                       href={`/dashboard/surveys/${survey.id}/qrcode`}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-[#FF8C00] rounded-lg hover:bg-[#E07800] transition-colors"

@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { createServiceSupabase } from '@/lib/supabase/server';
 import type { Metadata } from 'next';
 import SurveyClient from './SurveyClient';
@@ -62,5 +63,9 @@ export default async function PublicSurveyPage({ params }: Props) {
     );
   }
 
-  return <SurveyClient survey={survey} />;
+  return (
+    <Suspense>
+      <SurveyClient survey={survey} />
+    </Suspense>
+  );
 }

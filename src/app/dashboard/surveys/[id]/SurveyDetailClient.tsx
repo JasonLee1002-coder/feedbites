@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Download, Copy } from 'lucide-react';
+import { Download, Copy, Eye } from 'lucide-react';
 
 interface Props {
   surveyId: string;
@@ -101,6 +101,17 @@ export default function SurveyDetailClient({ surveyId, isActive: initialActive, 
         <Copy className="w-3.5 h-3.5" />
         {cloning ? '複製中...' : '複製'}
       </button>
+
+      {/* Preview as Customer */}
+      <a
+        href={`/s/${surveyId}?preview=1`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-emerald-500 border border-emerald-400 rounded-full hover:bg-emerald-600 transition-colors"
+      >
+        <Eye className="w-3.5 h-3.5" />
+        體驗問卷
+      </a>
 
       {/* Edit Button */}
       <button

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import type { Survey, ThemeColors, TemplateId, DiscountTier } from '@/types/survey';
 import { getTemplate } from '@/lib/templates';
 import SurveyRenderer from '@/components/survey/SurveyRenderer';
@@ -54,7 +55,27 @@ interface DiscountResult {
   response_id?: string;
 }
 
+function PreviewBar({ surveyId }: { surveyId: string }) {
+  return (
+    <div className="fixed top-0 left-0 right-0 z-[100] flex items-center justify-between px-4 py-2.5 bg-[#1a1a2e]/95 backdrop-blur-sm shadow-lg">
+      <div className="flex items-center gap-2">
+        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        <span className="text-xs font-medium text-white/80">店長預覽模式</span>
+      </div>
+      <a
+        href={`/dashboard/surveys/${surveyId}`}
+        className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-[#C5A55A] text-white text-xs font-bold rounded-full hover:bg-[#A08735] transition-colors"
+      >
+        ← 返回後台
+      </a>
+    </div>
+  );
+}
+
 export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
+  const searchParams = useSearchParams();
+  const isPreview = searchParams.get('preview') === '1';
+
   const [step, setStep] = useState<SurveyStep>(() =>
     hasAlreadySubmitted(survey.id) ? 'already-submitted' : 'survey'
   );
@@ -161,6 +182,8 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
   if (step === 'already-submitted') {
     const prevCode = getPreviousCode(survey.id);
     return (
+      <>
+      {isPreview && <PreviewBar surveyId={survey.id} />}
       <div
         className="min-h-screen flex flex-col items-center justify-center px-6"
         style={{ background: colors.background, fontFamily: "'Noto Sans TC', sans-serif" }}
@@ -195,12 +218,15 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
           </p>
         </div>
       </div>
+      </>
     );
   }
 
   // ─── Step: Survey ───
   if (step === 'survey') {
     return (
+      <>
+      {isPreview && <PreviewBar surveyId={survey.id} />}
       <SurveyRenderer
         questions={survey.questions}
         colors={colors}
@@ -216,12 +242,15 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
         discountMode={survey.discount_mode || 'basic'}
         discountTiers={survey.discount_tiers}
       />
+      </>
     );
   }
 
   // ─── Step: Submitting (loading) ───
   if (step === 'submitting') {
     return (
+      <>
+      {isPreview && <PreviewBar surveyId={survey.id} />}
       <div
         className="min-h-screen flex flex-col items-center justify-center px-6"
         style={{ background: colors.background, fontFamily: "'Noto Sans TC', sans-serif" }}
@@ -253,12 +282,15 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
           }
         `}</style>
       </div>
+      </>
     );
   }
 
   // ─── Step: Discount / Thank You ───
   if (step === 'discount' && discountResult) {
     return (
+      <>
+      {isPreview && <PreviewBar surveyId={survey.id} />}
       <DiscountCodeDisplay
         code={discountResult.code}
         discountValue={discountResult.discount_value || survey.discount_value}
@@ -285,11 +317,14 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
           }
         }}
       />
+      </>
     );
   }
 
   // No discount — just show thank you
   return (
+    <>
+    {isPreview && <PreviewBar surveyId={survey.id} />}
     <div
       className="min-h-screen flex flex-col items-center justify-center px-6"
       style={{ background: colors.background }}
@@ -344,5 +379,6 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
         }
       `}</style>
     </div>
+    </>
   );
 }
