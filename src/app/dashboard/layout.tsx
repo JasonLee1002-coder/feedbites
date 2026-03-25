@@ -2,7 +2,6 @@ import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/serv
 import { redirect } from 'next/navigation';
 import Sidebar from '@/components/dashboard/Sidebar';
 import AiAssistant from '@/components/dashboard/AiAssistant';
-import FeedbackGenie from '@/components/feedback-genie/FeedbackGenie';
 import { getSelectedStore, getUserStores } from '@/lib/store-context';
 
 export default async function DashboardLayout({
@@ -61,13 +60,6 @@ export default async function DashboardLayout({
         surveyCount={surveyCount || 0}
         responseCount={responseCount || 0}
         avatarUrl={store.owner_avatar_url}
-      />
-      <FeedbackGenie
-        storeId={store.id}
-        storeName={store.store_name}
-        mode="owner"
-        source="widget"
-        primaryColor="#C5A55A"
       />
     </div>
   );
