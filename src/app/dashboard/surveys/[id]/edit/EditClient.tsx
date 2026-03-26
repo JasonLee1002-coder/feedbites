@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, Loader2, Plus, Trash2, Check } from 'lucide-react';
-import type { Question } from '@/types/survey';
+import { ArrowLeft, Save, Loader2, Plus, Trash2, Check, Palette } from 'lucide-react';
+import { templateList } from '@/lib/templates';
+import type { Question, TemplateId } from '@/types/survey';
 
 const TYPE_OPTIONS: { value: Question['type']; label: string }[] = [
   { value: 'emoji-rating', label: '表情評分' },
@@ -24,6 +25,7 @@ interface EditClientProps {
   initialQuestions: Question[];
   initialDiscountValue: string;
   initialDiscountEnabled: boolean;
+  initialTemplateId: TemplateId | null;
 }
 
 export default function EditClient({
@@ -32,6 +34,7 @@ export default function EditClient({
   initialQuestions,
   initialDiscountValue,
   initialDiscountEnabled,
+  initialTemplateId,
 }: EditClientProps) {
   const router = useRouter();
 
@@ -41,6 +44,8 @@ export default function EditClient({
   const [questions, setQuestions] = useState<Question[]>(initialQuestions);
   const [discountValue, setDiscountValue] = useState(initialDiscountValue);
   const [discountEnabled, setDiscountEnabled] = useState(initialDiscountEnabled);
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateId | null>(initialTemplateId);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
 
   function updateQuestion(index: number, updates: Partial<Question>) {
     setQuestions(qs => qs.map((q, i) => i === index ? { ...q, ...updates } : q));
@@ -74,6 +79,7 @@ export default function EditClient({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title,
+          template_id: selectedTemplate,
           questions: questions.filter(q => q.type === 'section-header' || q.label?.trim()),
           discount_value: discountValue,
           discount_enabled: discountEnabled,
@@ -120,6 +126,62 @@ export default function EditClient({
           onChange={e => setTitle(e.target.value)}
           className="w-full px-4 py-2.5 rounded-xl border border-[#E8E2D8] text-base font-bold outline-none focus:border-[#C5A55A] bg-[#FAF7F2] font-serif text-[#3A3A3A]"
         />
+      </div>
+
+      {/* Template picker */}
+      <div className="bg-white rounded-2xl border border-[#E8E2D8] p-5 mb-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Palette className="w-4 h-4 text-[#C5A55A]" />
+            <span className="text-sm font-medium text-[#3A3A3A]">問卷風格模板</span>
+            {selectedTemplate && (
+              <span className="text-xs text-[#8A8585]">
+                — {templateList.find(t => t.id === selectedTemplate)?.name || selectedTemplate}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => setShowTemplatePicker(!showTemplatePicker)}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[#C5A55A]/10 text-[#C5A55A] hover:bg-[#C5A55A]/20 transition-colors"
+          >
+            {showTemplatePicker ? '收起' : '更換模板'}
+          </button>
+        </div>
+        {showTemplatePicker && (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
+            {templateList.map((tmpl) => {
+              const isSelected = selectedTemplate === tmpl.id;
+              return (
+                <button
+                  key={tmpl.id}
+                  onClick={() => { setSelectedTemplate(tmpl.id); setShowTemplatePicker(false); }}
+                  className={`text-left rounded-xl border-2 p-3 transition-all ${
+                    isSelected ? 'border-[#C5A55A] shadow-md' : 'border-[#E8E2D8] hover:border-[#C5A55A]/50'
+                  }`}
+                  style={{ backgroundColor: tmpl.colors.background }}
+                >
+                  <div className="flex gap-1 mb-2">
+                    {[tmpl.colors.primary, tmpl.colors.primaryLight, tmpl.colors.accent].map((color, i) => (
+                      <div key={i} className="w-5 h-5 rounded-full" style={{ backgroundColor: color }} />
+                    ))}
+                  </div>
+                  <h3 className="font-bold text-xs mb-0.5" style={{ color: tmpl.colors.text }}>
+                    {tmpl.name}
+                  </h3>
+                  <p className="text-[10px]" style={{ color: tmpl.colors.textLight }}>
+                    {tmpl.suited}
+                  </p>
+                  {isSelected && (
+                    <div className="mt-2 text-[10px] font-medium text-[#C5A55A] flex items-center gap-1">
+                      <Check className="w-3 h-3" />
+                      目前使用
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Discount quick toggle */}
