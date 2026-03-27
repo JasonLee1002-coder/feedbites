@@ -667,7 +667,7 @@ export default function FeedbackPage() {
                         <div className="w-4 h-4 rounded-full bg-[#C5A55A]/20 flex items-center justify-center">
                           <span className="text-[8px]">💬</span>
                         </div>
-                        <span className="text-[10px] font-bold text-[#C5A55A]">FeedBites 團隊</span>
+                        <span className="text-[10px] font-bold text-[#C5A55A]">FeedBites 餐飲顧問</span>
                         <span className="text-[9px] text-[#8A8585]">
                           {new Date(latestResponse.created_at).toLocaleDateString('zh-TW')}
                         </span>
@@ -796,7 +796,7 @@ export default function FeedbackPage() {
                                       <span className="text-[10px]">{isTeam ? '🍽️' : '💬'}</span>
                                     </div>
                                     <span className={`text-[10px] font-bold ${isTeam ? 'text-[#C5A55A]' : 'text-blue-600'}`}>
-                                      {isTeam ? 'FeedBites 團隊' : '我的回覆'}
+                                      {isTeam ? 'FeedBites 餐飲顧問' : '我的回覆'}
                                     </span>
                                     <span className="text-[9px] text-[#8A8585]">
                                       {new Date(resp.created_at).toLocaleString('zh-TW')}
