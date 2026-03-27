@@ -335,6 +335,143 @@ export const surveyTemplates: SurveyTemplate[] = [
       { id: 'chef_message', type: 'textarea', label: '給主廚的悄悄話', required: false, placeholder: '如果可以調整一個細節讓這道菜更完美，您的建議是？', section: '給主廚的悄悄話' },
     ],
   },
+  // ═══════════════════════════════════════════════════════════════
+  // 13. 情人節 / 紀念日特餐
+  // ═══════════════════════════════════════════════════════════════
+  {
+    id: 'valentines',
+    name: '情人節 / 紀念日特餐',
+    description: '針對情人節、結婚紀念日等浪漫特餐的專屬問卷，收集約會體驗與氛圍感受',
+    category: '節慶活動',
+    questions: [
+      { id: 'sec_welcome', type: 'section-header', title: '感謝您選擇與我們共度特別時光 💕', description: '花 2 分鐘告訴我們您的感受', required: false, section: '歡迎' },
+      { id: 'occasion_type', type: 'radio', label: '今天是什麼特別日子？', required: true, options: ['情人節', '結婚紀念日', '交往紀念日', '生日', '求婚', '純約會', '其他'], section: '場合' },
+      { id: 'atmosphere', type: 'emoji-rating', label: '浪漫氛圍營造', required: true, min: 1, max: 5, section: '體驗' },
+      { id: 'special_menu', type: 'emoji-rating', label: '特餐餐點表現', required: true, min: 1, max: 5, section: '體驗' },
+      { id: 'presentation', type: 'emoji-rating', label: '擺盤與視覺', required: true, min: 1, max: 5, section: '體驗' },
+      { id: 'service_detail', type: 'emoji-rating', label: '服務細心程度', required: true, min: 1, max: 5, section: '體驗' },
+      { id: 'surprise', type: 'radio', label: '有沒有讓你驚喜的環節？', required: false, options: ['有，超感動！', '有一點', '還好', '沒有特別感覺'], section: '驚喜' },
+      { id: 'fav_dish', type: 'text', label: '今晚最愛的一道菜？', required: false, placeholder: '菜名', section: '推薦' },
+      { id: 'price_feel', type: 'radio', label: '特餐價位感覺如何？', required: true, options: ['很超值', '合理', '有點貴但值得', '偏貴'], section: '價格' },
+      { id: 'will_return', type: 'radio', label: '下次重要日子還會來嗎？', required: true, options: ['一定會！', '應該會', '看看其他選擇', '不太會'], section: '回訪' },
+      { id: 'photo_share', type: 'radio', label: '有拍照分享到社群嗎？', required: false, options: ['有，已發！', '有拍但沒發', '沒拍'], section: '社群' },
+      { id: 'feedback', type: 'textarea', label: '給我們的悄悄話 💌', required: false, placeholder: '任何想說的...', section: '回饋' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // 14. 年節 / 春節特餐
+  // ═══════════════════════════════════════════════════════════════
+  {
+    id: 'lunar-new-year',
+    name: '年節 / 春節特餐',
+    description: '農曆新年、除夕團圓飯、尾牙春酒等年節聚餐問卷，收集大桌菜體驗',
+    category: '節慶活動',
+    questions: [
+      { id: 'sec_welcome', type: 'section-header', title: '🧧 新年快樂！感謝您的蒞臨', description: '幫助我們讓明年的年菜更好', required: false, section: '歡迎' },
+      { id: 'event_type', type: 'radio', label: '今天的聚餐是？', required: true, options: ['除夕團圓', '春節聚餐', '尾牙', '春酒', '開工團拜', '其他'], section: '場合' },
+      { id: 'party_size', type: 'radio', label: '今天幾位一起？', required: true, options: ['4 人以下', '5-8 人', '9-12 人', '13 人以上'], section: '場合' },
+      { id: 'set_menu', type: 'emoji-rating', label: '年菜套餐整體滿意度', required: true, min: 1, max: 5, section: '餐點' },
+      { id: 'portion', type: 'radio', label: '份量如何？', required: true, options: ['太多（適合分享）', '剛好', '稍微偏少'], section: '餐點' },
+      { id: 'festive_feel', type: 'emoji-rating', label: '過年氣氛營造', required: true, min: 1, max: 5, section: '氣氛' },
+      { id: 'fav_dish', type: 'text', label: '最受歡迎的一道年菜？', required: false, placeholder: '菜名', section: '推薦' },
+      { id: 'least_fav', type: 'text', label: '最不受歡迎的一道？', required: false, placeholder: '菜名（選填）', section: '改進' },
+      { id: 'price_value', type: 'radio', label: '年菜價位感受', required: true, options: ['很划算', '合理', '有點貴', '太貴'], section: '價格' },
+      { id: 'book_next_year', type: 'radio', label: '明年還會來訂年菜嗎？', required: true, options: ['一定會！已經想預訂了', '應該會', '看看再說'], section: '回訪' },
+      { id: 'feedback', type: 'textarea', label: '對年菜的建議', required: false, placeholder: '想加什麼菜？什麼可以改進？', section: '回饋' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // 15. 母親節 / 父親節特餐
+  // ═══════════════════════════════════════════════════════════════
+  {
+    id: 'parents-day',
+    name: '母親節 / 父親節特餐',
+    description: '母親節、父親節家庭聚餐問卷，了解家庭客群的需求與期待',
+    category: '節慶活動',
+    questions: [
+      { id: 'sec_welcome', type: 'section-header', title: '感謝您帶家人來慶祝 🌹', description: '您的回饋讓我們更用心', required: false, section: '歡迎' },
+      { id: 'event_type', type: 'radio', label: '今天慶祝什麼？', required: true, options: ['母親節', '父親節', '家庭聚餐', '長輩生日', '其他'], section: '場合' },
+      { id: 'party_size', type: 'radio', label: '今天幾位家人一起？', required: true, options: ['3-4 人', '5-6 人', '7-10 人', '10 人以上'], section: '場合' },
+      { id: 'food_quality', type: 'emoji-rating', label: '餐點品質', required: true, min: 1, max: 5, section: '餐點' },
+      { id: 'elder_friendly', type: 'emoji-rating', label: '菜色適合長輩嗎？', required: true, min: 1, max: 5, section: '餐點' },
+      { id: 'kid_friendly', type: 'radio', label: '有小朋友一起嗎？餐廳對兒童友善嗎？', required: false, options: ['沒有小朋友', '很友善', '還好', '不太方便'], section: '友善' },
+      { id: 'special_service', type: 'radio', label: '有感受到節日特別服務嗎？', required: false, options: ['有！很貼心', '有一點', '沒有特別'], section: '服務' },
+      { id: 'service', type: 'emoji-rating', label: '服務態度', required: true, min: 1, max: 5, section: '服務' },
+      { id: 'overall', type: 'emoji-rating', label: '整體滿意度', required: true, min: 1, max: 5, section: '整體' },
+      { id: 'will_return', type: 'radio', label: '下個節日還會來嗎？', required: true, options: ['一定會', '可能會', '看看再說'], section: '回訪' },
+      { id: 'feedback', type: 'textarea', label: '給我們的建議', required: false, placeholder: '任何想說的...', section: '回饋' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // 16. 聖誕節 / 跨年特餐
+  // ═══════════════════════════════════════════════════════════════
+  {
+    id: 'christmas-newyear',
+    name: '聖誕節 / 跨年派對',
+    description: '聖誕大餐、跨年派對、耶誕交換禮物聚餐問卷，收集歡慶體驗',
+    category: '節慶活動',
+    questions: [
+      { id: 'sec_welcome', type: 'section-header', title: '🎄 Merry Christmas & Happy New Year!', description: '感謝您選擇與我們一起歡慶', required: false, section: '歡迎' },
+      { id: 'event_type', type: 'radio', label: '今天是？', required: true, options: ['平安夜', '聖誕節', '跨年夜', '新年派對', '朋友聚餐', '公司聚餐'], section: '場合' },
+      { id: 'food', type: 'emoji-rating', label: '特餐料理', required: true, min: 1, max: 5, section: '體驗' },
+      { id: 'decoration', type: 'emoji-rating', label: '節日裝飾與氛圍', required: true, min: 1, max: 5, section: '體驗' },
+      { id: 'music_vibe', type: 'emoji-rating', label: '音樂與氣氛', required: true, min: 1, max: 5, section: '體驗' },
+      { id: 'drink', type: 'emoji-rating', label: '特調飲品/酒單', required: false, min: 1, max: 5, section: '體驗' },
+      { id: 'fav_moment', type: 'text', label: '今晚最棒的一刻？', required: false, placeholder: '分享你的歡樂時光', section: '回憶' },
+      { id: 'photo_worthy', type: 'radio', label: '有拍照打卡嗎？', required: false, options: ['瘋狂拍！', '拍了幾張', '沒拍'], section: '社群' },
+      { id: 'price', type: 'radio', label: '價位感受', required: true, options: ['超值', '合理', '小貴但 OK', '太貴'], section: '價格' },
+      { id: 'next_event', type: 'radio', label: '下次節日活動還會來嗎？', required: true, options: ['一定來！', '很有可能', '考慮看看'], section: '回訪' },
+      { id: 'feedback', type: 'textarea', label: '給我們的建議 🎅', required: false, placeholder: '讓明年更好...', section: '回饋' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // 17. 限定活動 / 快閃 / 主題之夜
+  // ═══════════════════════════════════════════════════════════════
+  {
+    id: 'special-event',
+    name: '限定活動 / 主題之夜',
+    description: '快閃活動、品酒會、主題之夜、節日限定菜單等特殊活動問卷',
+    category: '節慶活動',
+    questions: [
+      { id: 'sec_welcome', type: 'section-header', title: '✨ 感謝你參加本次活動！', description: '你的回饋是我們舉辦下一場的動力', required: false, section: '歡迎' },
+      { id: 'how_know', type: 'radio', label: '怎麼知道這個活動的？', required: true, options: ['IG/FB', '朋友揪', '店內海報', 'LINE 通知', '路過看到', '其他'], section: '來源' },
+      { id: 'expectation', type: 'radio', label: '活動符合你的期待嗎？', required: true, options: ['超乎期待！', '符合期待', '普通', '有落差'], section: '期待' },
+      { id: 'food_quality', type: 'emoji-rating', label: '活動限定餐點', required: true, min: 1, max: 5, section: '體驗' },
+      { id: 'event_fun', type: 'emoji-rating', label: '活動趣味度', required: true, min: 1, max: 5, section: '體驗' },
+      { id: 'host_quality', type: 'emoji-rating', label: '主持/互動品質', required: false, min: 1, max: 5, section: '體驗' },
+      { id: 'best_part', type: 'text', label: '最喜歡活動的哪個部分？', required: false, placeholder: '例如：品酒環節、主廚互動...', section: '亮點' },
+      { id: 'price_value', type: 'radio', label: '活動票價/消費感受', required: true, options: ['很超值', '合理', '偏高但值得', '太貴'], section: '價格' },
+      { id: 'join_next', type: 'radio', label: '下次有類似活動會參加嗎？', required: true, options: ['一定要！幫我留位', '很有興趣', '看活動內容', '不太會'], section: '回訪' },
+      { id: 'want_theme', type: 'text', label: '你希望我們辦什麼主題的活動？', required: false, placeholder: '例如：威士忌之夜、和牛品鑑...', section: '建議' },
+      { id: 'feedback', type: 'textarea', label: '其他建議', required: false, placeholder: '讓下次活動更好...', section: '回饋' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // 18. 中秋節 / 烤肉季
+  // ═══════════════════════════════════════════════════════════════
+  {
+    id: 'mid-autumn',
+    name: '中秋節 / 烤肉季',
+    description: '中秋節烤肉、月餅禮盒、秋季限定菜單問卷',
+    category: '節慶活動',
+    questions: [
+      { id: 'sec_welcome', type: 'section-header', title: '🌕 中秋快樂！', description: '感謝您的蒞臨，花 2 分鐘幫我們變更好', required: false, section: '歡迎' },
+      { id: 'event_type', type: 'radio', label: '今天的聚餐類型？', required: true, options: ['中秋烤肉', '月餅下午茶', '秋季限定套餐', '家庭團聚', '朋友聚會', '公司團體'], section: '場合' },
+      { id: 'food', type: 'emoji-rating', label: '餐點/烤肉品質', required: true, min: 1, max: 5, section: '餐點' },
+      { id: 'ingredient', type: 'emoji-rating', label: '食材新鮮度', required: true, min: 1, max: 5, section: '餐點' },
+      { id: 'variety', type: 'emoji-rating', label: '菜色豐富度', required: true, min: 1, max: 5, section: '餐點' },
+      { id: 'moon_cake', type: 'radio', label: '有試我們的月餅嗎？', required: false, options: ['有，很好吃！', '有，普通', '沒試到', '不適用'], section: '月餅' },
+      { id: 'atmosphere', type: 'emoji-rating', label: '中秋氛圍', required: true, min: 1, max: 5, section: '氣氛' },
+      { id: 'overall', type: 'emoji-rating', label: '整體滿意度', required: true, min: 1, max: 5, section: '整體' },
+      { id: 'next_year', type: 'radio', label: '明年中秋還會來嗎？', required: true, options: ['一定會！', '應該會', '看看再說'], section: '回訪' },
+      { id: 'feedback', type: 'textarea', label: '給我們的建議 🎑', required: false, placeholder: '想吃什麼？希望改進什麼？', section: '回饋' },
+    ],
+  },
 ];
 
 export function getSurveyTemplate(id: string): SurveyTemplate | undefined {
