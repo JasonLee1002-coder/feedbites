@@ -415,6 +415,88 @@ export default function FeedbackPage() {
         )}
       </AnimatePresence>
 
+      {/* ═══ Service Stats Banner ═══ */}
+      {reports.length > 0 && step === 0 && (() => {
+        const resolved = reports.filter(r => r.status === 'resolved' || r.status === 'closed');
+        const withResponse = reports.filter(r => r.feedback_responses?.length > 0);
+        const avgHours = withResponse.length > 0
+          ? Math.round(withResponse.reduce((sum, r) => {
+              const submitted = new Date(r.created_at).getTime();
+              const firstReply = new Date(r.feedback_responses[0].created_at).getTime();
+              return sum + (firstReply - submitted) / (1000 * 60 * 60);
+            }, 0) / withResponse.length)
+          : null;
+        return (
+          <motion.div
+            className="mb-6 bg-gradient-to-r from-[#1a1a2e] to-[#16213e] rounded-2xl p-5 text-white relative overflow-hidden"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            {/* Decorative sparkles */}
+            <motion.div
+              className="absolute top-3 right-16 text-lg opacity-30"
+              animate={{ rotate: [0, 360], scale: [1, 1.2, 1] }}
+              transition={{ duration: 4, repeat: Infinity }}
+            >
+              ✨
+            </motion.div>
+            <motion.div
+              className="absolute bottom-2 right-6 text-sm opacity-20"
+              animate={{ rotate: [0, -360] }}
+              transition={{ duration: 6, repeat: Infinity }}
+            >
+              ⭐
+            </motion.div>
+
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-[#C5A55A]/20 flex items-center justify-center">
+                <span className="text-base">🛡️</span>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold">FeedBites 客服承諾</h3>
+                <p className="text-[10px] text-white/50">我們重視每一則回饋</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-white/10 rounded-xl p-3 text-center backdrop-blur-sm">
+                <motion.div
+                  className="text-2xl font-bold text-[#C5A55A]"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', delay: 0.2 }}
+                >
+                  {resolved.length}
+                </motion.div>
+                <div className="text-[10px] text-white/60 mt-0.5">已解決</div>
+              </div>
+              <div className="bg-white/10 rounded-xl p-3 text-center backdrop-blur-sm">
+                <motion.div
+                  className="text-2xl font-bold text-emerald-400"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', delay: 0.3 }}
+                >
+                  {reports.length > 0 ? Math.round((resolved.length / reports.length) * 100) : 0}%
+                </motion.div>
+                <div className="text-[10px] text-white/60 mt-0.5">解決率</div>
+              </div>
+              <div className="bg-white/10 rounded-xl p-3 text-center backdrop-blur-sm">
+                <motion.div
+                  className="text-2xl font-bold text-sky-400"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', delay: 0.4 }}
+                >
+                  {avgHours !== null ? (avgHours < 1 ? '<1' : avgHours) : '—'}
+                </motion.div>
+                <div className="text-[10px] text-white/60 mt-0.5">平均回覆(時)</div>
+              </div>
+            </div>
+          </motion.div>
+        );
+      })()}
+
       {/* ═══ Report History ═══ */}
       {reports.length === 0 && step === 0 ? (
         <motion.div
@@ -435,87 +517,148 @@ export default function FeedbackPage() {
           </p>
         </motion.div>
       ) : reports.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="text-sm font-bold text-[#8A8585] mb-3 flex items-center gap-2">
+        <div className="space-y-4">
+          <h2 className="text-sm font-bold text-[#8A8585] mb-2 flex items-center gap-2">
             回報紀錄
             <span className="px-2 py-0.5 bg-[#C5A55A]/10 text-[#A08735] rounded-full text-[11px]">
               {reports.length}
             </span>
           </h2>
-          {reports.map(report => {
+          {reports.map((report, idx) => {
             const isExpanded = expandedId === report.id;
             const statusInfo = STATUS_MAP[report.status] || STATUS_MAP.pending;
             const StatusIcon = statusInfo.icon;
             const catInfo2 = CATEGORIES.find(c => c.id === report.category) || CATEGORIES[3];
             const CatIcon = catInfo2.icon;
             const hasResponses = report.feedback_responses?.length > 0;
+            const latestResponse = hasResponses
+              ? report.feedback_responses[report.feedback_responses.length - 1]
+              : null;
             const hasNewResponse = hasResponses && report.feedback_responses.some(r =>
               new Date(r.created_at) > new Date(report.updated_at || report.created_at)
             );
+            const isResolved = report.status === 'resolved';
+
+            // Calculate response time
+            const responseTimeLabel = (() => {
+              if (!latestResponse) return null;
+              const submitted = new Date(report.created_at).getTime();
+              const replied = new Date(latestResponse.created_at).getTime();
+              const diffH = Math.round((replied - submitted) / (1000 * 60 * 60));
+              if (diffH < 1) return '1 小時內回覆';
+              if (diffH < 24) return `${diffH} 小時內回覆`;
+              const diffD = Math.round(diffH / 24);
+              return `${diffD} 天內回覆`;
+            })();
+
+            // Progress steps
+            const progressSteps = [
+              { label: '已提交', done: true, icon: '📝', time: report.created_at },
+              { label: '已收到', done: report.status !== 'pending' || hasResponses, icon: '👀', time: null },
+              { label: '處理中', done: report.status === 'in-progress' || isResolved, icon: '🔧', time: latestResponse?.created_at || null },
+              { label: '已解決', done: isResolved, icon: '✅', time: isResolved ? (report.updated_at || latestResponse?.created_at || null) : null },
+            ];
 
             return (
               <motion.div
                 key={report.id}
                 layout
-                className={`bg-white rounded-2xl border overflow-hidden transition-all hover:shadow-md hover:shadow-[#C5A55A]/5 ${
-                  hasNewResponse ? 'border-[#C5A55A]/40 shadow-md shadow-[#C5A55A]/10' : 'border-[#E8E2D8]'
+                className={`bg-white rounded-2xl border overflow-hidden transition-all hover:shadow-md ${
+                  isResolved
+                    ? 'border-emerald-200 shadow-sm shadow-emerald-100'
+                    : hasNewResponse
+                      ? 'border-[#C5A55A]/40 shadow-md shadow-[#C5A55A]/10'
+                      : 'border-[#E8E2D8] hover:shadow-[#C5A55A]/5'
                 }`}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.05 }}
               >
+                {/* ── Card Header ── */}
                 <button
                   onClick={() => setExpandedId(isExpanded ? null : report.id)}
-                  className="w-full p-4 flex items-center gap-3 text-left hover:bg-[#FAF7F2]/50 transition-colors"
+                  className="w-full p-4 text-left hover:bg-[#FAF7F2]/50 transition-colors"
                 >
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: catInfo2.bg }}
-                  >
-                    <CatIcon className="w-5 h-5" style={{ color: catInfo2.color }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-[#3A3A3A] truncate">{report.title}</span>
-                      {hasNewResponse && (
-                        <motion.span
-                          className="px-1.5 py-0.5 bg-gradient-to-r from-[#C5A55A] to-[#A08735] text-white text-[9px] font-bold rounded-full"
-                          animate={{ scale: [1, 1.1, 1] }}
-                          transition={{ duration: 1.5, repeat: Infinity }}
-                        >
-                          NEW
-                        </motion.span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[10px] text-[#8A8585]">
-                        {new Date(report.created_at).toLocaleDateString('zh-TW')}
-                      </span>
-                      {report.feedback_attachments?.length > 0 && (
-                        <span className="text-[10px] text-[#8A8585] flex items-center gap-0.5">
-                          <ImageIcon className="w-3 h-3" />{report.feedback_attachments.length}
-                        </span>
-                      )}
-                      {hasResponses && (
-                        <span className="text-[10px] text-[#C5A55A] flex items-center gap-0.5 font-medium">
-                          <MessageCircle className="w-3 h-3" />{report.feedback_responses.length} 回覆
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span
-                      className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold"
-                      style={{ background: statusInfo.color + '15', color: statusInfo.color }}
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ background: isResolved ? '#ECFDF5' : catInfo2.bg }}
                     >
-                      <StatusIcon className="w-3 h-3" />
-                      {statusInfo.label}
-                    </span>
-                    <motion.div animate={{ rotate: isExpanded ? 90 : 0 }}>
-                      <ChevronRight className="w-4 h-4 text-[#8A8585]" />
-                    </motion.div>
+                      {isResolved
+                        ? <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 2, repeat: Infinity }}>✅</motion.span>
+                        : <CatIcon className="w-5 h-5" style={{ color: catInfo2.color }} />
+                      }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-[#3A3A3A] truncate">{report.title}</span>
+                        {hasNewResponse && !isResolved && (
+                          <motion.span
+                            className="px-1.5 py-0.5 bg-gradient-to-r from-[#C5A55A] to-[#A08735] text-white text-[9px] font-bold rounded-full"
+                            animate={{ scale: [1, 1.1, 1] }}
+                            transition={{ duration: 1.5, repeat: Infinity }}
+                          >
+                            NEW
+                          </motion.span>
+                        )}
+                        {isResolved && (
+                          <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-600 text-[9px] font-bold rounded-full border border-emerald-200">
+                            已解決
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[10px] text-[#8A8585]">
+                          {new Date(report.created_at).toLocaleDateString('zh-TW')}
+                        </span>
+                        {responseTimeLabel && (
+                          <span className="text-[10px] text-emerald-600 font-medium flex items-center gap-0.5">
+                            <Clock className="w-2.5 h-2.5" />{responseTimeLabel}
+                          </span>
+                        )}
+                        {report.feedback_attachments?.length > 0 && (
+                          <span className="text-[10px] text-[#8A8585] flex items-center gap-0.5">
+                            <ImageIcon className="w-3 h-3" />{report.feedback_attachments.length}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {!isResolved && (
+                        <span
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold"
+                          style={{ background: statusInfo.color + '15', color: statusInfo.color }}
+                        >
+                          <StatusIcon className="w-3 h-3" />
+                          {statusInfo.label}
+                        </span>
+                      )}
+                      <motion.div animate={{ rotate: isExpanded ? 90 : 0 }}>
+                        <ChevronRight className="w-4 h-4 text-[#8A8585]" />
+                      </motion.div>
+                    </div>
                   </div>
+
+                  {/* ── Latest response preview (no expand needed) ── */}
+                  {latestResponse && !isExpanded && (
+                    <div className="mt-3 ml-[52px] p-2.5 bg-[#C5A55A]/5 rounded-xl border border-[#C5A55A]/15">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <div className="w-4 h-4 rounded-full bg-[#C5A55A]/20 flex items-center justify-center">
+                          <span className="text-[8px]">💬</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-[#C5A55A]">FeedBites 團隊</span>
+                        <span className="text-[9px] text-[#8A8585]">
+                          {new Date(latestResponse.created_at).toLocaleDateString('zh-TW')}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#3A3A3A] line-clamp-2 leading-relaxed">
+                        {latestResponse.message}
+                      </p>
+                    </div>
+                  )}
                 </button>
 
+                {/* ── Expanded Detail ── */}
                 <AnimatePresence>
                   {isExpanded && (
                     <motion.div
@@ -524,13 +667,70 @@ export default function FeedbackPage() {
                       exit={{ height: 0, opacity: 0 }}
                       className="overflow-hidden"
                     >
-                      <div className="px-4 pb-4 border-t border-[#E8E2D8]">
-                        <div className="mt-4 p-4 bg-[#FAF7F2] rounded-xl">
+                      <div className="px-4 pb-5 border-t border-[#E8E2D8]">
+
+                        {/* ── Progress Timeline ── */}
+                        <div className="mt-4 mb-4 flex items-center gap-0">
+                          {progressSteps.map((s, i) => (
+                            <div key={i} className="flex items-center flex-1">
+                              <div className="flex flex-col items-center">
+                                <motion.div
+                                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
+                                    s.done
+                                      ? 'bg-emerald-50 border-2 border-emerald-400'
+                                      : 'bg-gray-50 border-2 border-gray-200'
+                                  }`}
+                                  initial={s.done ? { scale: 0 } : {}}
+                                  animate={s.done ? { scale: 1 } : {}}
+                                  transition={{ type: 'spring', delay: i * 0.1 }}
+                                >
+                                  {s.icon}
+                                </motion.div>
+                                <span className={`text-[9px] mt-1 font-medium ${s.done ? 'text-emerald-600' : 'text-gray-300'}`}>
+                                  {s.label}
+                                </span>
+                                {s.time && (
+                                  <span className="text-[8px] text-[#8A8585]">
+                                    {new Date(s.time).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })}
+                                  </span>
+                                )}
+                              </div>
+                              {i < progressSteps.length - 1 && (
+                                <div className={`flex-1 h-0.5 mx-1 rounded ${
+                                  progressSteps[i + 1].done ? 'bg-emerald-300' : 'bg-gray-200'
+                                }`} />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* ── Resolved celebration ── */}
+                        {isResolved && (
+                          <motion.div
+                            className="mb-4 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border border-emerald-200 text-center"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                          >
+                            <motion.div
+                              className="text-3xl mb-2"
+                              animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.1, 1] }}
+                              transition={{ duration: 1.5, repeat: 2 }}
+                            >
+                              🎉
+                            </motion.div>
+                            <p className="text-sm font-bold text-emerald-700">問題已解決！</p>
+                            <p className="text-[11px] text-emerald-600/70 mt-1">感謝你的回饋，讓我們持續變更好</p>
+                          </motion.div>
+                        )}
+
+                        {/* ── Description ── */}
+                        <div className="p-4 bg-[#FAF7F2] rounded-xl">
                           <p className="text-sm text-[#3A3A3A] whitespace-pre-wrap leading-relaxed">
                             {report.description}
                           </p>
                         </div>
 
+                        {/* ── Attachments ── */}
                         {report.feedback_attachments?.length > 0 && (
                           <div className="mt-3 flex flex-wrap gap-2">
                             {report.feedback_attachments.map(att => (
@@ -547,22 +747,32 @@ export default function FeedbackPage() {
                           </div>
                         )}
 
+                        {/* ── Team Responses (full history) ── */}
                         {report.feedback_responses?.length > 0 && (
                           <div className="mt-4 space-y-3">
                             <div className="text-xs font-bold text-[#C5A55A] flex items-center gap-1">
                               <MessageCircle className="w-3.5 h-3.5" />
                               FeedBites 團隊回覆
                             </div>
-                            {report.feedback_responses.map(resp => (
-                              <div
+                            {report.feedback_responses.map((resp, ri) => (
+                              <motion.div
                                 key={resp.id}
-                                className="p-3 bg-[#C5A55A]/5 rounded-xl border border-[#C5A55A]/20"
+                                className="p-3.5 bg-[#C5A55A]/5 rounded-xl border border-[#C5A55A]/20 relative"
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: ri * 0.1 }}
                               >
-                                <p className="text-sm text-[#3A3A3A] whitespace-pre-wrap">{resp.message}</p>
-                                <p className="text-[10px] text-[#8A8585] mt-2">
-                                  {new Date(resp.created_at).toLocaleString('zh-TW')}
-                                </p>
-                              </div>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <div className="w-5 h-5 rounded-full bg-[#C5A55A]/20 flex items-center justify-center">
+                                    <span className="text-[10px]">🍽️</span>
+                                  </div>
+                                  <span className="text-[10px] font-bold text-[#C5A55A]">FeedBites 團隊</span>
+                                  <span className="text-[9px] text-[#8A8585]">
+                                    {new Date(resp.created_at).toLocaleString('zh-TW')}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-[#3A3A3A] whitespace-pre-wrap leading-relaxed">{resp.message}</p>
+                              </motion.div>
                             ))}
                           </div>
                         )}
