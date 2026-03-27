@@ -102,14 +102,16 @@ export default function DashboardClient(props: DashboardData) {
         <p className="text-sm text-[#8A8585] mt-1 flex items-center gap-1.5">
           {todayResponses > 0 ? (
             <>
-              <motion.span
-                className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-600 rounded-full text-xs font-medium"
-                animate={{ scale: [1, 1.05, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                <Zap className="w-3 h-3" />
-                {todayResponses} 筆新回覆
-              </motion.span>
+              <Link href="/dashboard/surveys">
+                <motion.span
+                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-600 rounded-full text-xs font-medium cursor-pointer hover:bg-green-100 transition-colors"
+                  animate={{ scale: [1, 1.05, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  <Zap className="w-3 h-3" />
+                  {todayResponses} 筆新回覆 →
+                </motion.span>
+              </Link>
               今天的成績不錯！
             </>
           ) : (
@@ -126,9 +128,10 @@ export default function DashboardClient(props: DashboardData) {
         animate="show"
       >
         {/* Total responses */}
+        <Link href="/dashboard/surveys">
         <motion.div
           variants={fadeUp}
-          className="group relative bg-white rounded-2xl p-5 border border-[#E8E2D8] hover:border-[#C5A55A]/40 transition-all hover:shadow-lg hover:shadow-[#C5A55A]/5 overflow-hidden"
+          className="group relative bg-white rounded-2xl p-5 border border-[#E8E2D8] hover:border-[#C5A55A]/40 transition-all hover:shadow-lg hover:shadow-[#C5A55A]/5 overflow-hidden cursor-pointer"
         >
           <div className="absolute -right-3 -top-3 w-16 h-16 bg-gradient-to-br from-[#C5A55A]/5 to-transparent rounded-full" />
           <div className="flex items-center gap-2 mb-2">
@@ -160,11 +163,13 @@ export default function DashboardClient(props: DashboardData) {
             )}
           </div>
         </motion.div>
+        </Link>
 
         {/* Average rating */}
+        <Link href="/dashboard/insights">
         <motion.div
           variants={fadeUp}
-          className="group relative bg-white rounded-2xl p-5 border border-[#E8E2D8] hover:border-yellow-300/40 transition-all hover:shadow-lg hover:shadow-yellow-100/50 overflow-hidden"
+          className="group relative bg-white rounded-2xl p-5 border border-[#E8E2D8] hover:border-yellow-300/40 transition-all hover:shadow-lg hover:shadow-yellow-100/50 overflow-hidden cursor-pointer"
         >
           <div className="absolute -right-3 -top-3 w-16 h-16 bg-gradient-to-br from-yellow-400/5 to-transparent rounded-full" />
           <div className="flex items-center gap-2 mb-2">
@@ -197,11 +202,13 @@ export default function DashboardClient(props: DashboardData) {
             </div>
           )}
         </motion.div>
+        </Link>
 
         {/* Survey count */}
+        <Link href="/dashboard/surveys">
         <motion.div
           variants={fadeUp}
-          className="group relative bg-white rounded-2xl p-5 border border-[#E8E2D8] hover:border-blue-300/40 transition-all hover:shadow-lg hover:shadow-blue-50 overflow-hidden"
+          className="group relative bg-white rounded-2xl p-5 border border-[#E8E2D8] hover:border-blue-300/40 transition-all hover:shadow-lg hover:shadow-blue-50 overflow-hidden cursor-pointer"
         >
           <div className="absolute -right-3 -top-3 w-16 h-16 bg-gradient-to-br from-blue-400/5 to-transparent rounded-full" />
           <div className="flex items-center gap-2 mb-2">
@@ -224,52 +231,60 @@ export default function DashboardClient(props: DashboardData) {
             {activeSurveyCount} 份啟用中
           </motion.p>
         </motion.div>
+        </Link>
 
         {/* Today summary */}
         <motion.div
           variants={fadeUp}
-          className="relative bg-gradient-to-br from-[#C5A55A] to-[#8B7332] rounded-2xl p-5 text-white overflow-hidden"
+          className="relative bg-gradient-to-br from-[#C5A55A] to-[#8B7332] rounded-2xl text-white overflow-hidden cursor-pointer"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
         >
-          {/* Animated glow */}
-          <motion.div
-            className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-xl"
-            animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0.6, 0.3] }}
-            transition={{ duration: 3, repeat: Infinity }}
-          />
-          <div className="flex items-center gap-2 mb-2 relative">
+          <Link href="/dashboard/surveys" className="block p-5">
+            {/* Animated glow */}
             <motion.div
-              className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center backdrop-blur-sm"
-              animate={{ rotate: [0, 360] }}
-              transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-            >
-              <CalendarDays className="w-4.5 h-4.5" />
-            </motion.div>
-            <span className="text-xs opacity-80">今日摘要</span>
-          </div>
-          <div className="grid grid-cols-2 gap-3 mt-2 relative">
-            <div>
-              <motion.div
-                className="text-2xl font-bold"
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.4, type: 'spring', stiffness: 200 }}
-              >
-                {todayResponses}
-              </motion.div>
-              <div className="text-[10px] opacity-70">新回覆</div>
+              className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-xl"
+              animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0.6, 0.3] }}
+              transition={{ duration: 3, repeat: Infinity }}
+            />
+            <div className="flex items-center justify-between mb-2 relative">
+              <div className="flex items-center gap-2">
+                <motion.div
+                  className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center backdrop-blur-sm"
+                  animate={{ rotate: [0, 360] }}
+                  transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+                >
+                  <CalendarDays className="w-4.5 h-4.5" />
+                </motion.div>
+                <span className="text-xs opacity-80">今日摘要</span>
+              </div>
+              <ArrowRight className="w-4 h-4 opacity-50" />
             </div>
-            <div>
-              <motion.div
-                className="text-2xl font-bold"
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.5, type: 'spring', stiffness: 200 }}
-              >
-                {activeSurveyCount}
-              </motion.div>
-              <div className="text-[10px] opacity-70">進行中</div>
+            <div className="grid grid-cols-2 gap-3 mt-2 relative">
+              <div>
+                <motion.div
+                  className="text-2xl font-bold"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.4, type: 'spring', stiffness: 200 }}
+                >
+                  {todayResponses}
+                </motion.div>
+                <div className="text-[10px] opacity-70">新回覆</div>
+              </div>
+              <div>
+                <motion.div
+                  className="text-2xl font-bold"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.5, type: 'spring', stiffness: 200 }}
+                >
+                  {activeSurveyCount}
+                </motion.div>
+                <div className="text-[10px] opacity-70">進行中</div>
+              </div>
             </div>
-          </div>
+          </Link>
         </motion.div>
       </motion.div>
 
@@ -474,41 +489,47 @@ export default function DashboardClient(props: DashboardData) {
             </div>
           </div>
 
-          {/* AI Tip — dynamic */}
-          <motion.div
-            className="relative bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-2xl p-5 text-white overflow-hidden"
-            whileHover={{ scale: 1.01 }}
-          >
-            {/* Animated circuit lines */}
+          {/* AI Tip — dynamic, clickable */}
+          <Link href="/dashboard/insights">
             <motion.div
-              className="absolute top-0 left-0 w-full h-full opacity-10"
-              style={{
-                backgroundImage: 'radial-gradient(circle at 20% 80%, rgba(197,165,90,0.3) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,140,0,0.2) 0%, transparent 50%)',
-              }}
-              animate={{ opacity: [0.05, 0.15, 0.05] }}
-              transition={{ duration: 4, repeat: Infinity }}
-            />
-            <div className="relative">
-              <div className="flex items-center gap-2 mb-3">
-                <motion.div
-                  className="w-8 h-8 rounded-lg bg-[#C5A55A]/20 flex items-center justify-center"
-                  animate={{ rotate: [0, 360] }}
-                  transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
-                >
-                  <Sparkles className="w-4 h-4 text-[#C5A55A]" />
-                </motion.div>
-                <span className="text-xs font-bold text-[#C5A55A]">AI 小提示</span>
+              className="relative bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-2xl p-5 text-white overflow-hidden cursor-pointer"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              {/* Animated circuit lines */}
+              <motion.div
+                className="absolute top-0 left-0 w-full h-full opacity-10"
+                style={{
+                  backgroundImage: 'radial-gradient(circle at 20% 80%, rgba(197,165,90,0.3) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,140,0,0.2) 0%, transparent 50%)',
+                }}
+                animate={{ opacity: [0.05, 0.15, 0.05] }}
+                transition={{ duration: 4, repeat: Infinity }}
+              />
+              <div className="relative">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <motion.div
+                      className="w-8 h-8 rounded-lg bg-[#C5A55A]/20 flex items-center justify-center"
+                      animate={{ rotate: [0, 360] }}
+                      transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+                    >
+                      <Sparkles className="w-4 h-4 text-[#C5A55A]" />
+                    </motion.div>
+                    <span className="text-xs font-bold text-[#C5A55A]">AI 小提示</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-[#C5A55A]/50" />
+                </div>
+                <p className="text-sm text-white/80 leading-relaxed">
+                  {responseCount === 0
+                    ? '建立你的第一份問卷，開始收集顧客的真實想法吧！'
+                    : todayResponses > 0
+                      ? '今天有新回覆進來了！點這裡看 AI 洞察分析 →'
+                      : '定期查看文字回饋，這是最有價值的改進依據。點這裡看 AI 洞察 →'
+                  }
+                </p>
               </div>
-              <p className="text-sm text-white/80 leading-relaxed">
-                {responseCount === 0
-                  ? '建立你的第一份問卷，開始收集顧客的真實想法吧！'
-                  : todayResponses > 0
-                    ? '今天有新回覆進來了！到「AI 洞察分析」看看顧客在想什麼。'
-                    : '定期查看文字回饋，這是最有價值的改進依據。試試把 QR Code 放在桌上立牌。'
-                }
-              </p>
-            </div>
-          </motion.div>
+            </motion.div>
+          </Link>
 
           {/* Stats mini */}
           <div className="bg-white rounded-2xl border border-[#E8E2D8] p-5">
