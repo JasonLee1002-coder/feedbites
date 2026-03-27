@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { qrFrames, type QrFrame } from '@/lib/qr-frames';
-import { Upload, Check, Save, Loader2, ImageIcon, Palette, Store, Users, UserPlus, X, Mail, Clock, LogOut, Crown, Trash2, AlertTriangle, Sparkles, MapPin, BarChart3 } from 'lucide-react';
+import { Upload, Check, Save, Loader2, ImageIcon, Palette, Store, Users, UserPlus, X, Mail, Clock, LogOut, Crown, Trash2, AlertTriangle, Sparkles, MapPin, BarChart3, Send } from 'lucide-react';
 
 interface Member {
   id: string;
@@ -1004,7 +1004,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
           </div>
         )}
 
-        {/* Invite via LINE link */}
+        {/* Invite link */}
         <div className="mb-6 space-y-3">
           {!inviteLink ? (
             <button
@@ -1021,93 +1021,62 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
                 }
               }}
               disabled={inviteLinkLoading}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#06C755] text-white rounded-xl text-sm font-bold hover:bg-[#05a648] transition-colors disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#C5A55A] text-white rounded-xl text-sm font-bold hover:bg-[#A08735] transition-colors disabled:opacity-50"
             >
               {inviteLinkLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <svg viewBox="0 0 24 24" className="w-5 h-5" fill="white"><path d="M12 2C6.48 2 2 5.82 2 10.5c0 4.21 3.74 7.74 8.79 8.4.34.07.81.22.93.51.1.26.07.67.03.93l-.15.91c-.05.27-.21 1.06.93.58s6.16-3.63 8.41-6.21C22.58 13.68 22 12.16 22 10.5 22 5.82 17.52 2 12 2z"/></svg>
+                <UserPlus className="w-4 h-4" />
               )}
-              產生邀請連結（用 LINE 分享）
+              產生邀請連結
             </button>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
+              {/* Preview of the invite message */}
+              <div className="p-3.5 bg-[#FAF7F2] rounded-xl border border-[#E8E2D8]">
+                <p className="text-sm text-[#3A3A3A] leading-relaxed whitespace-pre-line">
+                  {`嗨！邀請你一起管理「${storeName}」的 FeedBites 問卷系統 🍽️\n\n點下面連結，登入就能加入：\n${inviteLink}\n\n加入後可以一起查看顧客回覆、管理問卷！`}
+                </p>
+              </div>
+
               <div className="flex gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={inviteLink}
-                  className="flex-1 px-3 py-2.5 rounded-xl border border-[#E8E2D8] text-xs bg-[#FAF7F2] text-[#8A8585] font-mono truncate"
-                />
                 <button
                   onClick={() => {
-                    navigator.clipboard.writeText(inviteLink);
-                    setInviteLinkCopied(true);
-                    setTimeout(() => setInviteLinkCopied(false), 2000);
+                    const fullText = `嗨！邀請你一起管理「${storeName}」的 FeedBites 問卷系統 🍽️\n\n點下面連結，登入就能加入：\n${inviteLink}\n\n加入後可以一起查看顧客回覆、管理問卷！`;
+                    if (navigator.share) {
+                      navigator.share({ text: fullText }).catch(() => {
+                        navigator.clipboard.writeText(fullText);
+                        setInviteLinkCopied(true);
+                        setTimeout(() => setInviteLinkCopied(false), 2000);
+                      });
+                    } else {
+                      navigator.clipboard.writeText(fullText);
+                      setInviteLinkCopied(true);
+                      setTimeout(() => setInviteLinkCopied(false), 2000);
+                    }
                   }}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
                     inviteLinkCopied
                       ? 'bg-emerald-500 text-white'
-                      : 'bg-[#E8E2D8] text-[#3A3A3A] hover:bg-[#C5A55A] hover:text-white'
+                      : 'bg-[#C5A55A] text-white hover:bg-[#A08735]'
                   }`}
                 >
-                  {inviteLinkCopied ? '已複製 ✓' : '複製'}
+                  <Send className="w-4 h-4" />
+                  {inviteLinkCopied ? '已複製！去傳給夥伴吧' : '複製邀請訊息'}
                 </button>
-              </div>
-              <div className="flex gap-2">
-                <a
-                  href={`https://line.me/R/share?text=${encodeURIComponent(`你被邀請加入「${storeName}」的 FeedBites 管理團隊！\n點擊連結加入：\n${inviteLink}`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#06C755] text-white rounded-xl text-xs font-bold hover:bg-[#05a648] transition-colors"
-                >
-                  <svg viewBox="0 0 24 24" className="w-4 h-4" fill="white"><path d="M12 2C6.48 2 2 5.82 2 10.5c0 4.21 3.74 7.74 8.79 8.4.34.07.81.22.93.51.1.26.07.67.03.93l-.15.91c-.05.27-.21 1.06.93.58s6.16-3.63 8.41-6.21C22.58 13.68 22 12.16 22 10.5 22 5.82 17.52 2 12 2z"/></svg>
-                  分享到 LINE
-                </a>
                 <button
                   onClick={() => setInviteLink('')}
-                  className="px-3 py-2 rounded-xl text-xs text-[#8A8585] hover:text-red-500 hover:bg-red-50 transition-colors"
+                  className="px-3 py-2 rounded-xl text-xs text-[#8A8585] hover:text-[#3A3A3A] hover:bg-[#FAF7F2] transition-colors shrink-0"
                 >
                   收起
                 </button>
               </div>
               <p className="text-[10px] text-[#8A8585] text-center">
-                對方點連結 → 登入 → 自動加入你的店
+                手機上會跳出分享選單，電腦上會複製到剪貼簿
               </p>
             </div>
           )}
         </div>
-
-        {/* Email invite (secondary option) */}
-        <details className="mb-4 group">
-          <summary className="text-[11px] text-[#8A8585] cursor-pointer hover:text-[#C5A55A] transition-colors">
-            或用 Email 邀請 ▾
-          </summary>
-          <form onSubmit={handleInvite} className="flex gap-2 mt-2">
-            <div className="flex-1 relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8A8585]" />
-              <input
-                type="email"
-                placeholder="輸入對方的 Email"
-                value={inviteEmail}
-                onChange={e => setInviteEmail(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-[#E8E2D8] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/30 focus:border-[#C5A55A]"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={inviting || !inviteEmail.trim()}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#C5A55A] text-white text-sm font-medium rounded-xl hover:bg-[#A08735] transition-colors disabled:opacity-50 shrink-0"
-            >
-              {inviting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <UserPlus className="w-4 h-4" />
-              )}
-              邀請
-            </button>
-          </form>
-        </details>
 
         {/* Members list */}
         {membersLoading ? (
