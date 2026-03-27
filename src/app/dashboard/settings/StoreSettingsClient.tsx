@@ -178,6 +178,9 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
   const [inviting, setInviting] = useState(false);
   const [memberMsg, setMemberMsg] = useState('');
   const [memberError, setMemberError] = useState('');
+  const [inviteLink, setInviteLink] = useState('');
+  const [inviteLinkLoading, setInviteLinkLoading] = useState(false);
+  const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
 
   const selectedFrame = qrFrames.find(f => f.id === selectedFrameId) || qrFrames[0];
 
@@ -1001,31 +1004,110 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
           </div>
         )}
 
-        {/* Invite form */}
-        <form onSubmit={handleInvite} className="flex gap-2 mb-6">
-          <div className="flex-1 relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8A8585]" />
-            <input
-              type="email"
-              placeholder="輸入對方的 Email"
-              value={inviteEmail}
-              onChange={e => setInviteEmail(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-[#E8E2D8] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/30 focus:border-[#C5A55A]"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={inviting || !inviteEmail.trim()}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#C5A55A] text-white text-sm font-medium rounded-xl hover:bg-[#A08735] transition-colors disabled:opacity-50 shrink-0"
-          >
-            {inviting ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <UserPlus className="w-4 h-4" />
-            )}
-            邀請
-          </button>
-        </form>
+        {/* Invite via LINE link */}
+        <div className="mb-6 space-y-3">
+          {!inviteLink ? (
+            <button
+              onClick={async () => {
+                setInviteLinkLoading(true);
+                try {
+                  const res = await fetch('/api/stores/invite-link');
+                  const data = await res.json();
+                  if (data.token) {
+                    setInviteLink(`${window.location.origin}/invite/${data.token}`);
+                  }
+                } catch { /* ignore */ } finally {
+                  setInviteLinkLoading(false);
+                }
+              }}
+              disabled={inviteLinkLoading}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#06C755] text-white rounded-xl text-sm font-bold hover:bg-[#05a648] transition-colors disabled:opacity-50"
+            >
+              {inviteLinkLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <svg viewBox="0 0 24 24" className="w-5 h-5" fill="white"><path d="M12 2C6.48 2 2 5.82 2 10.5c0 4.21 3.74 7.74 8.79 8.4.34.07.81.22.93.51.1.26.07.67.03.93l-.15.91c-.05.27-.21 1.06.93.58s6.16-3.63 8.41-6.21C22.58 13.68 22 12.16 22 10.5 22 5.82 17.52 2 12 2z"/></svg>
+              )}
+              產生邀請連結（用 LINE 分享）
+            </button>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={inviteLink}
+                  className="flex-1 px-3 py-2.5 rounded-xl border border-[#E8E2D8] text-xs bg-[#FAF7F2] text-[#8A8585] font-mono truncate"
+                />
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(inviteLink);
+                    setInviteLinkCopied(true);
+                    setTimeout(() => setInviteLinkCopied(false), 2000);
+                  }}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                    inviteLinkCopied
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-[#E8E2D8] text-[#3A3A3A] hover:bg-[#C5A55A] hover:text-white'
+                  }`}
+                >
+                  {inviteLinkCopied ? '已複製 ✓' : '複製'}
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <a
+                  href={`https://line.me/R/share?text=${encodeURIComponent(`你被邀請加入「${storeName}」的 FeedBites 管理團隊！\n點擊連結加入：\n${inviteLink}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#06C755] text-white rounded-xl text-xs font-bold hover:bg-[#05a648] transition-colors"
+                >
+                  <svg viewBox="0 0 24 24" className="w-4 h-4" fill="white"><path d="M12 2C6.48 2 2 5.82 2 10.5c0 4.21 3.74 7.74 8.79 8.4.34.07.81.22.93.51.1.26.07.67.03.93l-.15.91c-.05.27-.21 1.06.93.58s6.16-3.63 8.41-6.21C22.58 13.68 22 12.16 22 10.5 22 5.82 17.52 2 12 2z"/></svg>
+                  分享到 LINE
+                </a>
+                <button
+                  onClick={() => setInviteLink('')}
+                  className="px-3 py-2 rounded-xl text-xs text-[#8A8585] hover:text-red-500 hover:bg-red-50 transition-colors"
+                >
+                  收起
+                </button>
+              </div>
+              <p className="text-[10px] text-[#8A8585] text-center">
+                對方點連結 → 登入 → 自動加入你的店
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Email invite (secondary option) */}
+        <details className="mb-4 group">
+          <summary className="text-[11px] text-[#8A8585] cursor-pointer hover:text-[#C5A55A] transition-colors">
+            或用 Email 邀請 ▾
+          </summary>
+          <form onSubmit={handleInvite} className="flex gap-2 mt-2">
+            <div className="flex-1 relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8A8585]" />
+              <input
+                type="email"
+                placeholder="輸入對方的 Email"
+                value={inviteEmail}
+                onChange={e => setInviteEmail(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 border border-[#E8E2D8] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/30 focus:border-[#C5A55A]"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={inviting || !inviteEmail.trim()}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#C5A55A] text-white text-sm font-medium rounded-xl hover:bg-[#A08735] transition-colors disabled:opacity-50 shrink-0"
+            >
+              {inviting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <UserPlus className="w-4 h-4" />
+              )}
+              邀請
+            </button>
+          </form>
+        </details>
 
         {/* Members list */}
         {membersLoading ? (

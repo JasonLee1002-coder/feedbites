@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
+  const inviteToken = searchParams.get('invite');
   const next = searchParams.get('next') ?? '/dashboard';
 
   if (code) {
@@ -36,6 +37,23 @@ export async function GET(request: Request) {
               .from('store_invites')
               .delete()
               .eq('email', user.email.toLowerCase());
+          }
+        }
+
+        // Process invite token (from LINE shared link)
+        if (inviteToken) {
+          const { data: inviteStore } = await adminDb
+            .from('stores')
+            .select('id, user_id')
+            .eq('invite_token', inviteToken)
+            .single();
+
+          if (inviteStore && inviteStore.user_id !== user.id) {
+            await adminDb.from('store_members').upsert({
+              store_id: inviteStore.id,
+              user_id: user.id,
+              invited_by: inviteStore.user_id,
+            }, { onConflict: 'store_id,user_id' });
           }
         }
 
