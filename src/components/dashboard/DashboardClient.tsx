@@ -7,6 +7,7 @@ import {
   TrendingUp, TrendingDown, CalendarDays,
   Sparkles, BarChart3, Brain, Zap, ArrowRight,
 } from 'lucide-react';
+import WhatsNew from './WhatsNew';
 
 interface DashboardData {
   storeName: string;
@@ -60,6 +61,7 @@ export default function DashboardClient(props: DashboardData) {
 
   return (
     <div className="p-6 lg:p-8 max-w-6xl mx-auto relative overflow-hidden">
+      <WhatsNew />
       {/* Background sparkles */}
       {particles.map((p, i) => (
         <motion.div
