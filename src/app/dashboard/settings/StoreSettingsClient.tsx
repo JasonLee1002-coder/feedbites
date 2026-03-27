@@ -181,6 +181,8 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
   const [inviteLink, setInviteLink] = useState('');
   const [inviteLinkLoading, setInviteLinkLoading] = useState(false);
   const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteMsg, setInviteMsg] = useState('');
 
   const selectedFrame = qrFrames.find(f => f.id === selectedFrameId) || qrFrames[0];
 
@@ -940,71 +942,76 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
 
         {/* Invite link */}
         <div className="mb-6 space-y-3">
-          {!inviteLink ? (
-            <button
-              onClick={async () => {
-                setInviteLinkLoading(true);
-                try {
-                  const res = await fetch('/api/stores/invite-link');
-                  const data = await res.json();
-                  if (data.token) {
-                    setInviteLink(`${window.location.origin}/invite/${data.token}`);
-                  }
-                } catch { /* ignore */ } finally {
-                  setInviteLinkLoading(false);
+          <button
+            onClick={async () => {
+              if (inviteLink) {
+                setShowInvite(!showInvite);
+                return;
+              }
+              setInviteLinkLoading(true);
+              try {
+                const res = await fetch('/api/stores/invite-link');
+                const data = await res.json();
+                if (data.token) {
+                  const link = `${window.location.origin}/invite/${data.token}`;
+                  setInviteLink(link);
+                  setInviteMsg(`嗨！邀請你一起管理「${storeName}」的 FeedBites 問卷系統 🍽️\n\n點下面連結，登入就能加入：\n${link}\n\n加入後可以一起查看顧客回覆、管理問卷！`);
+                  setShowInvite(true);
                 }
-              }}
-              disabled={inviteLinkLoading}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#C5A55A] text-white rounded-xl text-sm font-bold hover:bg-[#A08735] transition-colors disabled:opacity-50"
-            >
-              {inviteLinkLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <UserPlus className="w-4 h-4" />
-              )}
-              產生邀請連結
-            </button>
-          ) : (
+              } catch { /* ignore */ } finally {
+                setInviteLinkLoading(false);
+              }
+            }}
+            disabled={inviteLinkLoading}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#C5A55A] text-white rounded-xl text-sm font-bold hover:bg-[#A08735] transition-colors disabled:opacity-50"
+          >
+            {inviteLinkLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <UserPlus className="w-4 h-4" />
+            )}
+            {inviteLink ? (showInvite ? '收起邀請訊息' : '展開邀請訊息') : '產生邀請連結'}
+          </button>
+
+          {showInvite && inviteLink && (
             <div className="space-y-3">
-              {/* Preview of the invite message */}
-              <div className="p-3.5 bg-[#FAF7F2] rounded-xl border border-[#E8E2D8]">
-                <p className="text-sm text-[#3A3A3A] leading-relaxed whitespace-pre-line">
-                  {`嗨！邀請你一起管理「${storeName}」的 FeedBites 問卷系統 🍽️\n\n點下面連結，登入就能加入：\n${inviteLink}\n\n加入後可以一起查看顧客回覆、管理問卷！`}
-                </p>
+              <div>
+                <label className="block text-xs font-medium text-[#3A3A3A] mb-1.5">邀請訊息（可自由編輯）</label>
+                <textarea
+                  value={inviteMsg}
+                  onChange={e => setInviteMsg(e.target.value)}
+                  rows={6}
+                  className="w-full px-4 py-3 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] focus:ring-2 focus:ring-[#C5A55A]/20 bg-[#FAF7F2] resize-none leading-relaxed"
+                />
               </div>
 
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    const fullText = `嗨！邀請你一起管理「${storeName}」的 FeedBites 問卷系統 🍽️\n\n點下面連結，登入就能加入：\n${inviteLink}\n\n加入後可以一起查看顧客回覆、管理問卷！`;
+              <button
+                onClick={async () => {
+                  try {
                     if (navigator.share) {
-                      navigator.share({ text: fullText }).catch(() => {
-                        navigator.clipboard.writeText(fullText);
-                        setInviteLinkCopied(true);
-                        setTimeout(() => setInviteLinkCopied(false), 2000);
-                      });
+                      await navigator.share({ text: inviteMsg });
                     } else {
-                      navigator.clipboard.writeText(fullText);
+                      await navigator.clipboard.writeText(inviteMsg);
                       setInviteLinkCopied(true);
-                      setTimeout(() => setInviteLinkCopied(false), 2000);
+                      setTimeout(() => setInviteLinkCopied(false), 3000);
                     }
-                  }}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
-                    inviteLinkCopied
-                      ? 'bg-emerald-500 text-white'
-                      : 'bg-[#C5A55A] text-white hover:bg-[#A08735]'
-                  }`}
-                >
-                  <Send className="w-4 h-4" />
-                  {inviteLinkCopied ? '已複製！去傳給夥伴吧' : '複製邀請訊息'}
-                </button>
-                <button
-                  onClick={() => setInviteLink('')}
-                  className="px-3 py-2 rounded-xl text-xs text-[#8A8585] hover:text-[#3A3A3A] hover:bg-[#FAF7F2] transition-colors shrink-0"
-                >
-                  收起
-                </button>
-              </div>
+                  } catch {
+                    // Fallback: select textarea content
+                    const ta = document.querySelector('textarea');
+                    if (ta) { ta.select(); document.execCommand('copy'); }
+                    setInviteLinkCopied(true);
+                    setTimeout(() => setInviteLinkCopied(false), 3000);
+                  }
+                }}
+                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                  inviteLinkCopied
+                    ? 'bg-emerald-500 text-white'
+                    : 'bg-[#C5A55A] text-white hover:bg-[#A08735]'
+                }`}
+              >
+                <Send className="w-4 h-4" />
+                {inviteLinkCopied ? '已複製！去傳給夥伴吧 ✓' : '複製邀請訊息'}
+              </button>
               <p className="text-[10px] text-[#8A8585] text-center">
                 手機上會跳出分享選單，電腦上會複製到剪貼簿
               </p>
