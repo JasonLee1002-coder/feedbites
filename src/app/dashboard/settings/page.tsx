@@ -19,6 +19,7 @@ export default async function SettingsPage() {
       avatarUrl={store.owner_avatar_url || null}
       frameId={store.frame_id || 'classic-gold'}
       isOwner={store.user_id === user.id}
+      ownerLineUserId={store.owner_line_user_id || ''}
       metadata={{
         cuisine_type: store.cuisine_type || '',
         city: store.city || '',

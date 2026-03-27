@@ -19,6 +19,19 @@ const TYPE_OPTIONS: { value: Question['type']; label: string }[] = [
   { value: 'section-header', label: '分隔標題' },
 ];
 
+interface PrizeItem {
+  label: string;
+  emoji: string;
+  color: string;
+}
+
+const DEFAULT_PRIZE_COLORS = [
+  '#FF8C00', '#42A5F5', '#FF6B6B', '#66BB6A',
+  '#EC407A', '#AB47BC', '#26A69A', '#FFB74D',
+];
+
+const EMOJI_PICKER = ['🎫', '🥤', '🔥', '🍰', '💰', '👫', '🍕', '🎁', '🍜', '☕', '🧁', '🍺', '🎂', '🥗', '🍱', '💎'];
+
 interface EditClientProps {
   surveyId: string;
   initialTitle: string;
@@ -26,6 +39,7 @@ interface EditClientProps {
   initialDiscountValue: string;
   initialDiscountEnabled: boolean;
   initialTemplateId: TemplateId | null;
+  initialPrizeItems: PrizeItem[] | null;
 }
 
 export default function EditClient({
@@ -35,6 +49,7 @@ export default function EditClient({
   initialDiscountValue,
   initialDiscountEnabled,
   initialTemplateId,
+  initialPrizeItems,
 }: EditClientProps) {
   const router = useRouter();
 
@@ -46,6 +61,8 @@ export default function EditClient({
   const [discountEnabled, setDiscountEnabled] = useState(initialDiscountEnabled);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateId | null>(initialTemplateId);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [prizeItems, setPrizeItems] = useState<PrizeItem[]>(initialPrizeItems || []);
+  const [showPrizeEditor, setShowPrizeEditor] = useState(false);
 
   function updateQuestion(index: number, updates: Partial<Question>) {
     setQuestions(qs => qs.map((q, i) => i === index ? { ...q, ...updates } : q));
@@ -83,6 +100,7 @@ export default function EditClient({
           questions: questions.filter(q => q.type === 'section-header' || q.label?.trim()),
           discount_value: discountValue,
           discount_enabled: discountEnabled,
+          prize_items: prizeItems.length > 0 ? prizeItems : null,
         }),
       });
       if (res.ok) {
@@ -210,6 +228,124 @@ export default function EditClient({
           </button>
         </div>
       </div>
+
+      {/* Prize wheel editor */}
+      {discountEnabled && (
+        <div className="bg-white rounded-2xl border border-[#E8E2D8] p-5 mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-base">🎰</span>
+              <span className="text-sm font-medium text-[#3A3A3A]">輪盤獎品設定</span>
+              <span className="text-xs text-[#8A8585]">
+                {prizeItems.length > 0 ? `${prizeItems.length} 個獎品` : '使用預設獎品'}
+              </span>
+            </div>
+            <button
+              onClick={() => setShowPrizeEditor(!showPrizeEditor)}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[#C5A55A]/10 text-[#C5A55A] hover:bg-[#C5A55A]/20 transition-colors"
+            >
+              {showPrizeEditor ? '收起' : '自訂獎品'}
+            </button>
+          </div>
+
+          {showPrizeEditor && (
+            <div className="mt-4 space-y-3">
+              <p className="text-[10px] text-[#8A8585]">
+                自訂輪盤上顯示的獎品（建議 3-8 個）。留空則使用系統預設獎品。
+              </p>
+
+              {prizeItems.map((prize, i) => (
+                <div key={i} className="flex items-center gap-2 p-2.5 rounded-xl bg-[#FAF7F2] border border-[#E8E2D8]">
+                  {/* Emoji picker */}
+                  <div className="relative group">
+                    <button
+                      className="w-10 h-10 rounded-lg bg-white border border-[#E8E2D8] text-xl flex items-center justify-center hover:border-[#C5A55A] transition-colors"
+                      title="選擇表情"
+                    >
+                      {prize.emoji}
+                    </button>
+                    <div className="absolute left-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-[#E8E2D8] p-2 hidden group-hover:grid grid-cols-4 gap-1 z-10 min-w-[140px]">
+                      {EMOJI_PICKER.map(em => (
+                        <button
+                          key={em}
+                          onClick={() => {
+                            const updated = [...prizeItems];
+                            updated[i] = { ...updated[i], emoji: em };
+                            setPrizeItems(updated);
+                          }}
+                          className="w-8 h-8 rounded-lg hover:bg-[#FAF7F2] text-lg flex items-center justify-center"
+                        >
+                          {em}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Label */}
+                  <input
+                    type="text"
+                    value={prize.label}
+                    onChange={e => {
+                      const updated = [...prizeItems];
+                      updated[i] = { ...updated[i], label: e.target.value };
+                      setPrizeItems(updated);
+                    }}
+                    placeholder="獎品名稱（如：9折優惠）"
+                    className="flex-1 px-3 py-2 rounded-lg border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] bg-white text-[#3A3A3A]"
+                  />
+
+                  {/* Color */}
+                  <input
+                    type="color"
+                    value={prize.color}
+                    onChange={e => {
+                      const updated = [...prizeItems];
+                      updated[i] = { ...updated[i], color: e.target.value };
+                      setPrizeItems(updated);
+                    }}
+                    className="w-8 h-8 rounded-lg border border-[#E8E2D8] cursor-pointer"
+                    title="獎品顏色"
+                  />
+
+                  {/* Delete */}
+                  <button
+                    onClick={() => setPrizeItems(ps => ps.filter((_, j) => j !== i))}
+                    className="p-1.5 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+
+              {prizeItems.length < 8 && (
+                <button
+                  onClick={() => setPrizeItems(ps => [
+                    ...ps,
+                    {
+                      label: '',
+                      emoji: EMOJI_PICKER[ps.length % EMOJI_PICKER.length],
+                      color: DEFAULT_PRIZE_COLORS[ps.length % DEFAULT_PRIZE_COLORS.length],
+                    },
+                  ])}
+                  className="w-full py-2.5 rounded-xl border-2 border-dashed border-[#E8E2D8] text-xs text-[#8A8585] hover:border-[#C5A55A] hover:text-[#C5A55A] transition-colors flex items-center justify-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  新增獎品（{prizeItems.length}/8）
+                </button>
+              )}
+
+              {prizeItems.length > 0 && (
+                <button
+                  onClick={() => setPrizeItems([])}
+                  className="text-[10px] text-[#8A8585] hover:text-red-500 transition-colors"
+                >
+                  清除全部（恢復預設獎品）
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Questions list */}
       <div className="bg-white rounded-2xl border border-[#E8E2D8] p-5 mb-4">

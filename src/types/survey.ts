@@ -51,6 +51,7 @@ export interface Survey {
   discount_enabled: boolean;
   discount_mode: DiscountMode;
   discount_tiers?: DiscountTier[] | null;
+  prize_items?: { label: string; emoji: string; color: string }[] | null;
   created_at: string;
   updated_at: string;
 }

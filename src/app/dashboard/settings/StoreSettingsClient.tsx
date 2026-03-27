@@ -41,6 +41,7 @@ interface Props {
   avatarUrl: string | null;
   frameId: string;
   isOwner: boolean;
+  ownerLineUserId?: string;
   metadata?: StoreMetadata;
 }
 
@@ -49,7 +50,7 @@ const PRICE_RANGES = ['100 以下', '100-300', '300-600', '600-1000', '1000 以�
 const TARGET_AUDIENCES = ['上班族', '白領族', '學生', '家庭', '觀光客', '外國人', '商務', '約會情侶', '銀髮族', '親子'];
 const SERVICE_TYPES = ['內用', '外帶', '外送', '內用+外帶', '複合式'];
 
-export default function StoreSettingsClient({ storeId, storeName, logoUrl: initialLogo, avatarUrl: initialAvatar, frameId: initialFrameId, isOwner, metadata: initialMetadata }: Props) {
+export default function StoreSettingsClient({ storeId, storeName, logoUrl: initialLogo, avatarUrl: initialAvatar, frameId: initialFrameId, isOwner, ownerLineUserId: initialLineId, metadata: initialMetadata }: Props) {
   const [editStoreName, setEditStoreName] = useState(storeName);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatar);
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -62,6 +63,54 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // LINE binding
+  const [lineUserId, setLineUserId] = useState(initialLineId || '');
+  const [lineSaving, setLineSaving] = useState(false);
+  const [lineSaved, setLineSaved] = useState(false);
+  const [lineTestSending, setLineTestSending] = useState(false);
+  const [lineTestResult, setLineTestResult] = useState('');
+
+  async function handleLineSave() {
+    setLineSaving(true);
+    setLineSaved(false);
+    try {
+      const res = await fetch('/api/stores/update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ owner_line_user_id: lineUserId.trim() || null }),
+      });
+      if (res.ok) {
+        setLineSaved(true);
+        setTimeout(() => setLineSaved(false), 3000);
+      }
+    } catch { /* ignore */ } finally {
+      setLineSaving(false);
+    }
+  }
+
+  async function handleLineTest() {
+    if (!lineUserId.trim()) return;
+    setLineTestSending(true);
+    setLineTestResult('');
+    try {
+      const res = await fetch('/api/line/test-push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ line_user_id: lineUserId.trim() }),
+      });
+      if (res.ok) {
+        setLineTestResult('success');
+      } else {
+        setLineTestResult('fail');
+      }
+    } catch {
+      setLineTestResult('fail');
+    } finally {
+      setLineTestSending(false);
+      setTimeout(() => setLineTestResult(''), 5000);
+    }
+  }
 
   // Store metadata
   const [meta, setMeta] = useState<StoreMetadata>(initialMetadata || {
@@ -797,6 +846,73 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
         </div>
 
       </div>
+
+      {/* ═══ LINE Notification Binding ═══ */}
+      {isOwner && (
+        <div className="bg-white rounded-2xl border border-[#E8E2D8] p-5 mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-[#06C755]/10 flex items-center justify-center text-lg">💬</div>
+            <div>
+              <h3 className="text-sm font-bold text-[#3A3A3A]">LINE 通知綁定</h3>
+              <p className="text-[10px] text-[#8A8585]">綁定後，問題回報的處理進度會透過 LINE 通知你</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-[#3A3A3A] mb-1">LINE User ID</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={lineUserId}
+                  onChange={e => setLineUserId(e.target.value)}
+                  placeholder="U 開頭的 33 字元 ID"
+                  className="flex-1 px-3 py-2.5 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-[#06C755] bg-[#FAF7F2] font-mono"
+                />
+                <button
+                  onClick={handleLineSave}
+                  disabled={lineSaving}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold text-white transition-all ${
+                    lineSaved ? 'bg-emerald-500' : 'bg-[#06C755] hover:bg-[#05a648]'
+                  } disabled:opacity-50`}
+                >
+                  {lineSaving ? '...' : lineSaved ? '已綁定 ✓' : '綁定'}
+                </button>
+              </div>
+            </div>
+
+            {lineUserId.trim() && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleLineTest}
+                  disabled={lineTestSending}
+                  className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-[#06C755]/10 text-[#06C755] hover:bg-[#06C755]/20 transition-colors disabled:opacity-50"
+                >
+                  {lineTestSending ? '發送中...' : '📩 發送測試通知'}
+                </button>
+                {lineTestResult === 'success' && (
+                  <span className="text-[11px] text-emerald-600 font-medium">✓ 已發送！請查看 LINE</span>
+                )}
+                {lineTestResult === 'fail' && (
+                  <span className="text-[11px] text-red-500 font-medium">✗ 發送失敗，請確認 ID 正確且已加 Yuzu-san 好友</span>
+                )}
+              </div>
+            )}
+
+            <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#E8E2D8]">
+              <p className="text-[11px] text-[#8A8585] leading-relaxed">
+                <strong className="text-[#3A3A3A]">如何取得 LINE User ID？</strong>
+                <br />
+                1. 加入 Yuzu-san 好友（AI 助手）
+                <br />
+                2. 傳送「我的ID」給 Yuzu-san
+                <br />
+                3. 將收到的 ID 貼到上方欄位
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ═══ Save All ═══ */}
       <div className="flex justify-end mb-6">

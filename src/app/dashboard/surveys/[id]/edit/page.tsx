@@ -52,6 +52,7 @@ export default async function SurveyEditPage({
       initialDiscountValue={survey.discount_value || ''}
       initialDiscountEnabled={survey.discount_enabled ?? true}
       initialTemplateId={survey.template_id || null}
+      initialPrizeItems={survey.prize_items || null}
     />
   );
 }

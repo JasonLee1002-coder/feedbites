@@ -28,6 +28,7 @@ interface DiscountCodeDisplayProps {
   onPhoneSubmit?: (phone: string) => void;
   responseId?: string;
   surveyId?: string;
+  prizeItems?: { label: string; emoji: string; color: string }[] | null;
 }
 
 // Map tier names to confetti color palettes
@@ -231,6 +232,7 @@ export default function DiscountCodeDisplay({
   onPhoneSubmit,
   responseId,
   surveyId,
+  prizeItems,
 }: DiscountCodeDisplayProps) {
   const isAdvanced = discountMode === 'advanced' && !!tierName;
   const confettiColors =
@@ -444,7 +446,7 @@ export default function DiscountCodeDisplay({
                   各種驚喜獎勵等你來拿
                 </div>
                 <PrizeWheel
-                  prizes={DEFAULT_PRIZES}
+                  prizes={prizeItems && prizeItems.length >= 2 ? prizeItems : DEFAULT_PRIZES}
                   colors={colors}
                   onResult={() => handleReveal()}
                 />

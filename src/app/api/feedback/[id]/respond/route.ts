@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
 import { isSuperAdmin } from '@/lib/admin';
+import { pushFlexMessage, buildFeedbackResolvedMessage } from '@/lib/line/push';
 
 // POST: Admin reply to a feedback report
 export async function POST(
@@ -43,6 +44,40 @@ export async function POST(
       .update({ status: 'in-progress', updated_at: new Date().toISOString() })
       .eq('id', id)
       .eq('status', 'pending');
+
+    // ── LINE Push Notification to store owner ──
+    // Best-effort: don't block the response if LINE fails
+    try {
+      const { data: report } = await adminDb
+        .from('feedback_reports')
+        .select('title, store_id, store_name')
+        .eq('id', id)
+        .single();
+
+      if (report?.store_id) {
+        const { data: store } = await adminDb
+          .from('stores')
+          .select('owner_line_user_id, store_name')
+          .eq('id', report.store_id)
+          .single();
+
+        if (store?.owner_line_user_id) {
+          const flexBody = buildFeedbackResolvedMessage({
+            storeName: store.store_name || report.store_name || '',
+            reportTitle: report.title || '問題回報',
+            replyMessage: message.trim(),
+          });
+
+          pushFlexMessage(
+            store.owner_line_user_id,
+            `FeedBites：您的回報「${report.title}」已處理`,
+            flexBody,
+          ).catch(() => {}); // Fire-and-forget
+        }
+      }
+    } catch {
+      // LINE notification is best-effort, don't fail the request
+    }
 
     return NextResponse.json(response, { status: 201 });
   } catch {

@@ -710,14 +710,19 @@ export default function SurveyRenderer({
         <motion.button
           key={opt}
           onClick={onClick}
-          whileTap={{ scale: 0.88 }}
-          animate={isSelected ? { scale: [1, 1.12, 1.04] } : { scale: 1 }}
+          whileTap={{ scale: 0.85 }}
+          initial={{ opacity: 0, y: 20, scale: 0.8 }}
+          animate={isSelected
+            ? { opacity: 1, y: 0, scale: [1, 1.08, 1.03] }
+            : { opacity: 1, y: 0, scale: 1 }}
           transition={springBounce}
-          className="flex-1 flex flex-col items-center gap-1.5 py-3 rounded-2xl relative overflow-hidden min-w-0"
+          className="flex-1 flex flex-col items-center gap-2 py-4 rounded-2xl relative overflow-hidden min-w-0"
           style={{
-            background: isSelected ? `${color}20` : 'transparent',
+            background: isSelected ? `${color}18` : `${colors.surface}`,
             border: `2.5px solid ${isSelected ? color : colors.border}`,
-            boxShadow: isSelected ? `0 4px 16px ${color}30` : 'none',
+            boxShadow: isSelected
+              ? `0 6px 24px ${color}35, 0 0 0 3px ${color}15`
+              : `0 2px 8px ${colors.border}20`,
           }}
         >
           {/* Glow ring behind emoji when selected */}
@@ -725,24 +730,46 @@ export default function SurveyRenderer({
             <motion.div
               className="absolute inset-0 rounded-2xl"
               initial={{ opacity: 0 }}
-              animate={{ opacity: [0.3, 0.1, 0.3] }}
-              transition={{ repeat: Infinity, duration: 2 }}
-              style={{ background: `radial-gradient(circle, ${color}30, transparent 70%)` }}
+              animate={{ opacity: [0.4, 0.15, 0.4] }}
+              transition={{ repeat: Infinity, duration: 1.8 }}
+              style={{ background: `radial-gradient(circle, ${color}35, transparent 65%)` }}
             />
           )}
+          {/* Sparkle particles when selected */}
+          {isSelected && (
+            <>
+              {[0, 1, 2].map(j => (
+                <motion.span
+                  key={j}
+                  className="absolute text-xs pointer-events-none"
+                  initial={{ opacity: 0, scale: 0 }}
+                  animate={{
+                    opacity: [0, 1, 0],
+                    scale: [0, 1.2, 0],
+                    y: [-5, -25 - j * 8],
+                    x: (j - 1) * 18,
+                  }}
+                  transition={{ repeat: Infinity, duration: 1.6, delay: j * 0.4 }}
+                  style={{ left: '50%', top: '15%' }}
+                >
+                  {['✨', '⭐', '💫'][j]}
+                </motion.span>
+              ))}
+            </>
+          )}
           <motion.span
-            className="text-3xl relative z-10"
+            className="text-4xl relative z-10"
             animate={isSelected
-              ? { scale: [1, 1.2, 1], rotate: [0, -8, 8, 0] }
+              ? { scale: [1, 1.3, 1.05, 1.2, 1], rotate: [0, -12, 12, -6, 0] }
               : { scale: 1 }}
             transition={isSelected
-              ? { repeat: Infinity, duration: 2.5, ease: 'easeInOut' }
+              ? { repeat: Infinity, duration: 2, ease: 'easeInOut' }
               : {}}
           >
             {emoji}
           </motion.span>
           <span
-            className="text-[10px] font-medium relative z-10 leading-tight text-center px-1"
+            className="text-[11px] font-bold relative z-10 leading-tight text-center px-1"
             style={{ color: isSelected ? color : colors.textLight }}
           >
             {opt}
@@ -798,24 +825,41 @@ export default function SurveyRenderer({
           <motion.button
             key={n}
             onClick={() => setAnswer(qId, String(n), 'rating')}
-            whileTap={{ scale: 0.85 }}
-            animate={selected ? { scale: [1, 1.15, 1.05] } : { scale: 1 }}
+            whileTap={{ scale: 0.82 }}
+            initial={{ opacity: 0, y: 15, scale: 0.85 }}
+            animate={selected
+              ? { opacity: 1, y: 0, scale: [1, 1.12, 1.04] }
+              : { opacity: 1, y: 0, scale: 1 }}
             transition={springBounce}
-            className={`flex-1 flex flex-col items-center gap-1 ${compact ? 'py-2' : 'py-3'} rounded-xl relative`}
+            className={`flex-1 flex flex-col items-center gap-1.5 ${compact ? 'py-2.5' : 'py-3.5'} rounded-2xl relative overflow-hidden`}
             style={{
-              background: selected ? `${emojiColor}15` : colors.background,
-              border: `2px solid ${selected ? emojiColor : colors.border}`,
-              boxShadow: selected ? `0 3px 12px ${emojiColor}25` : 'none',
+              background: selected ? `${emojiColor}18` : colors.surface,
+              border: `2.5px solid ${selected ? emojiColor : colors.border}`,
+              boxShadow: selected
+                ? `0 6px 20px ${emojiColor}30, 0 0 0 3px ${emojiColor}12`
+                : `0 2px 6px ${colors.border}15`,
             }}
           >
+            {selected && (
+              <motion.div
+                className="absolute inset-0 rounded-2xl"
+                animate={{ opacity: [0.3, 0.1, 0.3] }}
+                transition={{ repeat: Infinity, duration: 1.8 }}
+                style={{ background: `radial-gradient(circle, ${emojiColor}30, transparent 65%)` }}
+              />
+            )}
             <motion.span
-              className={compact ? 'text-xl' : 'text-2xl'}
-              animate={selected ? { rotate: [0, -8, 8, 0] } : {}}
-              transition={selected ? { repeat: Infinity, duration: 2, ease: 'easeInOut' } : {}}
+              className={compact ? 'text-2xl relative z-10' : 'text-3xl relative z-10'}
+              animate={selected
+                ? { scale: [1, 1.25, 1], rotate: [0, -10, 10, 0] }
+                : {}}
+              transition={selected
+                ? { repeat: Infinity, duration: 2, ease: 'easeInOut' }
+                : {}}
             >
               {face}
             </motion.span>
-            <span className="text-[10px] font-medium" style={{ color: selected ? emojiColor : colors.textLight }}>
+            <span className="text-[10px] font-bold relative z-10" style={{ color: selected ? emojiColor : colors.textLight }}>
               {RATING_LABELS[n - 1]}
             </span>
           </motion.button>
@@ -1380,14 +1424,19 @@ export default function SurveyRenderer({
                           <motion.button
                             key={i}
                             onClick={() => setAnswer(q.id, val, 'emoji-rating')}
-                            whileTap={{ scale: 0.85 }}
-                            animate={selected ? { scale: [1, 1.2, 1.05] } : { scale: 1 }}
-                            transition={springBounce}
-                            className="flex-1 flex flex-col items-center gap-1.5 py-3 rounded-2xl relative overflow-hidden"
+                            whileTap={{ scale: 0.82 }}
+                            initial={{ opacity: 0, y: 20, scale: 0.8 }}
+                            animate={selected
+                              ? { opacity: 1, y: 0, scale: [1, 1.1, 1.03] }
+                              : { opacity: 1, y: 0, scale: 1 }}
+                            transition={{ ...springBounce, delay: i * 0.05 }}
+                            className="flex-1 flex flex-col items-center gap-2 py-4 rounded-2xl relative overflow-hidden"
                             style={{
-                              background: selected ? `${emojiColor}20` : 'transparent',
+                              background: selected ? `${emojiColor}18` : colors.surface,
                               border: `2.5px solid ${selected ? emojiColor : colors.border}`,
-                              boxShadow: selected ? `0 4px 16px ${emojiColor}30` : 'none',
+                              boxShadow: selected
+                                ? `0 6px 24px ${emojiColor}35, 0 0 0 3px ${emojiColor}15`
+                                : `0 2px 8px ${colors.border}20`,
                             }}
                           >
                             {/* Glow ring behind emoji when selected */}
@@ -1395,24 +1444,46 @@ export default function SurveyRenderer({
                               <motion.div
                                 className="absolute inset-0 rounded-2xl"
                                 initial={{ opacity: 0 }}
-                                animate={{ opacity: [0.3, 0.1, 0.3] }}
-                                transition={{ repeat: Infinity, duration: 2 }}
-                                style={{ background: `radial-gradient(circle, ${emojiColor}30, transparent 70%)` }}
+                                animate={{ opacity: [0.4, 0.15, 0.4] }}
+                                transition={{ repeat: Infinity, duration: 1.8 }}
+                                style={{ background: `radial-gradient(circle, ${emojiColor}35, transparent 65%)` }}
                               />
                             )}
+                            {/* Sparkles on select */}
+                            {selected && (
+                              <>
+                                {[0, 1, 2].map(j => (
+                                  <motion.span
+                                    key={j}
+                                    className="absolute text-xs pointer-events-none"
+                                    initial={{ opacity: 0, scale: 0 }}
+                                    animate={{
+                                      opacity: [0, 1, 0],
+                                      scale: [0, 1, 0],
+                                      y: [-8, -28 - j * 6],
+                                      x: (j - 1) * 16,
+                                    }}
+                                    transition={{ repeat: Infinity, duration: 1.5, delay: j * 0.35 }}
+                                    style={{ left: '50%', top: '10%' }}
+                                  >
+                                    {['✨', '⭐', '💫'][j]}
+                                  </motion.span>
+                                ))}
+                              </>
+                            )}
                             <motion.span
-                              className="text-4xl relative z-10"
+                              className="text-[2.5rem] relative z-10"
                               animate={selected
-                                ? { scale: [1, 1.15, 1], rotate: [0, -5, 5, 0] }
+                                ? { scale: [1, 1.3, 1.05, 1.2, 1], rotate: [0, -12, 12, -6, 0] }
                                 : { scale: 1 }}
                               transition={selected
-                                ? { repeat: Infinity, duration: 2.5, ease: 'easeInOut' }
+                                ? { repeat: Infinity, duration: 2, ease: 'easeInOut' }
                                 : {}}
                             >
                               {emoji}
                             </motion.span>
                             <span
-                              className="text-[10px] font-medium relative z-10"
+                              className="text-[11px] font-bold relative z-10"
                               style={{ color: selected ? emojiColor : colors.textLight }}
                             >
                               {EMOJI_TEXTS[i]}

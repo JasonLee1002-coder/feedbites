@@ -20,6 +20,7 @@ export async function PATCH(request: NextRequest) {
       'store_name', 'frame_id', 'logo_url',
       'cuisine_type', 'city', 'district', 'price_range',
       'seating_capacity', 'opening_year', 'target_audience', 'service_type',
+      'owner_line_user_id',
     ];
     const updates: Record<string, string | number | null> = {};
     for (const key of allowedFields) {
