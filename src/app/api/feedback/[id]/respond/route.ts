@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
 import { isSuperAdmin } from '@/lib/admin';
+import { getSelectedStore } from '@/lib/store-context';
 import { pushFlexMessage, buildFeedbackResolvedMessage } from '@/lib/line/push';
 
-// POST: Admin reply to a feedback report
+// POST: Reply to a feedback report (admin or store owner)
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -14,8 +15,21 @@ export async function POST(
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: '未授權' }, { status: 401 });
 
-    if (!isSuperAdmin(user.email || '')) {
-      return NextResponse.json({ error: '需要管理員權限' }, { status: 403 });
+    const isAdmin = isSuperAdmin(user.email || '');
+
+    // If not admin, check if user is the store owner of this report
+    if (!isAdmin) {
+      const adminDb = createServiceSupabase();
+      const store = await getSelectedStore(user.id);
+      const { data: report } = await adminDb
+        .from('feedback_reports')
+        .select('store_id')
+        .eq('id', id)
+        .single();
+
+      if (!store || !report || report.store_id !== store.id) {
+        return NextResponse.json({ error: '未授權' }, { status: 403 });
+      }
     }
 
     const { message } = await request.json();

@@ -62,6 +62,8 @@ export default function FeedbackPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [replyText, setReplyText] = useState<Record<string, string>>({});
+  const [replying, setReplying] = useState<Record<string, boolean>>({});
 
   useEffect(() => { fetchReports(); }, []);
 
@@ -71,6 +73,25 @@ export default function FeedbackPage() {
       if (res.ok) setReports(await res.json());
     } catch { /* ignore */ } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleReply(reportId: string) {
+    const text = replyText[reportId]?.trim();
+    if (!text) return;
+    setReplying(prev => ({ ...prev, [reportId]: true }));
+    try {
+      const res = await fetch(`/api/feedback/${reportId}/respond`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      });
+      if (res.ok) {
+        setReplyText(prev => ({ ...prev, [reportId]: '' }));
+        fetchReports();
+      }
+    } catch { /* ignore */ } finally {
+      setReplying(prev => ({ ...prev, [reportId]: false }));
     }
   }
 
@@ -747,33 +768,77 @@ export default function FeedbackPage() {
                           </div>
                         )}
 
-                        {/* ── Team Responses (full history) ── */}
+                        {/* ── Conversation History ── */}
                         {report.feedback_responses?.length > 0 && (
                           <div className="mt-4 space-y-3">
                             <div className="text-xs font-bold text-[#C5A55A] flex items-center gap-1">
                               <MessageCircle className="w-3.5 h-3.5" />
-                              FeedBites 團隊回覆
+                              對話紀錄
                             </div>
-                            {report.feedback_responses.map((resp, ri) => (
-                              <motion.div
-                                key={resp.id}
-                                className="p-3.5 bg-[#C5A55A]/5 rounded-xl border border-[#C5A55A]/20 relative"
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: ri * 0.1 }}
-                              >
-                                <div className="flex items-center gap-2 mb-2">
-                                  <div className="w-5 h-5 rounded-full bg-[#C5A55A]/20 flex items-center justify-center">
-                                    <span className="text-[10px]">🍽️</span>
+                            {report.feedback_responses.map((resp, ri) => {
+                              const isTeam = resp.responder_email === 'admin@feedbites.app' || resp.responder_email?.includes('feedbites');
+                              return (
+                                <motion.div
+                                  key={resp.id}
+                                  className={`p-3.5 rounded-xl border relative ${
+                                    isTeam
+                                      ? 'bg-[#C5A55A]/5 border-[#C5A55A]/20'
+                                      : 'bg-blue-50/50 border-blue-200/50 ml-4'
+                                  }`}
+                                  initial={{ opacity: 0, x: isTeam ? -10 : 10 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  transition={{ delay: ri * 0.1 }}
+                                >
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                                      isTeam ? 'bg-[#C5A55A]/20' : 'bg-blue-100'
+                                    }`}>
+                                      <span className="text-[10px]">{isTeam ? '🍽️' : '💬'}</span>
+                                    </div>
+                                    <span className={`text-[10px] font-bold ${isTeam ? 'text-[#C5A55A]' : 'text-blue-600'}`}>
+                                      {isTeam ? 'FeedBites 團隊' : '我的回覆'}
+                                    </span>
+                                    <span className="text-[9px] text-[#8A8585]">
+                                      {new Date(resp.created_at).toLocaleString('zh-TW')}
+                                    </span>
                                   </div>
-                                  <span className="text-[10px] font-bold text-[#C5A55A]">FeedBites 團隊</span>
-                                  <span className="text-[9px] text-[#8A8585]">
-                                    {new Date(resp.created_at).toLocaleString('zh-TW')}
-                                  </span>
-                                </div>
-                                <p className="text-sm text-[#3A3A3A] whitespace-pre-wrap leading-relaxed">{resp.message}</p>
-                              </motion.div>
-                            ))}
+                                  <p className="text-sm text-[#3A3A3A] whitespace-pre-wrap leading-relaxed">{resp.message}</p>
+                                </motion.div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* ── Reply Input ── */}
+                        {report.status !== 'closed' && (
+                          <div className="mt-4">
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={replyText[report.id] || ''}
+                                onChange={e => setReplyText(prev => ({ ...prev, [report.id]: e.target.value }))}
+                                placeholder="回覆或補充說明..."
+                                className="flex-1 px-4 py-2.5 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] focus:ring-2 focus:ring-[#C5A55A]/20 bg-[#FAF7F2]"
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter' && !e.shiftKey && replyText[report.id]?.trim()) {
+                                    e.preventDefault();
+                                    handleReply(report.id);
+                                  }
+                                }}
+                              />
+                              <button
+                                onClick={() => handleReply(report.id)}
+                                disabled={replying[report.id] || !replyText[report.id]?.trim()}
+                                className="px-4 py-2.5 bg-[#C5A55A] text-white rounded-xl text-sm font-bold hover:bg-[#A08735] disabled:opacity-40 transition-all shrink-0 flex items-center gap-1.5"
+                              >
+                                {replying[report.id] ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Send className="w-3.5 h-3.5" />
+                                )}
+                                送出
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
