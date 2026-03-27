@@ -850,67 +850,112 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
       {/* ═══ LINE Notification Binding ═══ */}
       {isOwner && (
         <div className="bg-white rounded-2xl border border-[#E8E2D8] p-5 mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-[#06C755]/10 flex items-center justify-center text-lg">💬</div>
-            <div>
-              <h3 className="text-sm font-bold text-[#3A3A3A]">LINE 通知綁定</h3>
-              <p className="text-[10px] text-[#8A8585]">綁定後，問題回報的處理進度會透過 LINE 通知你</p>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-[#06C755]/10 flex items-center justify-center">
+              <svg viewBox="0 0 24 24" className="w-6 h-6" fill="#06C755"><path d="M12 2C6.48 2 2 5.82 2 10.5c0 4.21 3.74 7.74 8.79 8.4.34.07.81.22.93.51.1.26.07.67.03.93l-.15.91c-.05.27-.21 1.06.93.58s6.16-3.63 8.41-6.21C22.58 13.68 22 12.16 22 10.5 22 5.82 17.52 2 12 2z"/></svg>
             </div>
+            <div>
+              <h3 className="text-sm font-bold text-[#3A3A3A]">開啟 LINE 即時通知</h3>
+              <p className="text-[11px] text-[#8A8585]">你回報的問題有進度時，LINE 會第一時間通知你</p>
+            </div>
+            {lineUserId.trim() && lineSaved && (
+              <span className="ml-auto px-2.5 py-1 bg-[#06C755]/10 text-[#06C755] text-[10px] font-bold rounded-full">已開啟</span>
+            )}
           </div>
 
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs font-medium text-[#3A3A3A] mb-1">LINE User ID</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={lineUserId}
-                  onChange={e => setLineUserId(e.target.value)}
-                  placeholder="U 開頭的 33 字元 ID"
-                  className="flex-1 px-3 py-2.5 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-[#06C755] bg-[#FAF7F2] font-mono"
-                />
-                <button
-                  onClick={handleLineSave}
-                  disabled={lineSaving}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold text-white transition-all ${
-                    lineSaved ? 'bg-emerald-500' : 'bg-[#06C755] hover:bg-[#05a648]'
-                  } disabled:opacity-50`}
-                >
-                  {lineSaving ? '...' : lineSaved ? '已綁定 ✓' : '綁定'}
-                </button>
+          {!lineUserId.trim() ? (
+            /* ── Not bound yet: show friendly guide ── */
+            <div className="space-y-4">
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-[#06C755]/5 to-[#06C755]/10 border border-[#06C755]/20">
+                <p className="text-sm font-bold text-[#3A3A3A] mb-3">只要 3 步驟，30 秒完成：</p>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-7 h-7 rounded-full bg-[#06C755] text-white text-xs font-bold flex items-center justify-center shrink-0">1</div>
+                    <div>
+                      <p className="text-sm text-[#3A3A3A] font-medium">加 Yuzu-san 為 LINE 好友</p>
+                      <p className="text-[11px] text-[#8A8585]">Yuzu-san 是我們的 AI 客服助手</p>
+                      <a
+                        href="https://line.me/R/ti/p/@868hlwsn"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 mt-1.5 px-3 py-1.5 bg-[#06C755] text-white text-xs font-bold rounded-full hover:bg-[#05a648] transition-colors"
+                      >
+                        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="white"><path d="M12 2C6.48 2 2 5.82 2 10.5c0 4.21 3.74 7.74 8.79 8.4.34.07.81.22.93.51.1.26.07.67.03.93l-.15.91c-.05.27-.21 1.06.93.58s6.16-3.63 8.41-6.21C22.58 13.68 22 12.16 22 10.5 22 5.82 17.52 2 12 2z"/></svg>
+                        加好友
+                      </a>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-7 h-7 rounded-full bg-[#06C755] text-white text-xs font-bold flex items-center justify-center shrink-0">2</div>
+                    <div>
+                      <p className="text-sm text-[#3A3A3A] font-medium">跟 Yuzu-san 說「<span className="text-[#06C755] font-bold">我的ID</span>」</p>
+                      <p className="text-[11px] text-[#8A8585]">他會回傳一串代碼給你</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-7 h-7 rounded-full bg-[#06C755] text-white text-xs font-bold flex items-center justify-center shrink-0">3</div>
+                    <div>
+                      <p className="text-sm text-[#3A3A3A] font-medium">把代碼貼到下面，按綁定</p>
+                      <p className="text-[11px] text-[#8A8585]">完成！之後有消息就會通知你</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[#3A3A3A] mb-1.5">貼上 Yuzu-san 給你的代碼</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={lineUserId}
+                    onChange={e => setLineUserId(e.target.value)}
+                    placeholder="貼上代碼..."
+                    className="flex-1 px-3 py-2.5 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-[#06C755] bg-[#FAF7F2] font-mono"
+                  />
+                  <button
+                    onClick={handleLineSave}
+                    disabled={lineSaving || !lineUserId.trim()}
+                    className="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-[#06C755] hover:bg-[#05a648] disabled:opacity-40 transition-all"
+                  >
+                    {lineSaving ? '...' : '綁定'}
+                  </button>
+                </div>
               </div>
             </div>
+          ) : (
+            /* ── Already bound: show status + test ── */
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3 bg-[#06C755]/5 rounded-xl border border-[#06C755]/20">
+                <span className="text-lg">✅</span>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-[#3A3A3A]">LINE 通知已開啟</p>
+                  <p className="text-[10px] text-[#8A8585] font-mono mt-0.5">{lineUserId.slice(0, 8)}...{lineUserId.slice(-4)}</p>
+                </div>
+                <button
+                  onClick={() => { setLineUserId(''); handleLineSave(); }}
+                  className="px-3 py-1.5 rounded-lg text-[11px] text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  解除綁定
+                </button>
+              </div>
 
-            {lineUserId.trim() && (
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleLineTest}
                   disabled={lineTestSending}
                   className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-[#06C755]/10 text-[#06C755] hover:bg-[#06C755]/20 transition-colors disabled:opacity-50"
                 >
-                  {lineTestSending ? '發送中...' : '📩 發送測試通知'}
+                  {lineTestSending ? '發送中...' : '發送測試通知到我的 LINE'}
                 </button>
                 {lineTestResult === 'success' && (
-                  <span className="text-[11px] text-emerald-600 font-medium">✓ 已發送！請查看 LINE</span>
+                  <span className="text-[11px] text-emerald-600 font-medium">✓ 已發送！去 LINE 看看</span>
                 )}
                 {lineTestResult === 'fail' && (
-                  <span className="text-[11px] text-red-500 font-medium">✗ 發送失敗，請確認 ID 正確且已加 Yuzu-san 好友</span>
+                  <span className="text-[11px] text-red-500 font-medium">✗ 失敗了，請確認代碼正確</span>
                 )}
               </div>
-            )}
-
-            <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#E8E2D8]">
-              <p className="text-[11px] text-[#8A8585] leading-relaxed">
-                <strong className="text-[#3A3A3A]">如何取得 LINE User ID？</strong>
-                <br />
-                1. 加入 Yuzu-san 好友（AI 助手）
-                <br />
-                2. 傳送「我的ID」給 Yuzu-san
-                <br />
-                3. 將收到的 ID 貼到上方欄位
-              </p>
             </div>
-          </div>
+          )}
         </div>
       )}
 
