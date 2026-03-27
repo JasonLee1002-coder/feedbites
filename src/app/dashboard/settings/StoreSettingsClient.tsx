@@ -985,36 +985,44 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
                 />
               </div>
 
-              <button
-                onClick={async () => {
-                  try {
-                    if (navigator.share) {
-                      await navigator.share({ text: inviteMsg });
-                    } else {
+              <div className="flex gap-2">
+                {/* Copy button — always copies to clipboard */}
+                <button
+                  onClick={async () => {
+                    try {
                       await navigator.clipboard.writeText(inviteMsg);
-                      setInviteLinkCopied(true);
-                      setTimeout(() => setInviteLinkCopied(false), 3000);
+                    } catch {
+                      const ta = document.createElement('textarea');
+                      ta.value = inviteMsg;
+                      ta.style.position = 'fixed';
+                      ta.style.opacity = '0';
+                      document.body.appendChild(ta);
+                      ta.select();
+                      document.execCommand('copy');
+                      document.body.removeChild(ta);
                     }
-                  } catch {
-                    // Fallback: select textarea content
-                    const ta = document.querySelector('textarea');
-                    if (ta) { ta.select(); document.execCommand('copy'); }
                     setInviteLinkCopied(true);
                     setTimeout(() => setInviteLinkCopied(false), 3000);
-                  }
-                }}
-                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
-                  inviteLinkCopied
-                    ? 'bg-emerald-500 text-white'
-                    : 'bg-[#C5A55A] text-white hover:bg-[#A08735]'
-                }`}
-              >
-                <Send className="w-4 h-4" />
-                {inviteLinkCopied ? '已複製！去傳給夥伴吧 ✓' : '複製邀請訊息'}
-              </button>
-              <p className="text-[10px] text-[#8A8585] text-center">
-                手機上會跳出分享選單，電腦上會複製到剪貼簿
-              </p>
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                    inviteLinkCopied
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-[#C5A55A] text-white hover:bg-[#A08735]'
+                  }`}
+                >
+                  {inviteLinkCopied ? '✓ 已複製！去貼給夥伴吧' : '📋 複製訊息'}
+                </button>
+
+                {/* Share button — only useful on mobile */}
+                {'share' in navigator && (
+                  <button
+                    onClick={() => navigator.share({ text: inviteMsg }).catch(() => {})}
+                    className="px-4 py-3 rounded-xl text-sm font-bold bg-[#3A3A3A] text-white hover:bg-[#1a1a1a] transition-all shrink-0"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
