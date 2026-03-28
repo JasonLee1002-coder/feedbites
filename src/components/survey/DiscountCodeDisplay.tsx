@@ -119,7 +119,7 @@ function PhoneCollect({
           className="mt-3 text-xs"
           style={{ color: colors.textLight }}
         >
-          📸 記得截圖保存優惠碼！
+          優惠碼已綁定，下次來店出示即可 ✨
         </motion.div>
       </motion.div>
     );
@@ -543,7 +543,7 @@ export default function DiscountCodeDisplay({
         />
 
         <div className="text-xs" style={{ color: colors.textLight }}>
-          📸 請截圖保存此畫面
+          留下聯絡方式，下次來店直接享優惠 👇
         </div>
       </motion.div>
 

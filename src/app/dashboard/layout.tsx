@@ -20,7 +20,7 @@ export default async function DashboardLayout({
   // No store yet — render without sidebar (for new-store page)
   if (!store) {
     return (
-      <div className="min-h-screen bg-[#FAF7F2]">
+      <div className="min-h-screen bg-[#FAF7F2] overflow-x-hidden">
         {children}
       </div>
     );
@@ -30,7 +30,7 @@ export default async function DashboardLayout({
   const isCollab = currentRole === 'member';
 
   return (
-    <div className="min-h-screen bg-[#FAF7F2]">
+    <div className="min-h-screen bg-[#FAF7F2] overflow-x-hidden">
       <Sidebar
         storeName={store.store_name}
         storeId={store.id}

@@ -25,9 +25,8 @@ const navItems = [
   { href: '/dashboard', label: '總覽', icon: LayoutDashboard },
   { href: '/dashboard/menu', label: '菜單管理', icon: UtensilsCrossed },
   { href: '/dashboard/surveys', label: '問卷管理', icon: ClipboardList },
-  { href: '/dashboard/settings', label: '店家設定', icon: Settings },
-  { href: '/dashboard/feedback', label: '系統問題回報', icon: MessageSquareWarning },
   { href: '/dashboard/insights', label: 'AI 洞察分析', icon: Brain },
+  { href: '/dashboard/settings', label: '店家設定', icon: Settings },
 ];
 
 export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: SidebarProps) {
@@ -179,6 +178,22 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
           );
         })}
       </nav>
+
+      {/* Feedback — prominent, at bottom */}
+      <div className="px-3 pb-2">
+        <Link
+          href="/dashboard/feedback"
+          onClick={() => setMobileOpen(false)}
+          className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold transition-all ${
+            isActive('/dashboard/feedback')
+              ? 'bg-[#C5A55A] text-white shadow-md shadow-[#C5A55A]/20'
+              : 'bg-[#C5A55A]/10 text-[#A08735] hover:bg-[#C5A55A]/20'
+          }`}
+        >
+          <MessageSquareWarning className="w-5 h-5" />
+          有問題？跟顧問說
+        </Link>
+      </div>
 
       {/* User section */}
       <div className="px-4 py-4 border-t border-[#E8E2D8]">
