@@ -213,19 +213,19 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
         })}
       </nav>
 
-      {/* Feedback — prominent, at bottom */}
+      {/* Feedback — at bottom */}
       <div className="px-3 pb-2">
         <Link
           href="/dashboard/feedback"
           onClick={() => setMobileOpen(false)}
-          className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold transition-all ${
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
             isActive('/dashboard/feedback')
-              ? 'bg-[#C5A55A] text-white shadow-md shadow-[#C5A55A]/20'
-              : 'bg-[#C5A55A]/10 text-[#A08735] hover:bg-[#C5A55A]/20'
+              ? 'bg-[#C5A55A]/10 text-[#A08735]'
+              : 'text-[#8A8585] hover:bg-[#FAF7F2] hover:text-[#3A3A3A]'
           }`}
         >
-          <span className="text-lg">💬</span>
-          聊聊，我們幫你想辦法
+          <MessageSquareWarning className="w-[18px] h-[18px]" />
+          問題回報
         </Link>
       </div>
 
