@@ -66,8 +66,8 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
         body: JSON.stringify({ storeId: newStoreId }),
       });
       setStoreDropdownOpen(false);
-      // Hard reload to refresh all server components with new store context
-      window.location.href = '/dashboard';
+      // Hard reload current page to refresh all server components with new store context
+      window.location.reload();
     } catch {
       setSwitching(false);
     }
