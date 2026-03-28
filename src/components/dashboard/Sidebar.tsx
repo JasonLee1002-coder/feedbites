@@ -62,11 +62,11 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
     setSwitching(true);
     setSwitchingName(targetStore?.store_name || '');
     setStoreDropdownOpen(false);
-    setMobileOpen(false);
+    // Don't close mobileOpen — the z-[9999] transition screen will cover everything
     // Direct navigation — browser handles cookie via redirect, most reliable on mobile
     setTimeout(() => {
       window.location.href = `/api/stores/select?id=${newStoreId}`;
-    }, 1200);
+    }, 1500);
   };
 
   const isActive = (href: string) => {
