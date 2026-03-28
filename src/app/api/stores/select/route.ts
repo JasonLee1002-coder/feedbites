@@ -1,6 +1,53 @@
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+
+// GET: Switch store via direct navigation (most reliable for mobile)
+export async function GET(request: NextRequest) {
+  try {
+    const storeId = request.nextUrl.searchParams.get('id');
+    if (!storeId) return NextResponse.redirect(new URL('/dashboard', request.url));
+
+    const supabase = await createServerSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.redirect(new URL('/login', request.url));
+
+    const adminDb = createServiceSupabase();
+
+    // Verify ownership or membership
+    const { data: ownedStore } = await adminDb
+      .from('stores')
+      .select('id')
+      .eq('id', storeId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!ownedStore) {
+      const { data: membership } = await adminDb
+        .from('store_members')
+        .select('id')
+        .eq('store_id', storeId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (!membership) return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+
+    // Set cookie and redirect
+    const cookieStore = await cookies();
+    cookieStore.set('feedbites_store_id', storeId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365,
+    });
+
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  } catch {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+}
 
 export async function POST(request: Request) {
   try {

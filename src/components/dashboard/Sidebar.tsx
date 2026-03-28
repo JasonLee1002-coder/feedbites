@@ -63,20 +63,10 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
     setSwitchingName(targetStore?.store_name || '');
     setStoreDropdownOpen(false);
     setMobileOpen(false);
-    try {
-      await fetch('/api/stores/select', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ storeId: newStoreId }),
-      });
-      // Delay to show the transition screen, then force reload with cache bust
-      setTimeout(() => {
-        window.location.href = '/dashboard?t=' + Date.now();
-      }, 1200);
-    } catch {
-      setSwitching(false);
-      setSwitchingName('');
-    }
+    // Direct navigation — browser handles cookie via redirect, most reliable on mobile
+    setTimeout(() => {
+      window.location.href = `/api/stores/select?id=${newStoreId}`;
+    }, 1200);
   };
 
   const isActive = (href: string) => {
