@@ -22,11 +22,11 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { href: '/dashboard', label: '總覽', icon: LayoutDashboard },
-  { href: '/dashboard/menu', label: '菜單管理', icon: UtensilsCrossed },
-  { href: '/dashboard/surveys', label: '問卷管理', icon: ClipboardList },
-  { href: '/dashboard/insights', label: 'AI 洞察分析', icon: Brain },
-  { href: '/dashboard/settings', label: '店家設定', icon: Settings },
+  { href: '/dashboard', label: '總覽', icon: LayoutDashboard, emoji: '🏠' },
+  { href: '/dashboard/menu', label: '菜單管理', icon: UtensilsCrossed, emoji: '🍽️' },
+  { href: '/dashboard/surveys', label: '問卷管理', icon: ClipboardList, emoji: '📋' },
+  { href: '/dashboard/insights', label: 'AI 洞察', icon: Brain, emoji: '🧠' },
+  { href: '/dashboard/settings', label: '店家設定', icon: Settings, emoji: '⚙️' },
 ];
 
 export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: SidebarProps) {
@@ -193,21 +193,21 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1">
         {navItems.map((item) => {
-          const Icon = item.icon;
           const active = isActive(item.href);
           return (
             <Link
               key={item.href}
               href={item.href}
               onClick={() => setMobileOpen(false)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+              className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all ${
                 active
-                  ? 'bg-[#C5A55A]/10 text-[#A08735]'
-                  : 'text-[#8A8585] hover:bg-[#FAF7F2] hover:text-[#3A3A3A]'
+                  ? 'bg-gradient-to-r from-[#C5A55A]/15 to-[#C5A55A]/5 text-[#A08735] shadow-sm border border-[#C5A55A]/20'
+                  : 'text-[#8A8585] hover:bg-[#FAF7F2] hover:text-[#3A3A3A] hover:translate-x-0.5'
               }`}
             >
-              <Icon className="w-[18px] h-[18px]" />
+              <span className="text-lg">{item.emoji}</span>
               {item.label}
+              {active && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#C5A55A]" />}
             </Link>
           );
         })}
@@ -218,14 +218,15 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
         <Link
           href="/dashboard/feedback"
           onClick={() => setMobileOpen(false)}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+          className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all ${
             isActive('/dashboard/feedback')
-              ? 'bg-[#C5A55A]/10 text-[#A08735]'
-              : 'text-[#8A8585] hover:bg-[#FAF7F2] hover:text-[#3A3A3A]'
+              ? 'bg-gradient-to-r from-[#C5A55A]/15 to-[#C5A55A]/5 text-[#A08735] shadow-sm border border-[#C5A55A]/20'
+              : 'text-[#8A8585] hover:bg-[#FAF7F2] hover:text-[#3A3A3A] hover:translate-x-0.5'
           }`}
         >
-          <MessageSquareWarning className="w-[18px] h-[18px]" />
+          <span className="text-lg">📮</span>
           問題回報
+          {isActive('/dashboard/feedback') && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#C5A55A]" />}
         </Link>
       </div>
 

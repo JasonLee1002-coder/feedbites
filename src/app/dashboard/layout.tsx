@@ -40,8 +40,8 @@ export default async function DashboardLayout({
         avatarUrl={store.owner_avatar_url}
       />
       {/* Main content */}
-      <main className="lg:pl-60">
-        <div className="pt-14 lg:pt-0">
+      <main className="lg:pl-60 overflow-x-hidden">
+        <div className="pt-14 lg:pt-0 max-w-full">
           {/* Store context banner — especially visible for collab stores */}
           {isCollab && (
             <div className="bg-blue-50 border-b border-blue-200 px-5 py-2.5 flex items-center gap-3">
