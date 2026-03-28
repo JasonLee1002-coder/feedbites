@@ -81,11 +81,11 @@ export async function getUserStores(userId: string) {
     memberStores = data;
   }
 
-  // Combine and dedupe (owner takes precedence)
+  // Combine and dedupe, mark role
   const ownedIds = new Set((ownedStores || []).map(s => s.id));
   const combined = [
-    ...(ownedStores || []),
-    ...(memberStores || []).filter(s => !ownedIds.has(s.id)),
+    ...(ownedStores || []).map(s => ({ ...s, role: 'owner' as const })),
+    ...(memberStores || []).filter(s => !ownedIds.has(s.id)).map(s => ({ ...s, role: 'member' as const })),
   ];
 
   return combined;

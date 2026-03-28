@@ -11,6 +11,7 @@ interface StoreInfo {
   id: string;
   store_name: string;
   logo_url?: string | null;
+  role?: 'owner' | 'member';
 }
 
 interface SidebarProps {
@@ -91,7 +92,10 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-[#3A3A3A] truncate">{storeName}</p>
           {hasMultipleStores && (
-            <p className="text-[10px] text-[#8A8585]">{allStores.length} 間店家</p>
+            <p className="text-[10px] text-[#8A8585]">
+              {allStores.find(s => s.id === storeId)?.role === 'member' ? '協作中 · ' : ''}
+              {allStores.length} 間店家
+            </p>
           )}
         </div>
         {(hasMultipleStores) && (
@@ -112,10 +116,17 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
                   : 'text-[#3A3A3A] hover:bg-[#FAF7F2]'
               }`}
             >
-              <div className="w-6 h-6 rounded-md bg-[#C5A55A]/10 flex items-center justify-center flex-shrink-0 text-xs font-bold text-[#C5A55A]">
+              <div className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 text-xs font-bold ${
+                s.role === 'member' ? 'bg-blue-50 text-blue-500' : 'bg-[#C5A55A]/10 text-[#C5A55A]'
+              }`}>
                 {s.store_name.charAt(0)}
               </div>
-              <span className="truncate">{s.store_name}</span>
+              <div className="flex-1 min-w-0">
+                <span className="truncate block">{s.store_name}</span>
+                {s.role === 'member' && (
+                  <span className="text-[9px] text-blue-500">協作中</span>
+                )}
+              </div>
               {s.id === storeId && (
                 <span className="ml-auto text-xs text-[#C5A55A]">✓</span>
               )}
