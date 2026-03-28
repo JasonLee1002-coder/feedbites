@@ -35,6 +35,7 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
   const [mobileOpen, setMobileOpen] = useState(false);
   const [storeDropdownOpen, setStoreDropdownOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
+  const [switchingName, setSwitchingName] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on outside click
@@ -57,18 +58,24 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
 
   const handleSwitchStore = async (newStoreId: string) => {
     if (newStoreId === storeId || switching) return;
+    const targetStore = allStores.find(s => s.id === newStoreId);
     setSwitching(true);
+    setSwitchingName(targetStore?.store_name || '');
+    setStoreDropdownOpen(false);
+    setMobileOpen(false);
     try {
       await fetch('/api/stores/select', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ storeId: newStoreId }),
       });
-      setStoreDropdownOpen(false);
-      // Hard reload current page to refresh all server components with new store context
-      window.location.reload();
+      // Delay to show the transition screen
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 1200);
     } catch {
       setSwitching(false);
+      setSwitchingName('');
     }
   };
 
@@ -225,6 +232,27 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
 
   return (
     <>
+      {/* ═══ Store Switch Transition Screen ═══ */}
+      {switching && switchingName && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-gradient-to-br from-[#1a1a2e] to-[#16213e] yuzu-pop-in">
+          <div className="text-6xl mb-5" style={{ animation: 'yuzu-float 2s ease-in-out infinite' }}>🏪</div>
+          <p className="text-white/60 text-sm mb-2">正在切換到</p>
+          <h1 className="text-2xl font-bold text-[#C5A55A] font-serif mb-3">{switchingName}</h1>
+          <div className="flex gap-1.5">
+            {[0, 1, 2].map(i => (
+              <div
+                key={i}
+                className="w-2 h-2 rounded-full bg-[#C5A55A]"
+                style={{
+                  animation: 'yuzu-float 1s ease-in-out infinite',
+                  animationDelay: `${i * 0.2}s`,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Mobile hamburger */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 flex items-center px-4 py-3 bg-white border-b border-[#E8E2D8]">
         <button
