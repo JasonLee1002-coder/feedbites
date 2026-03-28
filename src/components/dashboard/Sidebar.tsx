@@ -197,8 +197,8 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
               : 'bg-[#C5A55A]/10 text-[#A08735] hover:bg-[#C5A55A]/20'
           }`}
         >
-          <MessageSquareWarning className="w-5 h-5" />
-          有問題？跟顧問說
+          <span className="text-lg">💬</span>
+          聊聊，我們幫你想辦法
         </Link>
       </div>
 
