@@ -234,18 +234,30 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
     <>
       {/* ═══ Store Switch Transition Screen ═══ */}
       {switching && switchingName && (
-        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-gradient-to-br from-[#1a1a2e] to-[#16213e] yuzu-pop-in">
-          <div className="text-6xl mb-5" style={{ animation: 'yuzu-float 2s ease-in-out infinite' }}>🏪</div>
-          <p className="text-white/60 text-sm mb-2">正在切換到</p>
-          <h1 className="text-2xl font-bold text-[#C5A55A] font-serif mb-3">{switchingName}</h1>
-          <div className="flex gap-1.5">
+        <div
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center"
+          style={{
+            background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+            animation: 'fadeIn 0.3s ease-out',
+          }}
+        >
+          <style>{`
+            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes bounceIn { 0% { transform: scale(0.5); opacity: 0; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
+            @keyframes floatUp { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+            @keyframes dotPulse { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
+          `}</style>
+          <div className="text-7xl mb-6" style={{ animation: 'bounceIn 0.5s ease-out, floatUp 2s ease-in-out 0.5s infinite' }}>🏪</div>
+          <p className="text-white/50 text-sm mb-2">正在切換到</p>
+          <h1 className="text-3xl font-bold font-serif mb-4" style={{ color: '#C5A55A', animation: 'bounceIn 0.6s ease-out 0.2s both' }}>{switchingName}</h1>
+          <div className="flex gap-2 mt-2">
             {[0, 1, 2].map(i => (
               <div
                 key={i}
-                className="w-2 h-2 rounded-full bg-[#C5A55A]"
+                className="w-2.5 h-2.5 rounded-full"
                 style={{
-                  animation: 'yuzu-float 1s ease-in-out infinite',
-                  animationDelay: `${i * 0.2}s`,
+                  backgroundColor: '#C5A55A',
+                  animation: `dotPulse 1.2s ease-in-out ${i * 0.25}s infinite`,
                 }}
               />
             ))}
