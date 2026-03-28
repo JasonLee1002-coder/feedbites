@@ -56,14 +56,34 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
     window.location.href = '/login';
   };
 
-  const handleSwitchStore = async (newStoreId: string) => {
+  const handleSwitchStore = (newStoreId: string) => {
     if (newStoreId === storeId || switching) return;
     const targetStore = allStores.find(s => s.id === newStoreId);
-    setSwitching(true);
-    setSwitchingName(targetStore?.store_name || '');
-    setStoreDropdownOpen(false);
-    // Don't close mobileOpen — the z-[9999] transition screen will cover everything
-    // Direct navigation — browser handles cookie via redirect, most reliable on mobile
+    const name = targetStore?.store_name || '';
+
+    // Create transition overlay via DOM — works reliably on all devices
+    const overlay = document.createElement('div');
+    overlay.innerHTML = `
+      <div style="position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a1a2e,#16213e);animation:fbFadeIn 0.3s ease-out">
+        <style>
+          @keyframes fbFadeIn{from{opacity:0}to{opacity:1}}
+          @keyframes fbBounce{0%{transform:scale(0.5);opacity:0}60%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
+          @keyframes fbFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+          @keyframes fbDot{0%,100%{opacity:0.3;transform:scale(0.8)}50%{opacity:1;transform:scale(1.2)}}
+        </style>
+        <div style="font-size:4.5rem;animation:fbBounce 0.5s ease-out,fbFloat 2s ease-in-out 0.5s infinite">🏪</div>
+        <p style="color:rgba(255,255,255,0.5);font-size:0.875rem;margin:1rem 0 0.5rem">正在切換到</p>
+        <h1 style="color:#C5A55A;font-size:1.75rem;font-weight:bold;animation:fbBounce 0.6s ease-out 0.2s both">${name}</h1>
+        <div style="display:flex;gap:0.5rem;margin-top:1rem">
+          <div style="width:10px;height:10px;border-radius:50%;background:#C5A55A;animation:fbDot 1.2s ease-in-out 0s infinite"></div>
+          <div style="width:10px;height:10px;border-radius:50%;background:#C5A55A;animation:fbDot 1.2s ease-in-out 0.25s infinite"></div>
+          <div style="width:10px;height:10px;border-radius:50%;background:#C5A55A;animation:fbDot 1.2s ease-in-out 0.5s infinite"></div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // Navigate after transition
     setTimeout(() => {
       window.location.href = `/api/stores/select?id=${newStoreId}`;
     }, 1500);
@@ -250,39 +270,6 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
 
   return (
     <>
-      {/* ═══ Store Switch Transition Screen ═══ */}
-      {switching && switchingName && (
-        <div
-          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center"
-          style={{
-            background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-            animation: 'fadeIn 0.3s ease-out',
-          }}
-        >
-          <style>{`
-            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-            @keyframes bounceIn { 0% { transform: scale(0.5); opacity: 0; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
-            @keyframes floatUp { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
-            @keyframes dotPulse { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
-          `}</style>
-          <div className="text-7xl mb-6" style={{ animation: 'bounceIn 0.5s ease-out, floatUp 2s ease-in-out 0.5s infinite' }}>🏪</div>
-          <p className="text-white/50 text-sm mb-2">正在切換到</p>
-          <h1 className="text-3xl font-bold font-serif mb-4" style={{ color: '#C5A55A', animation: 'bounceIn 0.6s ease-out 0.2s both' }}>{switchingName}</h1>
-          <div className="flex gap-2 mt-2">
-            {[0, 1, 2].map(i => (
-              <div
-                key={i}
-                className="w-2.5 h-2.5 rounded-full"
-                style={{
-                  backgroundColor: '#C5A55A',
-                  animation: `dotPulse 1.2s ease-in-out ${i * 0.25}s infinite`,
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Mobile hamburger */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 flex items-center px-4 py-3 bg-white border-b border-[#E8E2D8]">
         <button
