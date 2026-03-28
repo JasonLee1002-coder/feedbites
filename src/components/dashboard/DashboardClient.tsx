@@ -85,22 +85,62 @@ export default function DashboardClient(props: DashboardData) {
     <div className="p-5 lg:p-8 max-w-3xl mx-auto">
       <WhatsNew />
 
-      {/* ═══ Welcome ═══ */}
+      {/* ═══ Store Hero Banner ═══ */}
       <motion.div
-        className="mb-6"
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
+        className="mb-6 rounded-2xl p-6 text-center relative overflow-hidden"
+        style={{
+          background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%)',
+        }}
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5 }}
       >
-        <h1 className="text-2xl font-bold text-[#3A3A3A] font-serif flex items-center gap-2">
-          {greeting}，{storeName}
-          <motion.span
-            animate={{ rotate: [0, 14, -8, 14, 0] }}
-            transition={{ duration: 1.5, delay: 0.5, repeat: Infinity, repeatDelay: 4 }}
-            className="inline-block origin-bottom-right"
+        {/* Decorative glow */}
+        <motion.div
+          className="absolute top-0 right-0 w-32 h-32 rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(197,165,90,0.15), transparent 70%)' }}
+          animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0.8, 0.5] }}
+          transition={{ duration: 3, repeat: Infinity }}
+        />
+        <motion.div
+          className="absolute bottom-0 left-0 w-24 h-24 rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(197,165,90,0.1), transparent 70%)' }}
+          animate={{ scale: [1, 1.2, 1] }}
+          transition={{ duration: 4, repeat: Infinity, delay: 1 }}
+        />
+
+        <div className="relative">
+          <motion.div
+            className="text-4xl mb-2"
+            animate={{ y: [0, -5, 0] }}
+            transition={{ duration: 2, repeat: Infinity }}
           >
-            👋
-          </motion.span>
-        </h1>
+            🍽️
+          </motion.div>
+          <motion.h1
+            className="text-2xl font-bold font-serif text-white mb-1"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            {storeName}
+          </motion.h1>
+          <motion.p
+            className="text-sm text-white/50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+          >
+            {greeting}
+            <motion.span
+              className="inline-block ml-1"
+              animate={{ rotate: [0, 14, -8, 14, 0] }}
+              transition={{ duration: 1.5, delay: 1, repeat: Infinity, repeatDelay: 4 }}
+            >
+              👋
+            </motion.span>
+          </motion.p>
+        </div>
       </motion.div>
 
       {/* ═══ Consultant Tip — the most important card ═══ */}
