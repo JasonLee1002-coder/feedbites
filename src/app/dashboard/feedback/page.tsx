@@ -201,14 +201,15 @@ export default function FeedbackPage() {
         {step === 0 && (
           <motion.button
             onClick={() => setStep(1)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#C5A55A] to-[#A08735] text-white rounded-xl text-sm font-bold shadow-md shadow-[#C5A55A]/15 hover:shadow-lg transition-all"
-            whileHover={{ scale: 1.03, y: -1 }}
-            whileTap={{ scale: 0.97 }}
+            className="relative flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#C5A55A] to-[#A08735] text-white rounded-xl text-sm font-bold shadow-lg shadow-[#C5A55A]/25 hover:shadow-xl overflow-hidden yuzu-glow-pulse"
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.95 }}
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
           >
-            <Send className="w-4 h-4" />
-            新增回報
+            <span className="absolute inset-0 pointer-events-none yuzu-shimmer" />
+            <Send className="w-4 h-4 relative z-10" />
+            <span className="relative z-10">新增回報</span>
           </motion.button>
         )}
       </motion.div>
