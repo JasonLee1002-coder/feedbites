@@ -86,58 +86,85 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
 
   const hasMultipleStores = allStores.length > 1;
 
+  const currentStoreRole = allStores.find(s => s.id === storeId)?.role;
+  const isCurrentCollab = currentStoreRole === 'member';
+
   const storeSelector = (
-    <div className="px-4 py-3 border-b border-[#E8E2D8]" ref={dropdownRef}>
+    <div className="px-3 py-3 border-b border-[#E8E2D8]" ref={dropdownRef}>
+      {/* Current store — prominent display */}
       <button
         onClick={() => setStoreDropdownOpen(!storeDropdownOpen)}
-        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-[#FAF7F2] transition-colors text-left"
+        className={`w-full rounded-xl p-3 text-left transition-all ${
+          isCurrentCollab
+            ? 'bg-blue-50 border-2 border-blue-200 hover:border-blue-300'
+            : 'bg-[#C5A55A]/5 border-2 border-[#C5A55A]/20 hover:border-[#C5A55A]/40'
+        }`}
       >
-        <div className="w-8 h-8 rounded-lg bg-[#C5A55A]/10 flex items-center justify-center flex-shrink-0">
-          <Store className="w-4 h-4 text-[#C5A55A]" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-[#3A3A3A] truncate">{storeName}</p>
-          {hasMultipleStores && (
-            <p className="text-[10px] text-[#8A8585]">
-              {allStores.find(s => s.id === storeId)?.role === 'member' ? '協作中 · ' : ''}
-              {allStores.length} 間店家
+        <div className="flex items-center gap-2.5">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold ${
+            isCurrentCollab
+              ? 'bg-blue-100 text-blue-600'
+              : 'bg-[#C5A55A]/15 text-[#C5A55A]'
+          }`}>
+            {storeName.charAt(0)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-[#3A3A3A] truncate">{storeName}</p>
+            <p className={`text-[10px] font-medium ${isCurrentCollab ? 'text-blue-500' : 'text-[#C5A55A]'}`}>
+              {isCurrentCollab ? '🤝 協作中' : '👑 我的店'}
             </p>
+          </div>
+          {hasMultipleStores && (
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="w-5 h-5 rounded-full bg-[#C5A55A] text-white text-[10px] font-bold flex items-center justify-center">
+                {allStores.length}
+              </span>
+              <ChevronDown className={`w-4 h-4 text-[#8A8585] transition-transform ${storeDropdownOpen ? 'rotate-180' : ''}`} />
+            </div>
           )}
         </div>
-        {(hasMultipleStores) && (
-          <ChevronDown className={`w-4 h-4 text-[#8A8585] transition-transform ${storeDropdownOpen ? 'rotate-180' : ''}`} />
-        )}
       </button>
 
+      {/* Dropdown — store list */}
       {storeDropdownOpen && (
-        <div className="mt-1 bg-white rounded-xl border border-[#E8E2D8] shadow-lg overflow-hidden">
-          {allStores.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => handleSwitchStore(s.id)}
-              disabled={switching}
-              className={`w-full flex items-center gap-2 px-3 py-2.5 text-left text-sm transition-colors ${
-                s.id === storeId
-                  ? 'bg-[#C5A55A]/10 text-[#A08735] font-medium'
-                  : 'text-[#3A3A3A] hover:bg-[#FAF7F2]'
-              }`}
-            >
-              <div className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 text-xs font-bold ${
-                s.role === 'member' ? 'bg-blue-50 text-blue-500' : 'bg-[#C5A55A]/10 text-[#C5A55A]'
-              }`}>
-                {s.store_name.charAt(0)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <span className="truncate block">{s.store_name}</span>
-                {s.role === 'member' && (
-                  <span className="text-[9px] text-blue-500">協作中</span>
+        <div className="mt-2 bg-white rounded-xl border border-[#E8E2D8] shadow-xl overflow-hidden">
+          <div className="px-3 py-2 bg-[#FAF7F2] border-b border-[#E8E2D8]">
+            <p className="text-[10px] font-bold text-[#8A8585]">🔄 切換店家</p>
+          </div>
+          {allStores.map((s) => {
+            const isCurrent = s.id === storeId;
+            const isMember = s.role === 'member';
+            return (
+              <button
+                key={s.id}
+                onClick={() => handleSwitchStore(s.id)}
+                disabled={switching || isCurrent}
+                className={`w-full flex items-center gap-3 px-3 py-3 text-left text-sm transition-all ${
+                  isCurrent
+                    ? 'bg-[#C5A55A]/10 cursor-default'
+                    : 'hover:bg-[#FAF7F2] hover:pl-4'
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
+                  isMember ? 'bg-blue-50 text-blue-500 border border-blue-200' : 'bg-[#C5A55A]/10 text-[#C5A55A] border border-[#C5A55A]/20'
+                }`}>
+                  {s.store_name.charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-medium truncate block text-[#3A3A3A]">{s.store_name}</span>
+                  <span className={`text-[9px] font-medium ${isMember ? 'text-blue-500' : 'text-[#8A8585]'}`}>
+                    {isMember ? '🤝 受邀協作' : '👑 我的店'}
+                  </span>
+                </div>
+                {isCurrent && (
+                  <span className="text-xs text-[#C5A55A] font-bold">目前 ✓</span>
                 )}
-              </div>
-              {s.id === storeId && (
-                <span className="ml-auto text-xs text-[#C5A55A]">✓</span>
-              )}
-            </button>
-          ))}
+                {!isCurrent && (
+                  <span className="text-[10px] text-[#8A8585] opacity-0 group-hover:opacity-100">切換 →</span>
+                )}
+              </button>
+            );
+          })}
           <Link
             href="/dashboard/new-store"
             onClick={() => { setStoreDropdownOpen(false); setMobileOpen(false); }}
