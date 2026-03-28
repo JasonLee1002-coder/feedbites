@@ -69,9 +69,9 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ storeId: newStoreId }),
       });
-      // Delay to show the transition screen
+      // Delay to show the transition screen, then force reload with cache bust
       setTimeout(() => {
-        window.location.href = '/dashboard';
+        window.location.href = '/dashboard?t=' + Date.now();
       }, 1200);
     } catch {
       setSwitching(false);
