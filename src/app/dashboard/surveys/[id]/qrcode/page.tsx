@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { redirect, notFound } from 'next/navigation';
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
 import Link from 'next/link';

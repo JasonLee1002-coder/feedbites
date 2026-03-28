@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import Sidebar from '@/components/dashboard/Sidebar';
 import { getSelectedStore, getUserStores } from '@/lib/store-context';
 
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardLayout({
   children,
 }: {
