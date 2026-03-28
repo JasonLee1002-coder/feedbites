@@ -26,6 +26,9 @@ export default async function DashboardLayout({
     );
   }
 
+  const currentRole = allStores.find(s => s.id === store.id)?.role || 'owner';
+  const isCollab = currentRole === 'member';
+
   return (
     <div className="min-h-screen bg-[#FAF7F2]">
       <Sidebar
@@ -37,6 +40,18 @@ export default async function DashboardLayout({
       {/* Main content */}
       <main className="lg:pl-60">
         <div className="pt-14 lg:pt-0">
+          {/* Store context banner — especially visible for collab stores */}
+          {isCollab && (
+            <div className="bg-blue-50 border-b border-blue-200 px-5 py-2.5 flex items-center gap-3">
+              <span className="text-lg">🤝</span>
+              <div>
+                <span className="text-sm font-bold text-blue-700">
+                  目前管理：{store.store_name}
+                </span>
+                <span className="text-[11px] text-blue-500 ml-2">協作模式</span>
+              </div>
+            </div>
+          )}
           {children}
         </div>
       </main>
