@@ -155,7 +155,7 @@ export default function DashboardClient(props: DashboardData) {
         {/* Rating */}
         <Link href="/dashboard/insights">
           <motion.div
-            className="bg-white rounded-2xl p-4 border border-[#E8E2D8] text-center cursor-pointer hover:shadow-lg hover:border-[#C5A55A]/30 transition-all"
+            className="bg-white rounded-2xl p-4 border border-[#E8E2D8] text-center cursor-pointer yuzu-card"
             whileTap={{ scale: 0.97 }}
           >
             <motion.div
@@ -197,7 +197,7 @@ export default function DashboardClient(props: DashboardData) {
         {/* Trend */}
         <Link href="/dashboard/insights">
           <motion.div
-            className="bg-white rounded-2xl p-4 border border-[#E8E2D8] text-center cursor-pointer hover:shadow-lg hover:border-[#C5A55A]/30 transition-all"
+            className="bg-white rounded-2xl p-4 border border-[#E8E2D8] text-center cursor-pointer yuzu-card"
             whileTap={{ scale: 0.97 }}
           >
             <motion.div
@@ -241,7 +241,7 @@ export default function DashboardClient(props: DashboardData) {
           transition={{ delay: 0.35 }}
         >
           <Link href="/dashboard/surveys">
-            <div className="bg-white rounded-2xl border border-[#E8E2D8] p-5 hover:shadow-lg hover:border-[#C5A55A]/30 transition-all cursor-pointer">
+            <div className="bg-white rounded-2xl border border-[#E8E2D8] p-5 cursor-pointer yuzu-card">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-bold text-[#3A3A3A] flex items-center gap-2">
                   <motion.span
@@ -355,7 +355,7 @@ export default function DashboardClient(props: DashboardData) {
         {todayResponses > 0 && (
           <Link href="/dashboard/surveys">
             <motion.div
-              className="flex items-center gap-3 p-4 bg-green-50 rounded-xl border border-green-200 cursor-pointer"
+              className="flex items-center gap-3 p-4 bg-green-50 rounded-xl border border-green-200 cursor-pointer yuzu-health-card"
               whileHover={{ scale: 1.01, x: 3 }}
               whileTap={{ scale: 0.99 }}
             >
@@ -371,7 +371,7 @@ export default function DashboardClient(props: DashboardData) {
 
         <Link href="/dashboard/insights">
           <motion.div
-            className="flex items-center gap-3 p-4 bg-white rounded-xl border border-[#E8E2D8] cursor-pointer"
+            className="flex items-center gap-3 p-4 bg-white rounded-xl border border-[#E8E2D8] cursor-pointer yuzu-health-card"
             whileHover={{ scale: 1.01, x: 3 }}
             whileTap={{ scale: 0.99 }}
           >
@@ -386,7 +386,7 @@ export default function DashboardClient(props: DashboardData) {
 
         <Link href="/dashboard/surveys/new">
           <motion.div
-            className="flex items-center gap-3 p-4 bg-[#C5A55A]/5 rounded-xl border border-[#C5A55A]/20 cursor-pointer"
+            className="flex items-center gap-3 p-4 bg-[#C5A55A]/5 rounded-xl border border-[#C5A55A]/20 cursor-pointer yuzu-health-card"
             whileHover={{ scale: 1.01, x: 3 }}
             whileTap={{ scale: 0.99 }}
           >
@@ -401,7 +401,7 @@ export default function DashboardClient(props: DashboardData) {
 
         <Link href="/dashboard/feedback">
           <motion.div
-            className="flex items-center gap-3 p-4 bg-white rounded-xl border border-[#E8E2D8] cursor-pointer"
+            className="flex items-center gap-3 p-4 bg-white rounded-xl border border-[#E8E2D8] cursor-pointer yuzu-health-card"
             whileHover={{ scale: 1.01, x: 3 }}
             whileTap={{ scale: 0.99 }}
           >

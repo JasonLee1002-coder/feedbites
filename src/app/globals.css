@@ -127,3 +127,98 @@
     @apply font-sans;
   }
 }
+
+/* ═══ Yuzu UI/UX 動畫套件 ═══ */
+
+/* 骨架屏載入 */
+.yuzu-skeleton {
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: yuzu-skeleton-wave 1.8s ease-in-out infinite;
+  border-radius: 0.75rem;
+}
+@keyframes yuzu-skeleton-wave {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* 卡片微動 */
+.yuzu-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.yuzu-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px -5px rgba(0,0,0,0.1), 0 4px 10px -6px rgba(0,0,0,0.08);
+}
+.yuzu-card:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* 輕柔上浮卡片 */
+.yuzu-health-card {
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  transition: all 0.2s ease;
+}
+.yuzu-health-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transform: translateY(-1px);
+}
+
+/* 浮動動畫 */
+@keyframes yuzu-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+.yuzu-float {
+  animation: yuzu-float 3s ease-in-out infinite;
+}
+
+/* 呼吸光暈 */
+@keyframes yuzu-glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(197,165,90,0); }
+  50% { box-shadow: 0 0 15px 3px rgba(197,165,90,0.25); }
+}
+.yuzu-glow-pulse {
+  animation: yuzu-glow-pulse 2s ease-in-out infinite;
+}
+
+/* 彈入動畫 */
+@keyframes yuzu-pop-in {
+  0% { opacity: 0; transform: scale(0.8) translateY(10px); }
+  60% { transform: scale(1.03) translateY(-2px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.yuzu-pop-in {
+  animation: yuzu-pop-in 0.35s ease-out;
+}
+
+/* 向上滑入 */
+@keyframes yuzu-slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.yuzu-slide-up {
+  animation: yuzu-slide-up 0.3s ease-out;
+}
+
+/* 數字閃亮 */
+@keyframes yuzu-flash {
+  0%, 100% { color: inherit; }
+  50% { color: #C5A55A; transform: scale(1.1); }
+}
+.yuzu-flash {
+  animation: yuzu-flash 0.4s ease-out;
+  display: inline-block;
+}
+
+/* Shimmer 光波 */
+@keyframes yuzu-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.yuzu-shimmer {
+  background: linear-gradient(90deg, transparent 25%, rgba(197,165,90,0.08) 50%, transparent 75%);
+  background-size: 200% 100%;
+  animation: yuzu-shimmer 2s ease-in-out infinite;
+}
