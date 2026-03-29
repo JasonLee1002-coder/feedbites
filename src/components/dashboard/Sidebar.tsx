@@ -100,91 +100,72 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
   const isCurrentCollab = currentStoreRole === 'member';
 
   const storeSelector = (
-    <div className="px-3 py-3 border-b border-[#E8E2D8] relative" ref={dropdownRef}>
-      {/* Current store — prominent display */}
-      <button
-        onClick={() => setStoreDropdownOpen(!storeDropdownOpen)}
-        className={`w-full rounded-xl p-3 text-left transition-all ${
-          isCurrentCollab
-            ? 'bg-blue-50 border-2 border-blue-200 hover:border-blue-300'
-            : 'bg-[#C5A55A]/5 border-2 border-[#C5A55A]/20 hover:border-[#C5A55A]/40'
-        }`}
-      >
-        <div className="flex items-center gap-2.5">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold ${
-            isCurrentCollab
-              ? 'bg-blue-100 text-blue-600'
-              : 'bg-[#C5A55A]/15 text-[#C5A55A]'
-          }`}>
-            {storeName.charAt(0)}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-[#3A3A3A] truncate">{storeName}</p>
-            <p className={`text-[10px] font-medium ${isCurrentCollab ? 'text-blue-500' : 'text-[#C5A55A]'}`}>
-              {isCurrentCollab ? '🤝 協作中' : '👑 我的店'}
-            </p>
-          </div>
-          {hasMultipleStores && (
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className="w-5 h-5 rounded-full bg-[#C5A55A] text-white text-[10px] font-bold flex items-center justify-center">
-                {allStores.length}
-              </span>
-              <ChevronDown className={`w-4 h-4 text-[#8A8585] transition-transform ${storeDropdownOpen ? 'rotate-180' : ''}`} />
-            </div>
-          )}
-        </div>
-      </button>
-
-      {/* Dropdown — store list (z-[60] to be above mobile overlay) */}
-      {storeDropdownOpen && (
-        <div className="mt-2 bg-white rounded-xl border border-[#E8E2D8] shadow-xl overflow-hidden relative z-[60]">
-          <div className="px-3 py-2 bg-[#FAF7F2] border-b border-[#E8E2D8]">
-            <p className="text-[10px] font-bold text-[#8A8585]">🔄 切換店家</p>
-          </div>
-          {allStores.map((s) => {
-            const isCurrent = s.id === storeId;
-            const isMember = s.role === 'member';
-            return (
-              <button
-                key={s.id}
-                onClick={() => handleSwitchStore(s.id)}
-                disabled={switching || isCurrent}
-                className={`w-full flex items-center gap-3 px-3 py-3 text-left text-sm transition-all ${
-                  isCurrent
-                    ? 'bg-[#C5A55A]/10 cursor-default'
-                    : 'hover:bg-[#FAF7F2] hover:pl-4'
-                }`}
-              >
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
-                  isMember ? 'bg-blue-50 text-blue-500 border border-blue-200' : 'bg-[#C5A55A]/10 text-[#C5A55A] border border-[#C5A55A]/20'
+    <div className="px-3 py-3 border-b border-[#E8E2D8]">
+      {/* All stores — always visible, no dropdown needed */}
+      <div className="space-y-1.5">
+        {allStores.map((s) => {
+          const isCurrent = s.id === storeId;
+          const isMember = s.role === 'member';
+          return isCurrent ? (
+            <div
+              key={s.id}
+              className={`rounded-xl p-2.5 ${
+                isMember
+                  ? 'bg-blue-50 border-2 border-blue-200'
+                  : 'bg-[#C5A55A]/5 border-2 border-[#C5A55A]/20'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold ${
+                  isMember ? 'bg-blue-100 text-blue-600' : 'bg-[#C5A55A]/15 text-[#C5A55A]'
                 }`}>
                   {s.store_name.charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <span className="font-medium truncate block text-[#3A3A3A]">{s.store_name}</span>
-                  <span className={`text-[9px] font-medium ${isMember ? 'text-blue-500' : 'text-[#8A8585]'}`}>
-                    {isMember ? '🤝 受邀協作' : '👑 我的店'}
-                  </span>
+                  <p className="text-sm font-bold text-[#3A3A3A] truncate">{s.store_name}</p>
+                  <p className={`text-[9px] font-medium ${isMember ? 'text-blue-500' : 'text-[#C5A55A]'}`}>
+                    {isMember ? '🤝 協作中' : '👑 目前'}
+                  </p>
                 </div>
-                {isCurrent && (
-                  <span className="text-xs text-[#C5A55A] font-bold">目前 ✓</span>
-                )}
-                {!isCurrent && (
-                  <span className="text-[10px] text-[#8A8585] opacity-0 group-hover:opacity-100">切換 →</span>
-                )}
-              </button>
-            );
-          })}
-          <Link
-            href="/dashboard/new-store"
-            onClick={() => { setStoreDropdownOpen(false); setMobileOpen(false); }}
-            className="flex items-center gap-2 px-3 py-2.5 text-sm text-[#8A8585] hover:bg-[#FAF7F2] border-t border-[#E8E2D8] transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            新增店家
-          </Link>
-        </div>
-      )}
+              </div>
+            </div>
+          ) : (
+            <a
+              key={s.id}
+              href={`/api/stores/select?id=${s.id}`}
+              className={`block rounded-xl p-2.5 transition-all hover:translate-x-0.5 ${
+                isMember
+                  ? 'hover:bg-blue-50/50 border border-transparent hover:border-blue-200/50'
+                  : 'hover:bg-[#FAF7F2] border border-transparent hover:border-[#E8E2D8]'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold ${
+                  isMember ? 'bg-blue-50 text-blue-400' : 'bg-gray-100 text-gray-400'
+                }`}>
+                  {s.store_name.charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-[#8A8585] truncate">{s.store_name}</p>
+                  <p className={`text-[9px] ${isMember ? 'text-blue-400' : 'text-[#8A8585]'}`}>
+                    {isMember ? '🤝 點擊切換' : '點擊切換'}
+                  </p>
+                </div>
+                <span className="text-[10px] text-[#8A8585]">→</span>
+              </div>
+            </a>
+          );
+        })}
+      </div>
+
+      {/* New store link */}
+      <a
+        href="/dashboard/new-store"
+        className="flex items-center gap-2 px-2.5 py-2 mt-2 text-xs text-[#8A8585] hover:text-[#C5A55A] hover:bg-[#FAF7F2] rounded-lg transition-colors"
+      >
+        <Plus className="w-3.5 h-3.5" />
+        新增店家
+      </a>
     </div>
   );
 
