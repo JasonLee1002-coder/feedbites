@@ -225,7 +225,7 @@ export default async function SurveysPage() {
                     href={`/dashboard/surveys/${survey.id}/edit`}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#3A3A3A] bg-white border border-[#E8E2D8] rounded-lg hover:border-[#C5A55A] transition-colors"
                   >
-                    ✏️ 編輯
+                    ✏️ 編輯問卷
                   </Link>
                   <Link
                     href={`/dashboard/surveys/${survey.id}`}
