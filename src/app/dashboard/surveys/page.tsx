@@ -100,7 +100,7 @@ export default async function SurveysPage() {
             const ratingQIds = questions.filter(q => q.type === 'rating' || q.type === 'emoji-rating').map(q => q.id);
 
             return (
-              <div key={survey.id} className="bg-white rounded-2xl border border-[#E8E2D8] overflow-hidden yuzu-health-card">
+              <div key={survey.id} className="bg-white rounded-2xl border-2 border-[#E8E2D8] overflow-hidden yuzu-card shadow-md hover:shadow-xl transition-all" style={{ borderLeft: `4px solid ${template?.colors.primary || '#C5A55A'}` }}>
                 {/* Survey header — compact */}
                 <div className="px-5 py-4 border-b border-[#E8E2D8]/50">
                   <div className="flex items-center justify-between">
