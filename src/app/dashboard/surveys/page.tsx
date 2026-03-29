@@ -103,23 +103,25 @@ export default async function SurveysPage() {
               <div key={survey.id} className="bg-white rounded-2xl border border-[#E8E2D8] overflow-hidden yuzu-health-card">
                 {/* Survey header — compact */}
                 <div className="px-5 py-4 border-b border-[#E8E2D8]/50">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] text-[#8A8585] font-medium">📋 問卷名稱</span>
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div
+                        className="w-3 h-3 rounded-full shrink-0"
+                        style={{ backgroundColor: template?.colors.primary || '#C5A55A' }}
+                      />
+                      <div className="px-3 py-2 bg-[#FAF7F2] rounded-lg border border-[#E8E2D8] flex-1 min-w-0">
+                        <span className="text-[10px] text-[#8A8585] block">問卷名稱</span>
+                        <span className="text-sm font-bold text-[#3A3A3A] block truncate">{survey.title}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-3">
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
                         survey.is_active ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'
                       }`}>
                         {survey.is_active ? '啟用中' : '停用'}
                       </span>
-                      <span className="text-[10px] text-[#8A8585]">{responses.length} 則回覆</span>
+                      <span className="text-[10px] text-[#8A8585]">{responses.length} 則</span>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-3 h-3 rounded-full shrink-0"
-                      style={{ backgroundColor: template?.colors.primary || '#C5A55A' }}
-                    />
-                    <h3 className="text-lg font-bold text-[#3A3A3A]">{survey.title}</h3>
                   </div>
                 </div>
 
