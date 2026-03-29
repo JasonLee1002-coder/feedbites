@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       if (!membership) return NextResponse.redirect(new URL('/dashboard', request.url));
     }
 
-    // Set cookie and redirect
+    // Set cookie and redirect with cache bust
     const cookieStore = await cookies();
     cookieStore.set('feedbites_store_id', storeId, {
       httpOnly: true,
@@ -43,7 +43,10 @@ export async function GET(request: NextRequest) {
       maxAge: 60 * 60 * 24 * 365,
     });
 
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    const redirectUrl = new URL(`/dashboard?s=${Date.now()}`, request.url);
+    const response = NextResponse.redirect(redirectUrl);
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    return response;
   } catch {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
