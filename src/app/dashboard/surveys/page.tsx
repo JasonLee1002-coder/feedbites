@@ -116,28 +116,7 @@ export default async function SurveysPage() {
                     </span>
                   </div>
 
-                  {/* Compact action menu */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Link
-                      href={`/dashboard/surveys/${survey.id}`}
-                      className="px-2.5 py-1.5 text-[11px] text-[#8A8585] hover:text-[#C5A55A] hover:bg-[#FAF7F2] rounded-lg transition-colors"
-                    >
-                      統計
-                    </Link>
-                    <Link
-                      href={`/dashboard/surveys/${survey.id}/edit`}
-                      className="px-2.5 py-1.5 text-[11px] text-[#8A8585] hover:text-[#C5A55A] hover:bg-[#FAF7F2] rounded-lg transition-colors"
-                    >
-                      編輯
-                    </Link>
-                    <Link
-                      href={`/dashboard/surveys/${survey.id}/qrcode`}
-                      className="px-2.5 py-1.5 text-[11px] text-[#8A8585] hover:text-[#C5A55A] hover:bg-[#FAF7F2] rounded-lg transition-colors"
-                    >
-                      QR
-                    </Link>
-                    <SurveyDeleteButton surveyId={survey.id} surveyTitle={survey.title} />
-                  </div>
+                  <span className="text-xs text-[#8A8585]">{responses.length} 則回覆</span>
                 </div>
 
                 {/* Customer voices — the main content */}
@@ -225,6 +204,39 @@ export default async function SurveysPage() {
                     )}
                   </div>
                 )}
+
+                {/* Action bar — always visible */}
+                <div className="px-4 py-3 bg-[#FAF7F2]/50 border-t border-[#E8E2D8]/50 flex items-center gap-2 flex-wrap">
+                  <a
+                    href={`/s/${survey.id}?preview=1`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-emerald-500 rounded-lg hover:bg-emerald-600 transition-colors"
+                  >
+                    👁️ 體驗問卷
+                  </a>
+                  <Link
+                    href={`/dashboard/surveys/${survey.id}/qrcode`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-[#FF8C00] rounded-lg hover:bg-[#E07800] transition-colors"
+                  >
+                    📱 QR Code
+                  </Link>
+                  <Link
+                    href={`/dashboard/surveys/${survey.id}/edit`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#3A3A3A] bg-white border border-[#E8E2D8] rounded-lg hover:border-[#C5A55A] transition-colors"
+                  >
+                    ✏️ 編輯
+                  </Link>
+                  <Link
+                    href={`/dashboard/surveys/${survey.id}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#3A3A3A] bg-white border border-[#E8E2D8] rounded-lg hover:border-[#C5A55A] transition-colors"
+                  >
+                    📊 統計
+                  </Link>
+                  <div className="ml-auto">
+                    <SurveyDeleteButton surveyId={survey.id} surveyTitle={survey.title} />
+                  </div>
+                </div>
               </div>
             );
           })}
