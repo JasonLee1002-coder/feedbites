@@ -100,7 +100,7 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
   const isCurrentCollab = currentStoreRole === 'member';
 
   const storeSelector = (
-    <div className="px-3 py-3 border-b border-[#E8E2D8]" ref={dropdownRef}>
+    <div className="px-3 py-3 border-b border-[#E8E2D8] relative" ref={dropdownRef}>
       {/* Current store — prominent display */}
       <button
         onClick={() => setStoreDropdownOpen(!storeDropdownOpen)}
@@ -135,9 +135,9 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
         </div>
       </button>
 
-      {/* Dropdown — store list */}
+      {/* Dropdown — store list (z-[60] to be above mobile overlay) */}
       {storeDropdownOpen && (
-        <div className="mt-2 bg-white rounded-xl border border-[#E8E2D8] shadow-xl overflow-hidden">
+        <div className="mt-2 bg-white rounded-xl border border-[#E8E2D8] shadow-xl overflow-hidden relative z-[60]">
           <div className="px-3 py-2 bg-[#FAF7F2] border-b border-[#E8E2D8]">
             <p className="text-[10px] font-bold text-[#8A8585]">🔄 切換店家</p>
           </div>

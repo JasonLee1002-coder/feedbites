@@ -102,21 +102,25 @@ export default async function SurveysPage() {
             return (
               <div key={survey.id} className="bg-white rounded-2xl border border-[#E8E2D8] overflow-hidden yuzu-health-card">
                 {/* Survey header — compact */}
-                <div className="px-5 py-4 flex items-center justify-between border-b border-[#E8E2D8]/50">
-                  <div className="flex items-center gap-3 min-w-0">
+                <div className="px-5 py-4 border-b border-[#E8E2D8]/50">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] text-[#8A8585] font-medium">📋 問卷名稱</span>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                        survey.is_active ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'
+                      }`}>
+                        {survey.is_active ? '啟用中' : '停用'}
+                      </span>
+                      <span className="text-[10px] text-[#8A8585]">{responses.length} 則回覆</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
                     <div
                       className="w-3 h-3 rounded-full shrink-0"
                       style={{ backgroundColor: template?.colors.primary || '#C5A55A' }}
                     />
-                    <h3 className="font-bold text-[#3A3A3A] truncate">{survey.title}</h3>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${
-                      survey.is_active ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'
-                    }`}>
-                      {survey.is_active ? '啟用中' : '停用'}
-                    </span>
+                    <h3 className="text-lg font-bold text-[#3A3A3A]">{survey.title}</h3>
                   </div>
-
-                  <span className="text-xs text-[#8A8585]">{responses.length} 則回覆</span>
                 </div>
 
                 {/* Customer voices — the main content */}
