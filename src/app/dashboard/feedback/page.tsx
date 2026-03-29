@@ -51,7 +51,7 @@ const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof Cl
 export default function FeedbackPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
-  const [step, setStep] = useState<0 | 1 | 2>(0); // 0=closed, 1=pick category, 2=describe
+  const [step, setStep] = useState<0 | 1 | 2>(1); // 1=pick category, 2=describe (start open)
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Form

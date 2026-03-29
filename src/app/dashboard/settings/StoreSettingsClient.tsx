@@ -920,7 +920,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
       </div>
 
       {/* ═══ Member Management ═══ */}
-      <div className="bg-white rounded-2xl border border-[#E8E2D8] p-6 mb-6">
+      <div id="members" className="bg-white rounded-2xl border border-[#E8E2D8] p-6 mb-6 scroll-mt-20">
         <h2 className="font-bold text-[#3A3A3A] mb-4 flex items-center gap-2">
           <Users className="w-4 h-4 text-[#C5A55A]" />
           成員管理

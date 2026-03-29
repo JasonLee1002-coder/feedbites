@@ -462,7 +462,7 @@ export default function DashboardClient(props: DashboardData) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6 }}
       >
-        <Link href="/dashboard/settings">
+        <Link href="/dashboard/settings#members">
           <motion.div
             className="flex items-center gap-3 p-4 bg-gradient-to-r from-[#1a1a2e] to-[#16213e] rounded-xl cursor-pointer overflow-hidden relative"
             whileHover={{ scale: 1.01, x: 3 }}
