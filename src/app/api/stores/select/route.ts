@@ -33,18 +33,17 @@ export async function GET(request: NextRequest) {
       if (!membership) return NextResponse.redirect(new URL('/dashboard', request.url));
     }
 
-    // Set cookie and redirect with cache bust
-    const cookieStore = await cookies();
-    cookieStore.set('feedbites_store_id', storeId, {
+    // Set cookie directly on the redirect response
+    const redirectUrl = new URL(`/dashboard?s=${Date.now()}`, request.url);
+    const response = NextResponse.redirect(redirectUrl, { status: 302 });
+    const isProduction = process.env.NODE_ENV === 'production';
+    response.cookies.set('feedbites_store_id', storeId, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction,
       sameSite: 'lax',
       path: '/',
       maxAge: 60 * 60 * 24 * 365,
     });
-
-    const redirectUrl = new URL(`/dashboard?s=${Date.now()}`, request.url);
-    const response = NextResponse.redirect(redirectUrl);
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     return response;
   } catch {
@@ -100,17 +99,17 @@ export async function POST(request: Request) {
       }
     }
 
-    // Set cookie
-    const cookieStore = await cookies();
-    cookieStore.set('feedbites_store_id', storeId, {
+    // Set cookie on response object directly
+    const isProduction = process.env.NODE_ENV === 'production';
+    const response = NextResponse.json({ success: true });
+    response.cookies.set('feedbites_store_id', storeId, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction,
       sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 60 * 24 * 365, // 1 year
+      maxAge: 60 * 60 * 24 * 365,
     });
-
-    return NextResponse.json({ success: true });
+    return response;
   } catch (err) {
     console.error('Store select error:', err);
     return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 });
