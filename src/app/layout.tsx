@@ -115,7 +115,7 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="zh-TW">
+    <html lang="zh-TW" style={{ overflowX: 'hidden' }}>
       <head>
         <meta name="theme-color" content="#FF8C00" />
         <script
@@ -123,7 +123,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className={`${notoSans.variable} ${notoSerif.variable} font-sans antialiased`}>
+      <body className={`${notoSans.variable} ${notoSerif.variable} font-sans antialiased overflow-x-hidden max-w-[100vw]`}>
         <LineBrowserGuard />
         {children}
         <Analytics />
