@@ -455,6 +455,35 @@ export default function DashboardClient(props: DashboardData) {
         </Link>
       </motion.div>
 
+      {/* ═══ Invite team ═══ */}
+      <motion.div
+        className="mt-5"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6 }}
+      >
+        <Link href="/dashboard/settings">
+          <motion.div
+            className="flex items-center gap-3 p-4 bg-gradient-to-r from-[#1a1a2e] to-[#16213e] rounded-xl cursor-pointer overflow-hidden relative"
+            whileHover={{ scale: 1.01, x: 3 }}
+            whileTap={{ scale: 0.99 }}
+          >
+            <motion.span
+              className="text-3xl"
+              animate={{ rotate: [0, 10, -10, 0] }}
+              transition={{ duration: 3, repeat: Infinity }}
+            >
+              🤝
+            </motion.span>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-white">邀請夥伴一起管理</p>
+              <p className="text-[11px] text-white/50">產生邀請連結，傳給同事就能加入</p>
+            </div>
+            <ArrowRight className="w-4 h-4 text-[#C5A55A]" />
+          </motion.div>
+        </Link>
+      </motion.div>
+
       {/* ═══ Updates link ═══ */}
       <motion.div
         className="mt-6 text-center"
