@@ -189,8 +189,8 @@ ${JSON.stringify(responseSummaries, null, 2)}
   }
 }
 
-// GET: 取得歷史洞察報告
-export async function GET() {
+// GET: 取得歷史洞察報告，或查詢實際回覆數量
+export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabase();
     const { data: { user } } = await supabase.auth.getUser();
@@ -200,6 +200,28 @@ export async function GET() {
     if (!store) return NextResponse.json({ error: '找不到店家' }, { status: 404 });
 
     const db = createServiceSupabase();
+    const { searchParams } = new URL(request.url);
+
+    // ?check=count → 回傳實際問卷回覆數量
+    if (searchParams.get('check') === 'count') {
+      const { data: surveys } = await db
+        .from('surveys')
+        .select('id')
+        .eq('store_id', store.id);
+
+      if (!surveys || surveys.length === 0) {
+        return NextResponse.json({ count: 0 });
+      }
+
+      const { count } = await db
+        .from('responses')
+        .select('*', { count: 'exact', head: true })
+        .in('survey_id', surveys.map(s => s.id));
+
+      return NextResponse.json({ count: count || 0 });
+    }
+
+    // 預設：取得歷史洞察報告
     const { data: insights } = await db
       .from('feedback_insights')
       .select('*')

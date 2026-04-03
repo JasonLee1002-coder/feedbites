@@ -76,8 +76,9 @@ export default function FeedbackInsightsDashboard() {
   const [analyzing, setAnalyzing] = useState(false);
   const [days, setDays] = useState(7);
   const [expandedIssue, setExpandedIssue] = useState<number | null>(null);
+  const [responseCount, setResponseCount] = useState<number | null>(null);
 
-  useEffect(() => { fetchInsights(); }, []);
+  useEffect(() => { fetchInsights(); fetchResponseCount(); }, []);
 
   const fetchInsights = useCallback(async () => {
     try {
@@ -86,6 +87,16 @@ export default function FeedbackInsightsDashboard() {
     } catch { /* ignore */ } finally {
       setLoading(false);
     }
+  }, []);
+
+  const fetchResponseCount = useCallback(async () => {
+    try {
+      const res = await fetch('/api/ai/feedback-analyze?check=count');
+      if (res.ok) {
+        const data = await res.json();
+        setResponseCount(data.count ?? 0);
+      }
+    } catch { /* ignore */ }
   }, []);
 
   async function runAnalysis() {
@@ -176,16 +187,29 @@ export default function FeedbackInsightsDashboard() {
         </div>
       </div>
 
-      {/* 空狀態 — 友善引導 */}
+      {/* 空狀態 — 根據實際回覆數量顯示不同訊息 */}
       {!hasData && (
         <div className="bg-white rounded-2xl border border-[#E8E2D8] p-12 text-center">
           <div className="w-20 h-20 rounded-full bg-[#C5A55A]/10 flex items-center justify-center mx-auto mb-5">
             <BarChart3 className="w-10 h-10 text-[#C5A55A]" />
           </div>
-          <h2 className="text-lg font-bold text-[#3A3A3A] mb-2">還沒有顧客回饋</h2>
-          <p className="text-sm text-[#8A8585] max-w-sm mx-auto">
-            問卷收到回覆後，點擊「開始分析」，AI 會自動幫你整理顧客的想法與建議。
-          </p>
+          {responseCount !== null && responseCount > 0 ? (
+            <>
+              <h2 className="text-lg font-bold text-[#3A3A3A] mb-2">
+                已收到 {responseCount} 筆回覆，來分析看看！
+              </h2>
+              <p className="text-sm text-[#8A8585] max-w-sm mx-auto">
+                選擇分析期間後，點擊「開始分析」，AI 會幫你整理顧客的想法、找出問題與亮點。
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-lg font-bold text-[#3A3A3A] mb-2">還沒有顧客回饋</h2>
+              <p className="text-sm text-[#8A8585] max-w-sm mx-auto">
+                問卷收到回覆後，點擊「開始分析」，AI 會自動幫你整理顧客的想法與建議。
+              </p>
+            </>
+          )}
         </div>
       )}
 
