@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
 import { getSelectedStore } from '@/lib/store-context';
 import { isSuperAdmin } from '@/lib/admin';
+import { pushFlexMessage, buildStatusChangeMessage } from '@/lib/line/push';
 
 // GET: Get feedback report detail
 export async function GET(
@@ -55,6 +56,13 @@ export async function PATCH(
     const { status } = await request.json();
     const adminDb = createServiceSupabase();
 
+    // Get old status before updating
+    const { data: oldReport } = await adminDb
+      .from('feedback_reports')
+      .select('status, title, store_id, store_name')
+      .eq('id', id)
+      .single();
+
     const { data, error } = await adminDb
       .from('feedback_reports')
       .update({ status, updated_at: new Date().toISOString() })
@@ -63,8 +71,44 @@ export async function PATCH(
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    // ── LINE Push: notify store owner on status change ──
+    if (oldReport && oldReport.status !== status && oldReport.store_id) {
+      try {
+        const { data: store } = await adminDb
+          .from('stores')
+          .select('owner_line_user_id, store_name')
+          .eq('id', oldReport.store_id)
+          .single();
+
+        if (store?.owner_line_user_id) {
+          const flexBody = buildStatusChangeMessage({
+            storeName: store.store_name || oldReport.store_name || '',
+            reportTitle: oldReport.title || '問題回報',
+            oldStatus: oldReport.status,
+            newStatus: status,
+          });
+
+          pushFlexMessage(
+            store.owner_line_user_id,
+            `FeedBites：您的回報狀態更新為「${STATUS_LABELS[status] || status}」`,
+            flexBody,
+          ).catch(() => {});
+        }
+      } catch {
+        // LINE notification is best-effort
+      }
+    }
+
     return NextResponse.json(data);
   } catch {
     return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 });
   }
 }
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: '待處理',
+  'in-progress': '處理中',
+  resolved: '已解決',
+  closed: '已關閉',
+};

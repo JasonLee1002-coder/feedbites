@@ -3,6 +3,7 @@ import { Noto_Sans_TC, Noto_Serif_TC } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import LineBrowserGuard from '@/components/LineBrowserGuard';
+import PwaInstallPrompt from '@/components/PwaInstallPrompt';
 import './globals.css';
 
 const notoSans = Noto_Sans_TC({
@@ -125,6 +126,7 @@ export default function RootLayout({
       </head>
       <body className={`${notoSans.variable} ${notoSerif.variable} font-sans antialiased overflow-x-hidden max-w-[100vw]`}>
         <LineBrowserGuard />
+        <PwaInstallPrompt appName="FeedBites" appIcon="/feedbites-logo.png" accentColor="#C5A55A" />
         {children}
         <Analytics />
         <SpeedInsights />

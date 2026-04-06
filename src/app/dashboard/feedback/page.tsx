@@ -6,6 +6,7 @@ import {
   MessageSquareWarning, Bug, Frown, Lightbulb, HelpCircle, Send,
   Image as ImageIcon, X, Loader2, ChevronRight,
   Clock, CheckCircle2, AlertCircle, ArrowRight, MessageCircle, Upload,
+  Star, TrendingUp, Zap, Heart, Trash2, Check,
 } from 'lucide-react';
 
 interface Attachment {
@@ -30,6 +31,8 @@ interface Report {
   status: string;
   created_at: string;
   updated_at: string;
+  satisfaction_rating: number | null;
+  satisfaction_comment: string | null;
   feedback_attachments: Attachment[];
   feedback_responses: FeedbackResponse[];
 }
@@ -64,6 +67,13 @@ export default function FeedbackPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [replying, setReplying] = useState<Record<string, boolean>>({});
+  const [ratingHover, setRatingHover] = useState<Record<string, number>>({});
+  const [ratingSelected, setRatingSelected] = useState<Record<string, number>>({});
+  const [ratingComment, setRatingComment] = useState<Record<string, string>>({});
+  const [ratingSubmitting, setRatingSubmitting] = useState<Record<string, boolean>>({});
+  const [deleteMode, setDeleteMode] = useState(false);
+  const [selectedForDelete, setSelectedForDelete] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => { fetchReports(); }, []);
 
@@ -93,6 +103,54 @@ export default function FeedbackPage() {
     } catch { /* ignore */ } finally {
       setReplying(prev => ({ ...prev, [reportId]: false }));
     }
+  }
+
+  async function handleRate(reportId: string) {
+    const rating = ratingSelected[reportId];
+    if (!rating) return;
+    setRatingSubmitting(prev => ({ ...prev, [reportId]: true }));
+    try {
+      const res = await fetch(`/api/feedback/${reportId}/rate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating, comment: ratingComment[reportId] || '' }),
+      });
+      if (res.ok) fetchReports();
+    } catch { /* ignore */ } finally {
+      setRatingSubmitting(prev => ({ ...prev, [reportId]: false }));
+    }
+  }
+
+  function toggleDeleteSelect(id: string) {
+    setSelectedForDelete(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleDelete() {
+    if (selectedForDelete.size === 0) return;
+    setDeleting(true);
+    try {
+      const res = await fetch('/api/feedback/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selectedForDelete) }),
+      });
+      if (res.ok) {
+        setDeleteMode(false);
+        setSelectedForDelete(new Set());
+        fetchReports();
+      }
+    } catch { /* ignore */ } finally {
+      setDeleting(false);
+    }
+  }
+
+  function exitDeleteMode() {
+    setDeleteMode(false);
+    setSelectedForDelete(new Set());
   }
 
   function pickCategory(id: string) {
@@ -257,7 +315,7 @@ export default function FeedbackPage() {
                   >
                     🔍
                   </motion.div>
-                  <h2 className="font-bold text-white text-lg">遇到什麼問題了嗎？</h2>
+                  <h2 className="font-bold text-white text-lg tracking-wide" style={{ fontFamily: "'Noto Serif TC', serif" }}>遇到什麼問題了嗎？</h2>
                 </div>
                 <button onClick={resetForm} className="text-white/40 hover:text-white transition-colors">
                   <X className="w-5 h-5" />
@@ -319,7 +377,7 @@ export default function FeedbackPage() {
                   >
                     ✏️
                   </motion.div>
-                  <h2 className="font-bold text-white text-lg">告訴我們更多細節</h2>
+                  <h2 className="font-bold text-white text-lg tracking-wide" style={{ fontFamily: "'Noto Serif TC', serif" }}>告訴我們更多細節</h2>
                 </div>
                 {/* Step dots */}
                 <div className="flex items-center gap-1.5">
@@ -437,9 +495,11 @@ export default function FeedbackPage() {
         )}
       </AnimatePresence>
 
-      {/* ═══ Service Stats Banner ═══ */}
+      {/* ═══ Enhanced Service Stats Dashboard ═══ */}
       {reports.length > 0 && step === 0 && (() => {
         const resolved = reports.filter(r => r.status === 'resolved' || r.status === 'closed');
+        const inProgress = reports.filter(r => r.status === 'in-progress');
+        const pending = reports.filter(r => r.status === 'pending');
         const withResponse = reports.filter(r => r.feedback_responses?.length > 0);
         const avgHours = withResponse.length > 0
           ? Math.round(withResponse.reduce((sum, r) => {
@@ -448,73 +508,127 @@ export default function FeedbackPage() {
               return sum + (firstReply - submitted) / (1000 * 60 * 60);
             }, 0) / withResponse.length)
           : null;
+        const rated = reports.filter(r => r.satisfaction_rating !== null && r.satisfaction_rating !== undefined);
+        const avgRating = rated.length > 0
+          ? (rated.reduce((sum, r) => sum + (r.satisfaction_rating || 0), 0) / rated.length).toFixed(1)
+          : null;
+        const resolveRate = reports.length > 0 ? Math.round((resolved.length / reports.length) * 100) : 0;
+
         return (
           <motion.div
-            className="mb-6 bg-gradient-to-r from-[#1a1a2e] to-[#16213e] rounded-2xl p-5 text-white relative overflow-hidden"
+            className="mb-6 bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f172a] rounded-2xl text-white relative overflow-hidden"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            {/* Decorative sparkles */}
+            {/* Decorative elements */}
             <motion.div
-              className="absolute top-3 right-16 text-lg opacity-30"
+              className="absolute top-4 right-20 text-lg opacity-20"
               animate={{ rotate: [0, 360], scale: [1, 1.2, 1] }}
               transition={{ duration: 4, repeat: Infinity }}
-            >
-              ✨
-            </motion.div>
+            >✨</motion.div>
             <motion.div
-              className="absolute bottom-2 right-6 text-sm opacity-20"
+              className="absolute bottom-8 right-8 text-sm opacity-15"
               animate={{ rotate: [0, -360] }}
               transition={{ duration: 6, repeat: Infinity }}
-            >
-              ⭐
-            </motion.div>
+            >⭐</motion.div>
+            <motion.div
+              className="absolute top-12 right-4 w-20 h-20 rounded-full bg-[#C5A55A]/5 blur-xl"
+              animate={{ scale: [1, 1.3, 1] }}
+              transition={{ duration: 5, repeat: Infinity }}
+            />
 
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-[#C5A55A]/20 flex items-center justify-center">
-                <span className="text-base">🛡️</span>
+            {/* Header */}
+            <div className="px-5 pt-5 pb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <motion.div
+                  className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#C5A55A] to-[#A08735] flex items-center justify-center shadow-lg shadow-[#C5A55A]/20"
+                  whileHover={{ rotate: 10 }}
+                >
+                  <span className="text-base">🛡️</span>
+                </motion.div>
+                <div>
+                  <h3 className="text-sm font-bold tracking-wide">FeedBites 服務儀表板</h3>
+                  <p className="text-[10px] text-white/40">我們重視每一則回饋</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-sm font-bold">FeedBites 客服承諾</h3>
-                <p className="text-[10px] text-white/50">我們重視每一則回饋</p>
-              </div>
+              {avgRating && (
+                <motion.div
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/20"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', delay: 0.5 }}
+                >
+                  <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                  <span className="text-sm font-bold text-amber-300">{avgRating}</span>
+                  <span className="text-[9px] text-amber-400/60">滿意度</span>
+                </motion.div>
+              )}
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white/10 rounded-xl p-3 text-center backdrop-blur-sm">
-                <motion.div
-                  className="text-2xl font-bold text-[#C5A55A]"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: 'spring', delay: 0.2 }}
-                >
-                  {resolved.length}
-                </motion.div>
-                <div className="text-[10px] text-white/60 mt-0.5">已解決</div>
-              </div>
-              <div className="bg-white/10 rounded-xl p-3 text-center backdrop-blur-sm">
-                <motion.div
-                  className="text-2xl font-bold text-emerald-400"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: 'spring', delay: 0.3 }}
-                >
-                  {reports.length > 0 ? Math.round((resolved.length / reports.length) * 100) : 0}%
-                </motion.div>
-                <div className="text-[10px] text-white/60 mt-0.5">解決率</div>
-              </div>
-              <div className="bg-white/10 rounded-xl p-3 text-center backdrop-blur-sm">
-                <motion.div
-                  className="text-2xl font-bold text-sky-400"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: 'spring', delay: 0.4 }}
-                >
-                  {avgHours !== null ? (avgHours < 1 ? '<1' : avgHours) : '—'}
-                </motion.div>
-                <div className="text-[10px] text-white/60 mt-0.5">平均回覆(時)</div>
-              </div>
+            {/* Stats Grid */}
+            <div className="px-5 pb-4 grid grid-cols-4 gap-2.5">
+              {[
+                { value: resolved.length, label: '已解決', color: 'text-emerald-400', icon: CheckCircle2, delay: 0.1 },
+                { value: `${resolveRate}%`, label: '解決率', color: 'text-[#C5A55A]', icon: TrendingUp, delay: 0.2 },
+                { value: avgHours !== null ? (avgHours < 1 ? '<1h' : `${avgHours}h`) : '—', label: '平均回覆', color: 'text-sky-400', icon: Zap, delay: 0.3 },
+                { value: reports.length, label: '總回報', color: 'text-purple-400', icon: MessageSquareWarning, delay: 0.4 },
+              ].map((stat, i) => {
+                const Icon = stat.icon;
+                return (
+                  <motion.div
+                    key={i}
+                    className="bg-white/[0.06] hover:bg-white/[0.1] rounded-xl p-3 text-center backdrop-blur-sm transition-colors border border-white/[0.04]"
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: 'spring', delay: stat.delay }}
+                  >
+                    <Icon className={`w-3.5 h-3.5 mx-auto mb-1 ${stat.color} opacity-60`} />
+                    <div className={`text-xl font-bold ${stat.color}`}>{stat.value}</div>
+                    <div className="text-[9px] text-white/40 mt-0.5">{stat.label}</div>
+                  </motion.div>
+                );
+              })}
             </div>
+
+            {/* Progress Bar: pending / in-progress / resolved */}
+            {reports.length > 0 && (
+              <div className="px-5 pb-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] text-white/40">處理進度</span>
+                  <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden flex">
+                    {resolved.length > 0 && (
+                      <motion.div
+                        className="h-full bg-emerald-500 rounded-l-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(resolved.length / reports.length) * 100}%` }}
+                        transition={{ duration: 0.8, delay: 0.3 }}
+                      />
+                    )}
+                    {inProgress.length > 0 && (
+                      <motion.div
+                        className="h-full bg-blue-500"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(inProgress.length / reports.length) * 100}%` }}
+                        transition={{ duration: 0.8, delay: 0.5 }}
+                      />
+                    )}
+                    {pending.length > 0 && (
+                      <motion.div
+                        className="h-full bg-amber-500/50 rounded-r-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(pending.length / reports.length) * 100}%` }}
+                        transition={{ duration: 0.8, delay: 0.7 }}
+                      />
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-[9px] text-white/30">
+                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />已解決 {resolved.length}</span>
+                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-500" />處理中 {inProgress.length}</span>
+                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500/50" />待處理 {pending.length}</span>
+                </div>
+              </div>
+            )}
           </motion.div>
         );
       })()}
@@ -540,12 +654,52 @@ export default function FeedbackPage() {
         </motion.div>
       ) : reports.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-sm font-bold text-[#8A8585] mb-2 flex items-center gap-2">
-            回報紀錄
-            <span className="px-2 py-0.5 bg-[#C5A55A]/10 text-[#A08735] rounded-full text-[11px]">
-              {reports.length}
-            </span>
-          </h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-bold text-[#3A3A3A] flex items-center gap-2" style={{ fontFamily: "'Noto Serif TC', serif" }}>
+              <motion.div
+                className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#C5A55A]/20 to-[#A08735]/10 flex items-center justify-center"
+                whileHover={{ rotate: 10 }}
+              >
+                <MessageCircle className="w-4 h-4 text-[#C5A55A]" />
+              </motion.div>
+              回報紀錄
+              <span className="px-2 py-0.5 bg-[#C5A55A]/10 text-[#A08735] rounded-full text-[11px] font-normal">
+                {reports.length}
+              </span>
+            </h2>
+            {!deleteMode ? (
+              <motion.button
+                onClick={() => setDeleteMode(true)}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] text-red-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                whileTap={{ scale: 0.95 }}
+              >
+                <Trash2 className="w-3 h-3" />
+                刪除
+              </motion.button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={exitDeleteMode}
+                  className="px-2.5 py-1 rounded-lg text-[11px] text-[#8A8585] hover:bg-gray-100 transition-colors"
+                >
+                  取消
+                </button>
+                <motion.button
+                  onClick={handleDelete}
+                  disabled={selectedForDelete.size === 0 || deleting}
+                  className="flex items-center gap-1 px-3 py-1 rounded-lg text-[11px] font-bold text-white bg-red-500 hover:bg-red-600 disabled:opacity-40 transition-all"
+                  whileTap={{ scale: 0.95 }}
+                >
+                  {deleting ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-3 h-3" />
+                  )}
+                  刪除 {selectedForDelete.size > 0 ? `(${selectedForDelete.size})` : ''}
+                </motion.button>
+              </div>
+            )}
+          </div>
           {reports.map((report, idx) => {
             const isExpanded = expandedId === report.id;
             const statusInfo = STATUS_MAP[report.status] || STATUS_MAP.pending;
@@ -598,10 +752,29 @@ export default function FeedbackPage() {
               >
                 {/* ── Card Header ── */}
                 <button
-                  onClick={() => setExpandedId(isExpanded ? null : report.id)}
+                  onClick={() => deleteMode ? toggleDeleteSelect(report.id) : setExpandedId(isExpanded ? null : report.id)}
                   className="w-full p-4 text-left hover:bg-[#FAF7F2]/50 transition-colors"
                 >
                   <div className="flex items-center gap-3">
+                    {/* Delete mode checkbox */}
+                    {deleteMode && (
+                      <motion.div
+                        initial={{ scale: 0, width: 0 }}
+                        animate={{ scale: 1, width: 'auto' }}
+                        exit={{ scale: 0, width: 0 }}
+                        className="shrink-0"
+                      >
+                        <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
+                          selectedForDelete.has(report.id)
+                            ? 'bg-red-500 border-red-500'
+                            : 'border-gray-300 bg-white'
+                        }`}>
+                          {selectedForDelete.has(report.id) && (
+                            <Check className="w-3.5 h-3.5 text-white" />
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
                     <div
                       className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                       style={{ background: isResolved ? '#ECFDF5' : catInfo2.bg }}
@@ -726,22 +899,123 @@ export default function FeedbackPage() {
                           ))}
                         </div>
 
-                        {/* ── Resolved celebration ── */}
+                        {/* ── Resolved celebration + Satisfaction Rating ── */}
                         {isResolved && (
                           <motion.div
-                            className="mb-4 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border border-emerald-200 text-center"
+                            className="mb-4 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border border-emerald-200 overflow-hidden"
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                           >
-                            <motion.div
-                              className="text-3xl mb-2"
-                              animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.1, 1] }}
-                              transition={{ duration: 1.5, repeat: 2 }}
-                            >
-                              🎉
-                            </motion.div>
-                            <p className="text-sm font-bold text-emerald-700">問題已解決！</p>
-                            <p className="text-[11px] text-emerald-600/70 mt-1">感謝你的回饋，讓我們持續變更好</p>
+                            <div className="p-4 text-center">
+                              <motion.div
+                                className="text-3xl mb-2"
+                                animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.1, 1] }}
+                                transition={{ duration: 1.5, repeat: 2 }}
+                              >
+                                🎉
+                              </motion.div>
+                              <p className="text-sm font-bold text-emerald-700">問題已解決！</p>
+                              <p className="text-[11px] text-emerald-600/70 mt-1">感謝你的回饋，讓我們持續變更好</p>
+                            </div>
+
+                            {/* Satisfaction Rating */}
+                            {report.satisfaction_rating ? (
+                              <div className="px-4 pb-4">
+                                <div className="bg-white/60 rounded-xl p-3 text-center border border-emerald-200/50">
+                                  <div className="flex items-center justify-center gap-1 mb-1">
+                                    {[1, 2, 3, 4, 5].map(s => (
+                                      <Star
+                                        key={s}
+                                        className={`w-4 h-4 ${s <= report.satisfaction_rating! ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`}
+                                      />
+                                    ))}
+                                  </div>
+                                  <p className="text-[10px] text-emerald-600/70 flex items-center justify-center gap-1">
+                                    <Heart className="w-3 h-3" />
+                                    感謝您的評分！
+                                  </p>
+                                  {report.satisfaction_comment && (
+                                    <p className="text-[11px] text-[#3A3A3A]/70 mt-1 italic">
+                                      「{report.satisfaction_comment}」
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="px-4 pb-4">
+                                <div className="bg-white/60 rounded-xl p-4 border border-emerald-200/50">
+                                  <p className="text-xs font-bold text-emerald-700 text-center mb-3">
+                                    這次處理滿意嗎？給我們打個分吧 ✨
+                                  </p>
+                                  {/* Star rating */}
+                                  <div className="flex items-center justify-center gap-2 mb-3">
+                                    {[1, 2, 3, 4, 5].map(s => {
+                                      const hoverVal = ratingHover[report.id] || 0;
+                                      const selectedVal = ratingSelected[report.id] || 0;
+                                      const isActive = s <= (hoverVal || selectedVal);
+                                      return (
+                                        <motion.button
+                                          key={s}
+                                          onMouseEnter={() => setRatingHover(prev => ({ ...prev, [report.id]: s }))}
+                                          onMouseLeave={() => setRatingHover(prev => ({ ...prev, [report.id]: 0 }))}
+                                          onClick={() => setRatingSelected(prev => ({ ...prev, [report.id]: s }))}
+                                          className="p-1 transition-all"
+                                          whileHover={{ scale: 1.3, y: -2 }}
+                                          whileTap={{ scale: 0.9 }}
+                                        >
+                                          <Star
+                                            className={`w-7 h-7 transition-colors ${
+                                              isActive
+                                                ? 'text-amber-400 fill-amber-400 drop-shadow-[0_0_4px_rgba(251,191,36,0.4)]'
+                                                : 'text-gray-200 hover:text-amber-200'
+                                            }`}
+                                          />
+                                        </motion.button>
+                                      );
+                                    })}
+                                  </div>
+                                  {/* Rating label */}
+                                  {(ratingHover[report.id] || ratingSelected[report.id]) ? (
+                                    <motion.p
+                                      className="text-center text-xs text-amber-600 font-medium mb-2"
+                                      initial={{ opacity: 0 }}
+                                      animate={{ opacity: 1 }}
+                                    >
+                                      {['', '😞 不太滿意', '😐 還好', '🙂 滿意', '😊 很滿意', '🤩 非常滿意'][ratingHover[report.id] || ratingSelected[report.id] || 0]}
+                                    </motion.p>
+                                  ) : null}
+                                  {/* Comment + Submit */}
+                                  {ratingSelected[report.id] && (
+                                    <motion.div
+                                      initial={{ opacity: 0, height: 0 }}
+                                      animate={{ opacity: 1, height: 'auto' }}
+                                      className="space-y-2"
+                                    >
+                                      <input
+                                        type="text"
+                                        value={ratingComment[report.id] || ''}
+                                        onChange={e => setRatingComment(prev => ({ ...prev, [report.id]: e.target.value }))}
+                                        placeholder="想說什麼都可以（選填）"
+                                        className="w-full px-3 py-2 rounded-lg border border-emerald-200 text-xs outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/20 bg-white"
+                                      />
+                                      <motion.button
+                                        onClick={() => handleRate(report.id)}
+                                        disabled={ratingSubmitting[report.id]}
+                                        className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg text-xs font-bold shadow-md shadow-emerald-500/15 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                      >
+                                        {ratingSubmitting[report.id] ? (
+                                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        ) : (
+                                          <><Heart className="w-3.5 h-3.5" />送出評分</>
+                                        )}
+                                      </motion.button>
+                                    </motion.div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                           </motion.div>
                         )}
 
