@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node -e \"try{require.resolve('react-markdown')}catch(e){console.log('Installing react-markdown...');require('child_process').execSync('npm install react-markdown',{stdio:'inherit'})}\"",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
