@@ -32,6 +32,37 @@ const DEFAULT_PRIZE_COLORS = [
 
 const EMOJI_PICKER = ['🎫', '🥤', '🔥', '🍰', '💰', '👫', '🍕', '🎁', '🍜', '☕', '🧁', '🍺', '🎂', '🥗', '🍱', '💎'];
 
+// 智慧關鍵字 → 建議選項
+const QUESTION_PRESETS: Record<string, string[]> = {
+  '性別': ['男', '女', '不公開'],
+  '18歲': ['是', '否'],
+  '已滿': ['是', '否'],
+  '是否': ['是', '否'],
+  '會不會': ['會', '不會'],
+  '有沒有': ['有', '沒有'],
+  '造訪頻率': ['第一次來', '偶爾', '常客', '每週都來'],
+  '來店頻率': ['第一次來', '偶爾', '常客', '每週都來'],
+  '用餐人數': ['1人', '2人', '3-4人', '5人以上'],
+  '幾人': ['1人', '2人', '3-4人', '5人以上'],
+  '消費金額': ['300元以下', '300-600元', '600-1000元', '1000元以上'],
+  '得知': ['朋友推薦', 'Google搜尋', 'Instagram', '路過看到'],
+  '如何認識': ['朋友推薦', 'Google搜尋', 'Instagram', '路過看到'],
+  '訂位方式': ['電話', '網路預約', '現場候位', 'LINE'],
+  '預約': ['電話', '網路預約', '現場候位', 'LINE'],
+  '年齡': ['18歲以下', '18-25歲', '26-35歲', '36-45歲', '46歲以上'],
+  '職業': ['學生', '上班族', '自由業', '家庭主婦/夫', '退休'],
+  '交通': ['步行', '自行車', '機車', '開車', '大眾運輸'],
+  '用餐方式': ['內用', '外帶', '外送'],
+  '滿意度': ['非常滿意', '滿意', '普通', '不滿意'],
+};
+
+function findPreset(label: string): string[] | null {
+  for (const [key, opts] of Object.entries(QUESTION_PRESETS)) {
+    if (label.includes(key)) return opts;
+  }
+  return null;
+}
+
 interface EditClientProps {
   surveyId: string;
   initialTitle: string;
@@ -69,6 +100,7 @@ export default function EditClient({
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [prizeItems, setPrizeItems] = useState<PrizeItem[]>(initialPrizeItems || []);
   const [showPrizeEditor, setShowPrizeEditor] = useState(false);
+  const [optionInputs, setOptionInputs] = useState<Record<string, string>>({});
 
   function updateQuestion(index: number, updates: Partial<Question>) {
     setQuestions(qs => qs.map((q, i) => i === index ? { ...q, ...updates } : q));
@@ -454,7 +486,16 @@ export default function EditClient({
                   {/* Type selector */}
                   <select
                     value={q.type}
-                    onChange={e => updateQuestion(i, { type: e.target.value as Question['type'] })}
+                    onChange={e => {
+                      const newType = e.target.value as Question['type'];
+                      const isChoice = newType === 'radio' || newType === 'checkbox' || newType === 'radio-with-reason';
+                      const preset = findPreset(q.label || '');
+                      if (isChoice && preset && (!q.options || q.options.length === 0)) {
+                        updateQuestion(i, { type: newType, options: preset });
+                      } else {
+                        updateQuestion(i, { type: newType });
+                      }
+                    }}
                     className="px-2 py-1 rounded-lg border border-[#E8E2D8] text-[10px] outline-none bg-white text-[#8A8585]"
                   >
                     {TYPE_OPTIONS.map(t => (
@@ -472,17 +513,72 @@ export default function EditClient({
                     </button>
                   )}
 
-                  {/* Options editor for radio/checkbox */}
-                  {(q.type === 'radio' || q.type === 'checkbox' || q.type === 'radio-with-reason') && (
-                    <input
-                      type="text"
-                      value={(q.options || []).join('、')}
-                      onChange={e => updateQuestion(i, { options: e.target.value.split('、').map(s => s.trim()).filter(Boolean) })}
-                      placeholder="選項（用「、」分隔）"
-                      className="flex-1 px-2 py-1 rounded-lg border border-[#E8E2D8] text-[10px] outline-none focus:border-[#C5A55A] bg-white min-w-[150px]"
-                    />
-                  )}
                 </div>
+
+                {/* Options chip editor for radio/checkbox */}
+                {(q.type === 'radio' || q.type === 'checkbox' || q.type === 'radio-with-reason') && (() => {
+                  const opts = q.options || [];
+                  const preset = findPreset(q.label || '');
+                  const inputVal = optionInputs[q.id] || '';
+                  const addOpt = (val: string) => {
+                    const t = val.trim();
+                    if (!t || opts.includes(t)) { setOptionInputs(p => ({ ...p, [q.id]: '' })); return; }
+                    updateQuestion(i, { options: [...opts, t] });
+                    setOptionInputs(p => ({ ...p, [q.id]: '' }));
+                  };
+                  return (
+                    <div className="space-y-1.5">
+                      {/* Chip row */}
+                      <div className="flex flex-wrap gap-1.5 px-2.5 py-2 rounded-xl border border-[#E8E2D8] bg-white items-center min-h-[38px] focus-within:border-[#C5A55A] transition-colors">
+                        {opts.map((opt, oi) => (
+                          <span key={oi} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#C5A55A]/15 text-[#3A3A3A] text-xs font-medium">
+                            {opt}
+                            <button
+                              onClick={() => updateQuestion(i, { options: opts.filter((_, j) => j !== oi) })}
+                              className="text-[#8A8585] hover:text-red-500 leading-none ml-0.5"
+                            >×</button>
+                          </span>
+                        ))}
+                        <input
+                          type="text"
+                          value={inputVal}
+                          onChange={e => setOptionInputs(p => ({ ...p, [q.id]: e.target.value }))}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' || e.key === ',' || e.key === '、') {
+                              e.preventDefault();
+                              addOpt(inputVal);
+                            }
+                            if (e.key === 'Backspace' && !inputVal && opts.length > 0) {
+                              updateQuestion(i, { options: opts.slice(0, -1) });
+                            }
+                          }}
+                          onBlur={() => { if (inputVal.trim()) addOpt(inputVal); }}
+                          placeholder={opts.length === 0 ? '輸入選項，按 Enter 新增...' : '再加一個...'}
+                          className="flex-1 min-w-[90px] text-xs outline-none bg-transparent text-[#3A3A3A] placeholder-[#C0BAB4]"
+                        />
+                      </div>
+                      {/* Smart suggestions */}
+                      {preset && preset.some(p => !opts.includes(p)) && (
+                        <div className="flex items-center gap-1.5 flex-wrap pl-0.5">
+                          <span className="text-[10px] text-[#C5A55A] font-medium">💡</span>
+                          {preset.filter(p => !opts.includes(p)).map(p => (
+                            <button
+                              key={p}
+                              onClick={() => updateQuestion(i, { options: [...opts, p] })}
+                              className="px-2 py-0.5 rounded-full border border-[#C5A55A]/50 text-[10px] text-[#C5A55A] hover:bg-[#C5A55A]/10 transition-colors"
+                            >+ {p}</button>
+                          ))}
+                          {opts.length === 0 && (
+                            <button
+                              onClick={() => updateQuestion(i, { options: [...preset] })}
+                              className="px-2.5 py-0.5 rounded-full bg-[#C5A55A] text-[10px] text-white hover:bg-[#A08735] transition-colors font-medium"
+                            >一鍵全選</button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Delete */}
