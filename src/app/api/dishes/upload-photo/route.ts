@@ -53,11 +53,14 @@ export async function POST(request: NextRequest) {
 
     // If dishId provided, update the dish record
     if (dishId) {
-      await adminDb
+      const { error: updateErr } = await adminDb
         .from('dishes')
-        .update({ photo_url: publicUrl, updated_at: new Date().toISOString() })
+        .update({ photo_url: publicUrl })
         .eq('id', dishId)
         .eq('store_id', store.id);
+      if (updateErr) {
+        console.error('Failed to update dish photo_url:', updateErr.message);
+      }
     }
 
     return NextResponse.json({ url: publicUrl });

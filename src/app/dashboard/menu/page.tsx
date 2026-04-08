@@ -45,13 +45,18 @@ export default function MenuPage() {
   const menuUploadRef = useRef<HTMLInputElement>(null);
   const menuCameraRef = useRef<HTMLInputElement>(null);
 
-  // Smart menu upload state
-  const [showMenuUpload, setShowMenuUpload] = useState(false);
+  // Smart menu upload state — restored from sessionStorage on mount so navigation doesn't wipe unsaved results
+  const PARSED_KEY = 'fb_parsed_dishes';
+  const [showMenuUpload, setShowMenuUpload] = useState(() => {
+    try { return !!JSON.parse(sessionStorage.getItem(PARSED_KEY) || 'null'); } catch { return false; }
+  });
   const [menuParsing, setMenuParsing] = useState(false);
   const [parsedDishes, setParsedDishes] = useState<Array<{
     name: string; description: string; category: string; price: string; selected: boolean;
     bbox?: [number, number, number, number]; photoUrl?: string;
-  }>>([]);
+  }>>(() => {
+    try { return JSON.parse(sessionStorage.getItem(PARSED_KEY) || '[]'); } catch { return []; }
+  });
   const [parseNotes, setParseNotes] = useState('');
   const [batchSaving, setBatchSaving] = useState(false);
   const [batchProgress, setBatchProgress] = useState(0);
@@ -80,6 +85,17 @@ export default function MenuPage() {
   useEffect(() => {
     fetchDishes();
   }, []);
+
+  // Sync parsedDishes to sessionStorage so navigation doesn't wipe unsaved results
+  useEffect(() => {
+    try {
+      if (parsedDishes.length > 0) {
+        sessionStorage.setItem(PARSED_KEY, JSON.stringify(parsedDishes));
+      } else {
+        sessionStorage.removeItem(PARSED_KEY);
+      }
+    } catch { /* ignore */ }
+  }, [parsedDishes, PARSED_KEY]);
 
   async function fetchDishes() {
     try {
@@ -164,7 +180,7 @@ export default function MenuPage() {
       if (res.ok && data.url) {
         setFormPhotoUrl(data.url);
         setDishes(prev => prev.map(d => d.id === effectiveDishId ? { ...d, photo_url: data.url } : d));
-        setPhotoToast('✅ 照片已儲存！可繼續填寫菜品資料');
+        setPhotoToast('show');
         setTimeout(() => setPhotoToast(null), 3000);
       }
     } catch { /* ignore */ } finally {
@@ -493,8 +509,9 @@ export default function MenuPage() {
         }
         setBatchProgress(Math.round(((i + 1) / selected.length) * 100));
       }
-      setParsedDishes([]);
+      setParsedDishes([]);  // also clears sessionStorage via useEffect
       setShowMenuUpload(false);
+      await fetchDishes(); // refresh from DB to confirm photos are saved
       // 成功慶祝
       setBatchSuccess({ count: selected.length });
       confetti({
@@ -545,10 +562,14 @@ export default function MenuPage() {
 
   return (
     <div className="p-4 lg:p-8 max-w-6xl mx-auto">
-      {/* Photo upload toast */}
+      {/* Photo upload toast — big celebratory notification */}
       {photoToast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2.5 px-5 py-3 bg-[#1a1a2e] text-white rounded-2xl shadow-2xl text-sm font-semibold animate-bounce-in">
-          {photoToast}
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] animate-bounce-in">
+          <div className="flex flex-col items-center gap-1 px-8 py-4 bg-gradient-to-br from-[#1a1a2e] to-[#2d1b4e] text-white rounded-3xl shadow-2xl border border-white/10">
+            <div className="text-3xl">📸</div>
+            <div className="text-lg font-black tracking-wide">照片已儲存！</div>
+            <div className="text-xs text-white/60">繼續填寫菜品資料後點儲存</div>
+          </div>
         </div>
       )}
       {/* Header */}
