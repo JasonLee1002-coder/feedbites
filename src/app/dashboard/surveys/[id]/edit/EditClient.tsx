@@ -318,7 +318,7 @@ export default function EditClient({
       });
       if (res.ok) {
         setSaved(true);
-        setTimeout(() => router.back(), 1000);
+        setTimeout(() => router.push(`/dashboard/surveys/${surveyId}`), 1000);
       }
     } catch { /* ignore */ } finally {
       setSaving(false);
