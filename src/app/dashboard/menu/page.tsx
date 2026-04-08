@@ -126,12 +126,19 @@ export default function MenuPage() {
       const data = await res.json();
 
       if (res.ok && data.url) {
-        setFormPhotoUrl(data.url);
+        // Add cache-busting to prevent stale images
+        const freshUrl = data.url + (data.url.includes('?') ? '&' : '?') + `t=${Date.now()}`;
+        setFormPhotoUrl(freshUrl);
         if (dishId) {
-          setDishes(prev => prev.map(d => d.id === dishId ? { ...d, photo_url: data.url } : d));
+          setDishes(prev => prev.map(d => d.id === dishId ? { ...d, photo_url: freshUrl } : d));
         }
+      } else {
+        alert(data.error || '照片上傳失敗，請稍後再試');
       }
-    } catch { /* ignore */ } finally {
+    } catch (err) {
+      console.error('Photo upload error:', err);
+      alert('照片上傳失敗，請檢查網路連線');
+    } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }

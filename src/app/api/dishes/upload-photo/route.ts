@@ -51,16 +51,19 @@ export async function POST(request: NextRequest) {
       .from('store-assets')
       .getPublicUrl(fileName);
 
-    // If dishId provided, update the dish record
+    // Add cache-busting param to avoid stale images
+    const freshUrl = publicUrl + (publicUrl.includes('?') ? '&' : '?') + `t=${Date.now()}`;
+
+    // If dishId provided, update the dish record (store URL without cache param)
     if (dishId) {
       await adminDb
         .from('dishes')
-        .update({ photo_url: publicUrl, updated_at: new Date().toISOString() })
+        .update({ photo_url: freshUrl, updated_at: new Date().toISOString() })
         .eq('id', dishId)
         .eq('store_id', store.id);
     }
 
-    return NextResponse.json({ url: publicUrl });
+    return NextResponse.json({ url: freshUrl });
   } catch (err) {
     console.error('Dish photo upload error:', err);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
