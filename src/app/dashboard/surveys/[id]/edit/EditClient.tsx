@@ -318,7 +318,7 @@ export default function EditClient({
       });
       if (res.ok) {
         setSaved(true);
-        setTimeout(() => router.push(`/dashboard/surveys/${surveyId}`), 1000);
+        setTimeout(() => router.back(), 1000);
       }
     } catch { /* ignore */ } finally {
       setSaving(false);
@@ -339,12 +339,14 @@ export default function EditClient({
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <Link href={`/dashboard/surveys/${surveyId}`}
-            className="flex items-center justify-center w-9 h-9 rounded-xl active:scale-95 transition-all text-white shadow-sm"
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl active:scale-95 transition-all text-white shadow-md hover:shadow-lg hover:-translate-y-0.5 text-sm font-bold"
             style={{ backgroundColor: themeColor }}
           >
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
+            <ArrowLeft className="w-4 h-4" />
+            返回
+          </button>
           <h1 className="text-xl font-bold font-serif transition-colors duration-500" style={{ color: textColor }}>快速編輯問卷</h1>
         </div>
         <button
@@ -1174,12 +1176,14 @@ export default function EditClient({
 
       {/* Bottom save */}
       <div className="flex items-center justify-between">
-        <Link
-          href={`/dashboard/surveys/${surveyId}`}
-          className="text-sm text-[#8A8585] hover:text-[#3A3A3A]"
+        <button
+          onClick={() => router.back()}
+          className="text-sm font-medium hover:underline flex items-center gap-1.5 transition-colors"
+          style={{ color: themeColor }}
         >
-          ← 返回問卷詳情
-        </Link>
+          <ArrowLeft className="w-4 h-4" />
+          返回上一頁
+        </button>
         <button
           onClick={handleSave}
           disabled={saving}
