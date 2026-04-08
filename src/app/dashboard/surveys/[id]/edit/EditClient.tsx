@@ -130,6 +130,7 @@ export default function EditClient({
   const router = useRouter();
 
   const HIDDEN_TMPL_KEY = `fb_hidden_tmpl_${storeId}`;
+  const AI_TMPL_KEY = `fb_ai_tmpl_${surveyId}`;
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -160,6 +161,9 @@ export default function EditClient({
   const [aiVariants, setAiVariants] = useState<(ThemeColors & { name: string; vibe: string })[]>([]);
   const [hoveredAiVariantIdx, setHoveredAiVariantIdx] = useState<number | null>(null);
   const [aiAppliedName, setAiAppliedName] = useState<string | null>(null);
+  // Saved AI templates (persisted per survey)
+  const [savedAiTemplates, setSavedAiTemplates] = useState<(ThemeColors & { name: string; vibe: string })[]>([]);
+  const [selectedAiTemplateName, setSelectedAiTemplateName] = useState<string | null>(null);
 
   // Load hidden templates from localStorage on mount
   useEffect(() => {
@@ -168,6 +172,14 @@ export default function EditClient({
       if (stored) setHiddenTemplates(JSON.parse(stored));
     } catch { /* ignore */ }
   }, [HIDDEN_TMPL_KEY]);
+
+  // Load saved AI templates from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(AI_TMPL_KEY);
+      if (stored) setSavedAiTemplates(JSON.parse(stored));
+    } catch { /* ignore */ }
+  }, [AI_TMPL_KEY]);
 
   function hideTemplate(id: string) {
     const next = [...hiddenTemplates, id];
@@ -237,6 +249,7 @@ export default function EditClient({
     const { name: _n, vibe: _v, ...colors } = variant;
     setCustomColors(colors as ThemeColors);
     setSelectedTemplate(null);
+    setSelectedAiTemplateName(variant.name);
     setShowAiModal(false);
     setAiVariants([]);
     setAiDescription('');
@@ -244,6 +257,29 @@ export default function EditClient({
     setHoveredAiVariantIdx(null);
     setAiAppliedName(variant.name);
     setTimeout(() => setAiAppliedName(null), 3000);
+    // Save AI template to localStorage list
+    const newList = [variant, ...savedAiTemplates.filter(t => t.name !== variant.name)];
+    setSavedAiTemplates(newList);
+    localStorage.setItem(AI_TMPL_KEY, JSON.stringify(newList));
+  }
+
+  function deleteAiTemplate(name: string) {
+    const newList = savedAiTemplates.filter(t => t.name !== name);
+    setSavedAiTemplates(newList);
+    localStorage.setItem(AI_TMPL_KEY, JSON.stringify(newList));
+    if (selectedAiTemplateName === name) {
+      setSelectedAiTemplateName(null);
+      setCustomColors(null);
+      setSelectedTemplate(null);
+    }
+  }
+
+  function selectSavedAiTemplate(tmpl: ThemeColors & { name: string; vibe: string }) {
+    const { name: _n, vibe: _v, ...colors } = tmpl;
+    setCustomColors(colors as ThemeColors);
+    setSelectedTemplate(null);
+    setSelectedAiTemplateName(tmpl.name);
+    setShowTemplatePicker(false);
   }
 
   async function handleSave() {
@@ -377,7 +413,12 @@ export default function EditClient({
                 </div>
               );
             })()}
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {/* ── Section: 預設模板 ── */}
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xs font-bold text-[#5A5050]">🎨 預設模板</span>
+              <div className="flex-1 h-px bg-[#E8E2D8]" />
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
               {templateList.filter(t => !hiddenTemplates.includes(t.id)).map((tmpl) => {
                 const isSelected = !customColors && selectedTemplate === tmpl.id;
                 return (
@@ -386,7 +427,7 @@ export default function EditClient({
                     onMouseLeave={() => setHoveredTemplateId(null)}
                   >
                     <button
-                      onClick={() => { setSelectedTemplate(tmpl.id as TemplateId); setCustomColors(null); setShowTemplatePicker(false); }}
+                      onClick={() => { setSelectedTemplate(tmpl.id as TemplateId); setCustomColors(null); setSelectedAiTemplateName(null); setShowTemplatePicker(false); }}
                       className={`w-full text-left rounded-xl border-2 p-3 transition-all ${
                         isSelected ? 'border-[#C5A55A] shadow-md' : 'border-[#E8E2D8] hover:border-[#C5A55A]/50'
                       }`}
@@ -422,10 +463,20 @@ export default function EditClient({
                 );
               })}
 
-              {/* AI Template card */}
+            </div>
+
+            {/* ── Section: AI 生成模板 ── */}
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xs font-bold text-purple-700 flex items-center gap-1.5">
+                <Sparkles className="w-3 h-3" /> AI 生成模板
+              </span>
+              <div className="flex-1 h-px bg-purple-100" />
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+              {/* Generate new AI template button */}
               <button
                 onClick={() => { setShowAiModal(true); setShowTemplatePicker(false); }}
-                className="text-left rounded-xl border-2 border-dashed border-purple-300 hover:border-purple-400 p-3 transition-all bg-gradient-to-br from-purple-50 to-pink-50"
+                className="text-left rounded-xl border-2 border-dashed border-purple-300 hover:border-purple-400 active:scale-[0.97] p-3 transition-all bg-gradient-to-br from-purple-50 to-pink-50 hover:shadow-md"
               >
                 <div className="flex gap-1 mb-2">
                   <div className="w-5 h-5 rounded-full bg-purple-400" />
@@ -433,10 +484,57 @@ export default function EditClient({
                   <div className="w-5 h-5 rounded-full bg-yellow-400" />
                 </div>
                 <h3 className="font-bold text-xs mb-0.5 text-purple-700 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3" /> AI 自訂模板
+                  <Sparkles className="w-3 h-3" /> 生成新 AI 模板
                 </h3>
-                <p className="text-[10px] text-purple-400">描述你的風格，AI 幫你生成</p>
+                <p className="text-[10px] text-purple-400">描述風格，AI 幫你客製</p>
               </button>
+
+              {/* Saved AI template cards */}
+              {savedAiTemplates.map((tmpl) => {
+                const isSelected = selectedAiTemplateName === tmpl.name;
+                return (
+                  <div key={tmpl.name} className="relative group">
+                    <button
+                      onClick={() => selectSavedAiTemplate(tmpl)}
+                      className="w-full text-left rounded-xl border-2 p-3 transition-all overflow-hidden active:scale-[0.97]"
+                      style={{
+                        backgroundColor: tmpl.background,
+                        ...getTextureStyle(tmpl.texture),
+                        borderColor: isSelected ? tmpl.primary : 'transparent',
+                        boxShadow: isSelected ? `0 0 0 1px ${tmpl.primary}40, 0 2px 12px ${tmpl.primary}25` : '0 1px 3px rgba(0,0,0,0.07)',
+                      }}
+                    >
+                      {/* Color strip */}
+                      <div className="h-1.5 w-full flex rounded-full overflow-hidden mb-2">
+                        {[tmpl.primary, tmpl.accent, tmpl.primaryLight].map((c, ci) => (
+                          <div key={ci} className="flex-1" style={{ backgroundColor: c }} />
+                        ))}
+                      </div>
+                      <div className="flex gap-1 mb-1.5">
+                        {[tmpl.primary, tmpl.accent, tmpl.border].map((c, ci) => (
+                          <div key={ci} className="w-4 h-4 rounded-full" style={{ backgroundColor: c }} />
+                        ))}
+                        <span className="text-[9px] ml-1 px-1.5 py-0.5 rounded-full font-bold" style={{ backgroundColor: tmpl.primary + '22', color: tmpl.primary }}>AI</span>
+                      </div>
+                      <p className="text-[11px] font-bold truncate" style={{ color: tmpl.text }}>{tmpl.name}</p>
+                      <p className="text-[9px] truncate" style={{ color: tmpl.textLight }}>{tmpl.vibe}</p>
+                      {isSelected && (
+                        <div className="mt-1.5 text-[10px] font-medium flex items-center gap-1" style={{ color: tmpl.primary }}>
+                          <Check className="w-3 h-3" /> 目前使用
+                        </div>
+                      )}
+                    </button>
+                    {/* Delete button */}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); deleteAiTemplate(tmpl.name); }}
+                      className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center shadow-sm"
+                      title="刪除此 AI 模板"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Restore factory templates */}
