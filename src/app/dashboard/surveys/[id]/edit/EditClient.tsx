@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, Loader2, Plus, Trash2, Check, Palette } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Plus, Trash2, Check, Palette, Sparkles, X } from 'lucide-react';
 import { templateList } from '@/lib/templates';
-import type { Question, TemplateId } from '@/types/survey';
+import type { Question, TemplateId, ThemeColors } from '@/types/survey';
 
 const TYPE_OPTIONS: { value: Question['type']; label: string }[] = [
   { value: 'emoji-rating', label: '表情評分' },
@@ -71,8 +71,25 @@ function findPreset(label: string): string[] | null {
   return null;
 }
 
+// AI template prompt presets
+const AI_TEMPLATE_PRESETS = [
+  { label: '深色背景', value: '深色背景' },
+  { label: '淺色背景', value: '淺色背景' },
+  { label: '金色調', value: '金色調' },
+  { label: '紅色系', value: '紅色系' },
+  { label: '木質感', value: '木質感' },
+  { label: '現代簡約', value: '現代簡約' },
+  { label: '溫暖橘色', value: '溫暖橘色' },
+  { label: '清新綠色', value: '清新綠色' },
+  { label: '霓虹感', value: '霓虹感' },
+  { label: '奢華感', value: '奢華感' },
+  { label: '邊框加粗', value: '邊框加粗' },
+  { label: '金字黑底', value: '金字黑底' },
+];
+
 interface EditClientProps {
   surveyId: string;
+  storeId: string;
   initialTitle: string;
   initialQuestions: Question[];
   initialDiscountValue: string;
@@ -81,10 +98,12 @@ interface EditClientProps {
   initialPrizeItems: PrizeItem[] | null;
   initialDiscountExpiryDays: number;
   initialPrizeSameDayValid: boolean;
+  initialCustomColors?: ThemeColors | null;
 }
 
 export default function EditClient({
   surveyId,
+  storeId,
   initialTitle,
   initialQuestions,
   initialDiscountValue,
@@ -93,8 +112,11 @@ export default function EditClient({
   initialPrizeItems,
   initialDiscountExpiryDays,
   initialPrizeSameDayValid,
+  initialCustomColors,
 }: EditClientProps) {
   const router = useRouter();
+
+  const HIDDEN_TMPL_KEY = `fb_hidden_tmpl_${storeId}`;
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -105,11 +127,41 @@ export default function EditClient({
   const [discountExpiryDays, setDiscountExpiryDays] = useState(initialDiscountExpiryDays);
   const [prizeSameDayValid, setPrizeSameDayValid] = useState(initialPrizeSameDayValid);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateId | null>(initialTemplateId);
+  const [customColors, setCustomColors] = useState<ThemeColors | null>(initialCustomColors || null);
+  const [hiddenTemplates, setHiddenTemplates] = useState<string[]>([]);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [prizeItems, setPrizeItems] = useState<PrizeItem[]>(initialPrizeItems || []);
   const [showPrizeEditor, setShowPrizeEditor] = useState(false);
   const [openSwatchIdx, setOpenSwatchIdx] = useState<number | null>(null);
   const [optionInputs, setOptionInputs] = useState<Record<string, string>>({});
+
+  // AI template modal state
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [aiDescription, setAiDescription] = useState('');
+  const [aiSelectedPresets, setAiSelectedPresets] = useState<string[]>([]);
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiError, setAiError] = useState('');
+
+  // Load hidden templates from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(HIDDEN_TMPL_KEY);
+      if (stored) setHiddenTemplates(JSON.parse(stored));
+    } catch { /* ignore */ }
+  }, [HIDDEN_TMPL_KEY]);
+
+  function hideTemplate(id: string) {
+    const next = [...hiddenTemplates, id];
+    setHiddenTemplates(next);
+    localStorage.setItem(HIDDEN_TMPL_KEY, JSON.stringify(next));
+    // If we're deleting the currently selected template, clear selection
+    if (selectedTemplate === id) setSelectedTemplate(null);
+  }
+
+  function restoreAllTemplates() {
+    setHiddenTemplates([]);
+    localStorage.removeItem(HIDDEN_TMPL_KEY);
+  }
 
   function updateQuestion(index: number, updates: Partial<Question>) {
     setQuestions(qs => qs.map((q, i) => i === index ? { ...q, ...updates } : q));
@@ -134,6 +186,37 @@ export default function EditClient({
     });
   }
 
+  function togglePreset(val: string) {
+    setAiSelectedPresets(prev =>
+      prev.includes(val) ? prev.filter(p => p !== val) : [...prev, val]
+    );
+  }
+
+  async function handleGenerateTemplate() {
+    const combined = [aiDescription.trim(), ...aiSelectedPresets].filter(Boolean).join('、');
+    if (!combined) { setAiError('請先描述您想要的風格'); return; }
+    setAiGenerating(true);
+    setAiError('');
+    try {
+      const res = await fetch('/api/ai/generate-template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: combined }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setAiError(data.error || '產生失敗，請重試'); return; }
+      setCustomColors(data.colors);
+      setSelectedTemplate(null); // clear built-in template when using custom
+      setShowAiModal(false);
+      setAiDescription('');
+      setAiSelectedPresets([]);
+    } catch {
+      setAiError('網路錯誤，請稍後再試');
+    } finally {
+      setAiGenerating(false);
+    }
+  }
+
   async function handleSave() {
     setSaving(true);
     setSaved(false);
@@ -144,6 +227,7 @@ export default function EditClient({
         body: JSON.stringify({
           title,
           template_id: selectedTemplate,
+          custom_colors: customColors,
           questions: questions.filter(q => q.type === 'section-header' || q.label?.trim()),
           discount_value: discountValue,
           discount_enabled: discountEnabled,
@@ -201,55 +285,159 @@ export default function EditClient({
           <div className="flex items-center gap-2">
             <Palette className="w-4 h-4 text-[#C5A55A]" />
             <span className="text-sm font-medium text-[#3A3A3A]">問卷風格模板</span>
-            {selectedTemplate && (
+            {customColors ? (
+              <span className="text-xs text-purple-500">— ✨ AI 自訂配色</span>
+            ) : selectedTemplate ? (
               <span className="text-xs text-[#8A8585]">
                 — {templateList.find(t => t.id === selectedTemplate)?.name || selectedTemplate}
               </span>
-            )}
+            ) : null}
           </div>
-          <button
-            onClick={() => setShowTemplatePicker(!showTemplatePicker)}
-            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[#C5A55A]/10 text-[#C5A55A] hover:bg-[#C5A55A]/20 transition-colors"
-          >
-            {showTemplatePicker ? '收起' : '更換模板'}
-          </button>
+          <div className="flex gap-2">
+            {customColors && (
+              <button
+                onClick={() => setCustomColors(null)}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-50 text-red-500 hover:bg-red-100 transition-colors flex items-center gap-1"
+              >
+                <Trash2 className="w-3 h-3" />刪除自訂
+              </button>
+            )}
+            <button
+              onClick={() => setShowTemplatePicker(!showTemplatePicker)}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[#C5A55A]/10 text-[#C5A55A] hover:bg-[#C5A55A]/20 transition-colors"
+            >
+              {showTemplatePicker ? '收起' : '更換模板'}
+            </button>
+          </div>
         </div>
         {showTemplatePicker && (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
-            {templateList.map((tmpl) => {
-              const isSelected = selectedTemplate === tmpl.id;
-              return (
-                <button
-                  key={tmpl.id}
-                  onClick={() => { setSelectedTemplate(tmpl.id); setShowTemplatePicker(false); }}
-                  className={`text-left rounded-xl border-2 p-3 transition-all ${
-                    isSelected ? 'border-[#C5A55A] shadow-md' : 'border-[#E8E2D8] hover:border-[#C5A55A]/50'
-                  }`}
-                  style={{ backgroundColor: tmpl.colors.background }}
-                >
-                  <div className="flex gap-1 mb-2">
-                    {[tmpl.colors.primary, tmpl.colors.primaryLight, tmpl.colors.accent].map((color, i) => (
-                      <div key={i} className="w-5 h-5 rounded-full" style={{ backgroundColor: color }} />
-                    ))}
+          <div className="mt-4">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {templateList.filter(t => !hiddenTemplates.includes(t.id)).map((tmpl) => {
+                const isSelected = !customColors && selectedTemplate === tmpl.id;
+                return (
+                  <div key={tmpl.id} className="relative group">
+                    <button
+                      onClick={() => { setSelectedTemplate(tmpl.id as TemplateId); setCustomColors(null); setShowTemplatePicker(false); }}
+                      className={`w-full text-left rounded-xl border-2 p-3 transition-all ${
+                        isSelected ? 'border-[#C5A55A] shadow-md' : 'border-[#E8E2D8] hover:border-[#C5A55A]/50'
+                      }`}
+                      style={{ backgroundColor: tmpl.colors.background }}
+                    >
+                      <div className="flex gap-1 mb-2">
+                        {[tmpl.colors.primary, tmpl.colors.primaryLight, tmpl.colors.accent].map((color, i) => (
+                          <div key={i} className="w-5 h-5 rounded-full" style={{ backgroundColor: color }} />
+                        ))}
+                      </div>
+                      <h3 className="font-bold text-xs mb-0.5" style={{ color: tmpl.colors.text }}>
+                        {tmpl.name}
+                      </h3>
+                      <p className="text-[10px]" style={{ color: tmpl.colors.textLight }}>
+                        {tmpl.suited}
+                      </p>
+                      {isSelected && (
+                        <div className="mt-2 text-[10px] font-medium text-[#C5A55A] flex items-center gap-1">
+                          <Check className="w-3 h-3" />
+                          目前使用
+                        </div>
+                      )}
+                    </button>
+                    {/* Delete button — appears on hover */}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); hideTemplate(tmpl.id); }}
+                      className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center shadow-sm"
+                      title="從列表中移除此模板"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
                   </div>
-                  <h3 className="font-bold text-xs mb-0.5" style={{ color: tmpl.colors.text }}>
-                    {tmpl.name}
-                  </h3>
-                  <p className="text-[10px]" style={{ color: tmpl.colors.textLight }}>
-                    {tmpl.suited}
-                  </p>
-                  {isSelected && (
-                    <div className="mt-2 text-[10px] font-medium text-[#C5A55A] flex items-center gap-1">
-                      <Check className="w-3 h-3" />
-                      目前使用
-                    </div>
-                  )}
+                );
+              })}
+
+              {/* AI Template card */}
+              <button
+                onClick={() => { setShowAiModal(true); setShowTemplatePicker(false); }}
+                className="text-left rounded-xl border-2 border-dashed border-purple-300 hover:border-purple-400 p-3 transition-all bg-gradient-to-br from-purple-50 to-pink-50"
+              >
+                <div className="flex gap-1 mb-2">
+                  <div className="w-5 h-5 rounded-full bg-purple-400" />
+                  <div className="w-5 h-5 rounded-full bg-pink-400" />
+                  <div className="w-5 h-5 rounded-full bg-yellow-400" />
+                </div>
+                <h3 className="font-bold text-xs mb-0.5 text-purple-700 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" /> AI 自訂模板
+                </h3>
+                <p className="text-[10px] text-purple-400">描述你的風格，AI 幫你生成</p>
+              </button>
+            </div>
+
+            {/* Restore factory templates */}
+            {hiddenTemplates.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-[#F0EBE3] flex items-center justify-between">
+                <span className="text-xs text-[#8A8585]">已隱藏 {hiddenTemplates.length} 個模板</span>
+                <button
+                  onClick={restoreAllTemplates}
+                  className="text-xs text-[#C5A55A] hover:text-[#A08735] font-medium underline underline-offset-2"
+                >
+                  恢復出廠模板設定
                 </button>
-              );
-            })}
+              </div>
+            )}
           </div>
         )}
       </div>
+
+      {/* AI Template Modal */}
+      {showAiModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold text-[#3A3A3A] flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-500" /> AI 模板生成器
+              </h2>
+              <button onClick={() => setShowAiModal(false)} className="text-[#8A8585] hover:text-[#3A3A3A]">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <label className="block text-xs font-medium text-[#3A3A3A] mb-1.5">描述你想要的風格</label>
+            <textarea
+              value={aiDescription}
+              onChange={e => setAiDescription(e.target.value)}
+              placeholder="例如：黑底紅邊框邊框加粗金字、木紋底金框黑字、溫暖橘色系奶油感..."
+              rows={3}
+              className="w-full px-3 py-2 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-purple-400 bg-[#FAF7F2] resize-none mb-3"
+            />
+
+            <p className="text-xs font-medium text-[#3A3A3A] mb-2">或快速選擇（可多選）</p>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {AI_TEMPLATE_PRESETS.map(p => (
+                <button
+                  key={p.value}
+                  onClick={() => togglePreset(p.value)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                    aiSelectedPresets.includes(p.value)
+                      ? 'bg-purple-500 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-purple-100'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+
+            {aiError && <p className="text-xs text-red-500 mb-3">{aiError}</p>}
+
+            <button
+              onClick={handleGenerateTemplate}
+              disabled={aiGenerating}
+              className="w-full py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:opacity-60 flex items-center justify-center gap-2 transition-all"
+            >
+              {aiGenerating ? <><Loader2 className="w-4 h-4 animate-spin" />AI 生成中...</> : <><Sparkles className="w-4 h-4" />生成配色</>}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Discount quick toggle */}
       <div className="bg-white rounded-2xl border border-[#E8E2D8] p-5 mb-4">

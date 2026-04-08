@@ -230,6 +230,52 @@ export const templates: Record<TemplateId, Template> = {
     borderRadius: '10px',
     cardStyle: 'soft',
   },
+
+  'black-dragon': {
+    id: 'black-dragon',
+    name: '黑金龍',
+    nameEn: 'Black Dragon',
+    description: '黑底配粗紅邊框，金字奪目霸氣',
+    suited: '燒烤、火鍋、中式料理、夜店餐廳',
+    colors: {
+      primary: '#D4A017',
+      primaryLight: '#F0C842',
+      primaryDark: '#A07B00',
+      background: '#0D0D0D',
+      surface: '#1A1A1A',
+      text: '#F5D060',
+      textLight: '#C09040',
+      border: '#CC2200',
+      accent: '#FF3300',
+    },
+    fontHeading: "'Noto Serif TC', serif",
+    fontBody: "'Noto Sans TC', sans-serif",
+    borderRadius: '4px',
+    cardStyle: 'sharp',
+  },
+
+  'wood-grain': {
+    id: 'wood-grain',
+    name: '木紋雅緻',
+    nameEn: 'Wood Grain',
+    description: '溫潤木紋底配粗金框，質樸雅致',
+    suited: '日式料理、咖啡廳、木質裝潢餐廳',
+    colors: {
+      primary: '#D4A017',
+      primaryLight: '#F0C842',
+      primaryDark: '#A07800',
+      background: '#3D2200',
+      surface: '#5C3D1E',
+      text: '#F5E8C0',
+      textLight: '#C8A870',
+      border: '#C5A55A',
+      accent: '#F0C842',
+    },
+    fontHeading: "'Noto Serif TC', serif",
+    fontBody: "'Noto Sans TC', sans-serif",
+    borderRadius: '6px',
+    cardStyle: 'soft',
+  },
 };
 
 export const templateList = Object.values(templates);

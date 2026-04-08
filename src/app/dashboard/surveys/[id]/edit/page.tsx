@@ -48,11 +48,13 @@ export default async function SurveyEditPage({
   return (
     <EditClient
       surveyId={id}
+      storeId={store.id}
       initialTitle={survey.title || ''}
       initialQuestions={survey.questions || []}
       initialDiscountValue={survey.discount_value || ''}
       initialDiscountEnabled={survey.discount_enabled ?? true}
       initialTemplateId={survey.template_id || null}
+      initialCustomColors={survey.custom_colors || null}
       initialPrizeItems={survey.prize_items || null}
       initialDiscountExpiryDays={survey.discount_expiry_days ?? 30}
       initialPrizeSameDayValid={survey.prize_same_day_valid ?? true}

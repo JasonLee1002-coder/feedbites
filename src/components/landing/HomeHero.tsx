@@ -6,12 +6,12 @@ import { useState, useEffect } from 'react';
 
 // AI 功能亮點 — 輪播顯示
 const aiFeatures = [
-  { icon: '🤖', text: '副店長 AI 全程陪伴' },
   { icon: '🎙️', text: '客人用說的就能回饋' },
   { icon: '📸', text: '拍菜單自動建檔' },
   { icon: '📊', text: 'AI 自動洞察分析' },
   { icon: '🎰', text: '刮刮卡折扣回饋' },
-  { icon: '💬', text: 'AI 精靈對話式收集' },
+  { icon: '💬', text: 'AI 對話式問卷收集' },
+  { icon: '🏆', text: '遊戲化問卷體驗' },
 ];
 
 // 背景漂浮粒子
