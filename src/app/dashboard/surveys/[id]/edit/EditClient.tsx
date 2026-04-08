@@ -40,6 +40,8 @@ interface EditClientProps {
   initialDiscountEnabled: boolean;
   initialTemplateId: TemplateId | null;
   initialPrizeItems: PrizeItem[] | null;
+  initialDiscountExpiryDays: number;
+  initialPrizeSameDayValid: boolean;
 }
 
 export default function EditClient({
@@ -50,6 +52,8 @@ export default function EditClient({
   initialDiscountEnabled,
   initialTemplateId,
   initialPrizeItems,
+  initialDiscountExpiryDays,
+  initialPrizeSameDayValid,
 }: EditClientProps) {
   const router = useRouter();
 
@@ -59,6 +63,8 @@ export default function EditClient({
   const [questions, setQuestions] = useState<Question[]>(initialQuestions);
   const [discountValue, setDiscountValue] = useState(initialDiscountValue);
   const [discountEnabled, setDiscountEnabled] = useState(initialDiscountEnabled);
+  const [discountExpiryDays, setDiscountExpiryDays] = useState(initialDiscountExpiryDays);
+  const [prizeSameDayValid, setPrizeSameDayValid] = useState(initialPrizeSameDayValid);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateId | null>(initialTemplateId);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [prizeItems, setPrizeItems] = useState<PrizeItem[]>(initialPrizeItems || []);
@@ -100,6 +106,8 @@ export default function EditClient({
           questions: questions.filter(q => q.type === 'section-header' || q.label?.trim()),
           discount_value: discountValue,
           discount_enabled: discountEnabled,
+          discount_expiry_days: discountExpiryDays,
+          prize_same_day_valid: prizeSameDayValid,
           prize_items: prizeItems.length > 0 ? prizeItems : null,
         }),
       });
@@ -228,6 +236,54 @@ export default function EditClient({
           </button>
         </div>
       </div>
+
+      {/* Coupon expiry + activation settings */}
+      {discountEnabled && (
+        <div className="bg-white rounded-2xl border border-[#E8E2D8] p-5 mb-4 space-y-4">
+          {/* Expiry days */}
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-sm font-medium text-[#3A3A3A]">🗓️ 優惠券時效</span>
+              <p className="text-xs text-[#8A8585] mt-0.5">客人轉盤後，優惠券的有效期限</p>
+            </div>
+            <select
+              value={discountExpiryDays}
+              onChange={e => setDiscountExpiryDays(Number(e.target.value))}
+              className="px-3 py-1.5 rounded-lg border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] bg-[#FAF7F2] text-[#3A3A3A] cursor-pointer"
+            >
+              <option value={30}>1 個月（30天）</option>
+              <option value={60}>2 個月（60天）</option>
+              <option value={90}>3 個月（90天）</option>
+              <option value={180}>6 個月（180天）</option>
+              <option value={365}>1 年（365天）</option>
+            </select>
+          </div>
+
+          {/* Same-day activation toggle */}
+          <div className="flex items-center justify-between pt-3 border-t border-[#F0EBE3]">
+            <div>
+              <span className="text-sm font-medium text-[#3A3A3A]">⚡ QR碼當天生效</span>
+              <p className="text-xs text-[#8A8585] mt-0.5">
+                {prizeSameDayValid
+                  ? '客人轉盤當天即可使用優惠'
+                  : '優惠碼次日起才能使用（防止同日重複消費）'}
+              </p>
+            </div>
+            <button
+              onClick={() => setPrizeSameDayValid(!prizeSameDayValid)}
+              className={`relative w-12 h-6 rounded-full transition-colors ${
+                prizeSameDayValid ? 'bg-emerald-400' : 'bg-gray-200'
+              }`}
+            >
+              <span
+                className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                  prizeSameDayValid ? 'translate-x-7' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Prize wheel editor */}
       {discountEnabled && (

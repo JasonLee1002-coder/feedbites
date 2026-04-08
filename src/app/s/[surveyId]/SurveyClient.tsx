@@ -304,6 +304,7 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
         responseId={responseId || undefined}
         surveyId={survey.id}
         prizeItems={survey.prize_items}
+        prizeValidToday={survey.prize_same_day_valid !== false}
         onPhoneSubmit={(phoneNumber) => {
           // Update phone on existing response via PATCH
           if (responseId) {

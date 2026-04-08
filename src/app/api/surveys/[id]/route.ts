@@ -91,6 +91,7 @@ export async function PUT(
       discount_mode,
       discount_tiers,
       prize_items,
+      prize_same_day_valid,
     } = body;
 
     const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -106,6 +107,7 @@ export async function PUT(
     if (discount_mode !== undefined) updateData.discount_mode = discount_mode;
     if (discount_tiers !== undefined) updateData.discount_tiers = discount_tiers;
     if (prize_items !== undefined) updateData.prize_items = prize_items;
+    if (prize_same_day_valid !== undefined) updateData.prize_same_day_valid = prize_same_day_valid;
 
     const { data: survey, error: updateError } = await adminDb
       .from('surveys')

@@ -117,7 +117,9 @@ export default function MenuPage() {
     try {
       const formData = new FormData();
       formData.append('photo', file);
-      if (dishId) formData.append('dishId', dishId);
+      // When editing, pass editingId so the upload API saves photo_url to DB immediately
+      const effectiveDishId = dishId || editingId || undefined;
+      if (effectiveDishId) formData.append('dishId', effectiveDishId);
 
       const res = await fetch('/api/dishes/upload-photo', {
         method: 'POST',
@@ -127,8 +129,8 @@ export default function MenuPage() {
 
       if (res.ok && data.url) {
         setFormPhotoUrl(data.url);
-        if (dishId) {
-          setDishes(prev => prev.map(d => d.id === dishId ? { ...d, photo_url: data.url } : d));
+        if (effectiveDishId) {
+          setDishes(prev => prev.map(d => d.id === effectiveDishId ? { ...d, photo_url: data.url } : d));
         }
       }
     } catch { /* ignore */ } finally {

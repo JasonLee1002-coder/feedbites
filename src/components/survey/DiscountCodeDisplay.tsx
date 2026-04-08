@@ -29,6 +29,7 @@ interface DiscountCodeDisplayProps {
   responseId?: string;
   surveyId?: string;
   prizeItems?: { label: string; emoji: string; color: string }[] | null;
+  prizeValidToday?: boolean;
 }
 
 // Map tier names to confetti color palettes
@@ -46,12 +47,16 @@ function PhoneCollect({
   onSubmit,
   responseId,
   surveyId,
+  prizeLabel,
+  prizeEmoji,
 }: {
   colors: ThemeColors;
   storeName: string;
   onSubmit: (phone: string) => void;
   responseId?: string;
   surveyId?: string;
+  prizeLabel?: string;
+  prizeEmoji?: string;
 }) {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -199,7 +204,12 @@ function PhoneCollect({
               fetch(`/api/surveys/${surveyId}/responses`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ response_id: responseId, email }),
+                body: JSON.stringify({
+                  response_id: responseId,
+                  email,
+                  prize_label: prizeLabel,
+                  prize_emoji: prizeEmoji,
+                }),
               }).catch(() => {});
             }
             setSubmitted(true);
@@ -233,6 +243,7 @@ export default function DiscountCodeDisplay({
   responseId,
   surveyId,
   prizeItems,
+  prizeValidToday = true,
 }: DiscountCodeDisplayProps) {
   const isAdvanced = discountMode === 'advanced' && !!tierName;
   const confettiColors =
@@ -242,6 +253,7 @@ export default function DiscountCodeDisplay({
 
   const [scratched, setScratched] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [wonPrize, setWonPrize] = useState<{ label: string; emoji: string } | null>(null);
   const confettiFired = useRef(false);
 
   const expiryDate = new Date(expiresAt).toLocaleDateString('zh-TW');
@@ -287,8 +299,9 @@ export default function DiscountCodeDisplay({
   }, [confettiColors]);
 
   // Called when user claims prize from PrizeWheel
-  const handleReveal = useCallback(() => {
+  const handleReveal = useCallback((prize?: { label: string; emoji: string }) => {
     setScratched(true);
+    if (prize) setWonPrize(prize);
     fireConfetti();
   }, [fireConfetti]);
 
@@ -448,7 +461,7 @@ export default function DiscountCodeDisplay({
                 <PrizeWheel
                   prizes={prizeItems && prizeItems.length >= 2 ? prizeItems : DEFAULT_PRIZES}
                   colors={colors}
-                  onResult={() => handleReveal()}
+                  onResult={(prize) => handleReveal(prize)}
                 />
               </motion.div>
             ) : (
@@ -459,21 +472,57 @@ export default function DiscountCodeDisplay({
                 transition={{ type: 'spring', stiffness: 250, damping: 18 }}
                 className="text-center"
               >
+                {/* Won prize badge */}
+                {wonPrize && (
+                  <motion.div
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 15, delay: 0.1 }}
+                    className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-bold text-white mb-3"
+                    style={{ background: `linear-gradient(135deg, ${colors.primary}, ${colors.primaryDark || colors.primary})` }}
+                  >
+                    <span>{wonPrize.emoji}</span>
+                    <span>抽到：{wonPrize.label}</span>
+                  </motion.div>
+                )}
+
                 {/* Discount value label */}
                 {displayDiscountValue && (
                   <div
-                    className="text-xl font-bold mb-3 flex items-center justify-center gap-2"
+                    className="text-lg font-bold mb-3 flex items-center justify-center gap-2"
                     style={{ color: colors.text }}
                   >
-                    <span className="text-2xl">🏷️</span>
+                    <span className="text-xl">🏷️</span>
                     {displayDiscountValue}
                   </div>
                 )}
 
+                {/* QR Code */}
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="flex justify-center mb-3"
+                >
+                  <div
+                    className="p-3 rounded-2xl"
+                    style={{ background: `${colors.primary}10`, border: `1px solid ${colors.primary}30` }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(code)}&bgcolor=FFFFFF&color=000000&qzone=1`}
+                      alt="優惠碼 QR Code"
+                      width={140}
+                      height={140}
+                      className="rounded-xl block"
+                    />
+                  </div>
+                </motion.div>
+
                 {/* Copyable code */}
                 <button
                   onClick={copyCode}
-                  className="px-8 py-4 rounded-2xl text-3xl font-mono font-bold tracking-[0.3em] transition-all hover:scale-105 relative inline-flex items-center justify-center gap-2"
+                  className="px-6 py-3 rounded-2xl text-2xl font-mono font-bold tracking-[0.3em] transition-all hover:scale-105 relative inline-flex items-center justify-center gap-2"
                   style={{
                     background: `${colors.primary}10`,
                     color: colors.primary,
@@ -481,7 +530,6 @@ export default function DiscountCodeDisplay({
                   }}
                 >
                   <span>{code}</span>
-
                   <AnimatePresence mode="wait">
                     {copied ? (
                       <motion.span
@@ -491,9 +539,7 @@ export default function DiscountCodeDisplay({
                         exit={{ scale: 0, opacity: 0 }}
                         transition={{ duration: 0.3 }}
                         className="text-base ml-1"
-                      >
-                        ✅
-                      </motion.span>
+                      >✅</motion.span>
                     ) : (
                       <motion.span
                         key="copy"
@@ -502,12 +548,23 @@ export default function DiscountCodeDisplay({
                         exit={{ scale: 0, opacity: 0 }}
                         transition={{ duration: 0.2 }}
                         className="text-base ml-1"
-                      >
-                        📋
-                      </motion.span>
+                      >📋</motion.span>
                     )}
                   </AnimatePresence>
                 </button>
+
+                {/* Activation notice */}
+                {!prizeValidToday && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                    className="mt-2 inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium"
+                    style={{ background: `${colors.primary}15`, color: colors.primary }}
+                  >
+                    ⏰ 次日起生效
+                  </motion.div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -529,10 +586,10 @@ export default function DiscountCodeDisplay({
         </AnimatePresence>
 
         {scratched && (
-          <div className="text-xs" style={{ color: colors.textLight }}>
-            有效期至 {expiryDate}
+          <div className="text-xs mt-2" style={{ color: colors.textLight }}>
+            📅 有效期至 <strong style={{ color: colors.text }}>{expiryDate}</strong>
             <br />
-            結帳時出示此碼即享優惠
+            <span className="text-[10px]">結帳時掃 QR Code 或出示優惠碼即可</span>
           </div>
         )}
 
@@ -549,7 +606,15 @@ export default function DiscountCodeDisplay({
 
       {/* ---- Optional phone collection (soft ask, after reward) ---- */}
       {onPhoneSubmit && (
-        <PhoneCollect colors={colors} storeName={storeName} onSubmit={onPhoneSubmit} responseId={responseId} surveyId={surveyId} />
+        <PhoneCollect
+          colors={colors}
+          storeName={storeName}
+          onSubmit={onPhoneSubmit}
+          responseId={responseId}
+          surveyId={surveyId}
+          prizeLabel={wonPrize?.label}
+          prizeEmoji={wonPrize?.emoji}
+        />
       )}
 
       {/* ---- FeedBites Branding ---- */}
