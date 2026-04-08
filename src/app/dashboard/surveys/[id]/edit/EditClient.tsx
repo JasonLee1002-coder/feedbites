@@ -271,7 +271,7 @@ export default function EditClient({
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <Link href={`/dashboard/surveys/${surveyId}`} className="text-[#8A8585] hover:text-[#3A3A3A]">
+          <Link href={`/dashboard/surveys/${surveyId}`} className="flex items-center justify-center w-9 h-9 rounded-xl bg-[#F0EBE3] hover:bg-[#E0D5C5] active:scale-95 transition-all text-[#3A3A3A] shadow-sm">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <h1 className="text-xl font-bold text-[#3A3A3A] font-serif">快速編輯問卷</h1>
@@ -279,9 +279,9 @@ export default function EditClient({
         <button
           onClick={handleSave}
           disabled={saving}
-          className={`inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl text-white transition-all ${
-            saved ? 'bg-emerald-500' : 'bg-[#C5A55A] hover:bg-[#A08735]'
-          } disabled:opacity-50`}
+          className={`inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl text-white transition-all active:scale-[0.96] shadow-md hover:shadow-lg hover:-translate-y-0.5 ${
+            saved ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-[#C5A55A] hover:bg-[#A08735]'
+          } disabled:opacity-50 disabled:hover:translate-y-0`}
         >
           {saving ? <><Loader2 className="w-4 h-4 animate-spin" />儲存中</>
             : saved ? <><Check className="w-4 h-4" />已儲存</>
@@ -318,16 +318,16 @@ export default function EditClient({
             {customColors && (
               <button
                 onClick={() => setCustomColors(null)}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-50 text-red-500 hover:bg-red-100 transition-colors flex items-center gap-1"
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500 text-white hover:bg-red-600 active:scale-95 transition-all shadow-sm flex items-center gap-1"
               >
                 <Trash2 className="w-3 h-3" />刪除自訂
               </button>
             )}
             <button
               onClick={() => setShowTemplatePicker(!showTemplatePicker)}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[#C5A55A]/10 text-[#C5A55A] hover:bg-[#C5A55A]/20 transition-colors"
+              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#C5A55A] text-white hover:bg-[#A08735] active:scale-95 transition-all shadow-sm hover:shadow-md"
             >
-              {showTemplatePicker ? '收起' : '更換模板'}
+              {showTemplatePicker ? '收起 ↑' : '🎨 更換模板'}
             </button>
           </div>
         </div>
@@ -544,8 +544,10 @@ export default function EditClient({
           </div>
           <button
             onClick={() => setDiscountEnabled(!discountEnabled)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              discountEnabled ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'
+            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95 shadow-sm ${
+              discountEnabled
+                ? 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-200 hover:shadow-emerald-300 hover:shadow-md'
+                : 'bg-gray-300 text-gray-600 hover:bg-gray-400 hover:text-gray-700'
             }`}
           >
             {discountEnabled ? '啟用中' : '已關閉'}
@@ -630,9 +632,9 @@ export default function EditClient({
             </div>
             <button
               onClick={() => setShowPrizeEditor(!showPrizeEditor)}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[#C5A55A]/10 text-[#C5A55A] hover:bg-[#C5A55A]/20 transition-colors"
+              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-white hover:bg-amber-600 active:scale-95 transition-all shadow-sm hover:shadow-md"
             >
-              {showPrizeEditor ? '收起' : '自訂獎品'}
+              {showPrizeEditor ? '收起 ↑' : '🎰 自訂獎品'}
             </button>
           </div>
 
@@ -774,7 +776,7 @@ export default function EditClient({
           <h2 className="text-sm font-bold text-[#3A3A3A]">問題清單（{questions.filter(q => q.type !== 'section-header').length} 題）</h2>
           <button
             onClick={addQuestion}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#C5A55A] text-white text-xs font-medium rounded-lg hover:bg-[#A08735]"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#C5A55A] text-white text-xs font-bold rounded-xl hover:bg-[#A08735] active:scale-95 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
           >
             <Plus className="w-3.5 h-3.5" />
             新增問題
