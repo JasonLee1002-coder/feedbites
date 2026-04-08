@@ -571,14 +571,22 @@ export default function EditClient({
                 })()}
                 <p className="text-xs text-[#8A8585] mb-3">✨ AI 生成了 {aiVariants.length} 套方案，點擊選用：</p>
                 <div className="space-y-3">
-                  {aiVariants.map((v, i) => (
+                  {aiVariants.map((v, i) => {
+                    const isHovered = hoveredAiVariantIdx === i;
+                    return (
                     <button
                       key={i}
                       onClick={() => handleSelectVariant(v)}
                       onMouseEnter={() => setHoveredAiVariantIdx(i)}
                       onMouseLeave={() => setHoveredAiVariantIdx(null)}
-                      className="w-full text-left rounded-xl border-2 border-transparent hover:border-purple-400 overflow-hidden transition-all shadow-sm hover:shadow-md group"
-                      style={{ backgroundColor: v.background, ...getTextureStyle(v.texture) }}
+                      className="w-full text-left rounded-xl overflow-hidden transition-all duration-150 cursor-pointer active:scale-[0.97]"
+                      style={{
+                        backgroundColor: v.background,
+                        ...getTextureStyle(v.texture),
+                        border: isHovered ? `2.5px solid ${v.primary}` : '2.5px solid transparent',
+                        boxShadow: isHovered ? `0 4px 20px ${v.primary}40, 0 0 0 1px ${v.primary}30` : '0 1px 4px rgba(0,0,0,0.08)',
+                        transform: isHovered ? 'scale(1.015)' : 'scale(1)',
+                      }}
                     >
                       {/* Color strip */}
                       <div className="h-2 w-full flex">
@@ -605,13 +613,21 @@ export default function EditClient({
                             </span>
                           )}
                         </div>
-                        {/* Mock button */}
-                        <div className="shrink-0 px-3 py-1 rounded-lg text-[10px] font-bold text-white group-hover:scale-105 transition-transform" style={{ backgroundColor: v.primary }}>
-                          選用
+                        {/* Select button — lights up on hover */}
+                        <div
+                          className="shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all duration-150"
+                          style={{
+                            backgroundColor: isHovered ? v.primary : v.primary + '20',
+                            color: isHovered ? '#fff' : v.primary,
+                            transform: isHovered ? 'scale(1.08)' : 'scale(1)',
+                          }}
+                        >
+                          {isHovered ? '✓ 點擊選用' : '選用'}
                         </div>
                       </div>
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
                 <button
                   onClick={() => { setAiVariants([]); setAiError(''); }}
