@@ -344,33 +344,22 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
         </p>
       </div>
 
-      {/* Viral banner */}
       <div
         className="mt-8 w-full max-w-sm p-5 rounded-2xl text-center"
         style={{ background: `${colors.primary}08`, border: `1px solid ${colors.border}`, animation: 'slideUp 0.5s ease 0.3s both' }}
       >
-        <p className="text-xs mb-2" style={{ color: colors.textLight }}>
-          你也是餐飲業主嗎？
+        <div className="text-2xl mb-2">💬</div>
+        <p className="text-sm font-medium mb-1" style={{ color: colors.text }}>
+          您的意見對我們非常重要
         </p>
-        <p className="text-xs leading-relaxed mb-3" style={{ color: colors.textLight }}>
-          <strong style={{ color: colors.text }}>FeedBites</strong> — 全球免費餐飲問卷系統
+        <p className="text-xs leading-relaxed" style={{ color: colors.textLight }}>
+          感謝撥冗填寫，{storeName} 會持續改進，期待您下次光臨！
         </p>
-        <a
-          href="/"
-          target="_blank"
-          className="inline-block px-5 py-2 rounded-full text-xs font-medium transition-all hover:opacity-80"
-          style={{ background: colors.primary, color: 'white' }}
-        >
-          免費開通我的餐廳問卷 →
-        </a>
       </div>
 
       <div className="mt-6 text-center">
-        <a href="/" target="_blank" className="text-xs font-medium" style={{ color: colors.primary }}>
-          FeedBites
-        </a>
-        <div className="text-[10px] mt-0.5" style={{ color: colors.textLight }}>
-          Bite. Rate. Save.
+        <div className="text-[10px]" style={{ color: colors.textLight }}>
+          Powered by FeedBites
         </div>
       </div>
 

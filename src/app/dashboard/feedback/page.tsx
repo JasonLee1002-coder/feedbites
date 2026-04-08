@@ -148,6 +148,20 @@ export default function FeedbackPage() {
     }
   }
 
+  async function handleDeleteSingle(id: string) {
+    if (!window.confirm('確定要刪除這則回報嗎？')) return;
+    try {
+      const res = await fetch('/api/feedback/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [id] }),
+      });
+      if (res.ok) {
+        setReports(prev => prev.filter(r => r.id !== id));
+      }
+    } catch { /* ignore */ }
+  }
+
   function exitDeleteMode() {
     setDeleteMode(false);
     setSelectedForDelete(new Set());
@@ -828,6 +842,13 @@ export default function FeedbackPage() {
                           {statusInfo.label}
                         </span>
                       )}
+                      <button
+                        onClick={e => { e.stopPropagation(); handleDeleteSingle(report.id); }}
+                        className="p-1.5 rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors"
+                        title="刪除此回報"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                       <motion.div animate={{ rotate: isExpanded ? 90 : 0 }}>
                         <ChevronRight className="w-4 h-4 text-[#8A8585]" />
                       </motion.div>

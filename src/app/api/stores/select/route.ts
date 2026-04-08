@@ -34,7 +34,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Return HTML that sets cookie via Set-Cookie header and redirects via JS
-    const dashboardUrl = `/dashboard?s=${Date.now()}`;
+    const returnTo = request.nextUrl.searchParams.get('returnTo');
+    const dashboardUrl = returnTo && returnTo.startsWith('/dashboard') ? returnTo : `/dashboard?s=${Date.now()}`;
     const isProduction = process.env.NODE_ENV === 'production';
     const cookieValue = `feedbites_store_id=${storeId}; Path=/; Max-Age=31536000; SameSite=Lax${isProduction ? '; Secure' : ''}; HttpOnly`;
 

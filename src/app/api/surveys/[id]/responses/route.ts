@@ -117,7 +117,7 @@ export async function POST(
       }
 
       const code = createDiscountCode();
-      const expiresAt = getExpiryDate(survey.discount_expiry_days);
+      const expiresAt = getExpiryDate(survey.discount_expiry_days || 30);
 
       const { data: codeData, error: codeError } = await adminDb
         .from('discount_codes')
@@ -227,41 +227,55 @@ export async function PATCH(
 
           const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(dcRow.code)}&bgcolor=FFF8F0&color=CC5500&qzone=2`;
 
+          // Determine the benefit text: prize label takes priority over generic discount_value
+          const benefitLabel = prize_label || survey.discount_value || '專屬優惠';
+          const benefitEmoji = prize_emoji || '🎁';
+          const emailSubject = prize_label
+            ? `${storeName} 🎰 恭喜抽到「${prize_label}」！`
+            : `${storeName} 🎰 問卷感謝優惠券 · ${today}`;
+
           const resend = new Resend(process.env.RESEND_API_KEY);
           await resend.emails.send({
             from: process.env.EMAIL_FROM ?? 'FeedBites <noreply@feedbites.app>',
             to: email,
-            subject: `${storeName} 🎰 抽獎優惠券 · ${today}`,
+            subject: emailSubject,
             html: `
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${storeName} 抽獎優惠券</title>
+<title>${storeName} 優惠券</title>
 </head>
 <body style="margin:0;padding:0;background:#f5f0ea;font-family:'Helvetica Neue',Arial,'PingFang TC','Microsoft JhengHei',sans-serif">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0ea;padding:32px 16px">
     <tr><td align="center">
       <table width="520" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:24px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.12)">
 
-        <!-- ── Header gradient ── -->
+        <!-- ── Header ── -->
         <tr>
           <td style="background:linear-gradient(135deg,#FF8C00 0%,#FF5F00 50%,#E84000 100%);padding:40px 32px 32px;text-align:center">
-            <div style="font-size:52px;line-height:1;margin-bottom:12px">🎰</div>
-            <h1 style="margin:0 0 6px;color:#ffffff;font-size:24px;font-weight:800;letter-spacing:1px">恭喜您中獎了！</h1>
-            <p style="margin:0;color:rgba(255,255,255,0.88);font-size:14px">${storeName} · 感謝您填寫問卷</p>
+            <div style="font-size:56px;line-height:1;margin-bottom:14px">🎰</div>
+            <h1 style="margin:0 0 8px;color:#ffffff;font-size:26px;font-weight:900;letter-spacing:1px">恭喜您中獎了！</h1>
+            <p style="margin:0;color:rgba(255,255,255,0.9);font-size:14px">${storeName} · 感謝您填寫問卷，好康帶回家 🎉</p>
           </td>
         </tr>
 
-        <!-- ── Prize badge ── -->
-        ${prizeSection}
+        <!-- ── Prize highlight ── -->
+        <tr>
+          <td style="padding:28px 32px 0;text-align:center">
+            <p style="margin:0 0 12px;color:#999;font-size:13px">🎯 您這次抽到的獎品是</p>
+            <div style="display:inline-block;background:linear-gradient(135deg,#FF8C00,#FF5500);border-radius:50px;padding:14px 32px;color:#fff;font-size:18px;font-weight:800;letter-spacing:0.5px;box-shadow:0 4px 16px rgba(255,140,0,0.35)">
+              ${benefitEmoji} ${benefitLabel}
+            </div>
+          </td>
+        </tr>
 
         <!-- ── Divider with scissors ── -->
         <tr><td style="padding:24px 32px 0">
           <table width="100%" cellpadding="0" cellspacing="0">
             <tr>
-              <td style="border-top:2px dashed #FFD4A0;width:46%"></td>
-              <td style="text-align:center;padding:0 8px;color:#FF8C00;font-size:18px;white-space:nowrap">✂ 優惠券</td>
-              <td style="border-top:2px dashed #FFD4A0;width:46%"></td>
+              <td style="border-top:2px dashed #FFD4A0;width:44%"></td>
+              <td style="text-align:center;padding:0 10px;color:#FF8C00;font-size:16px;white-space:nowrap;font-weight:700">✂ 優惠券（撕下保存）</td>
+              <td style="border-top:2px dashed #FFD4A0;width:44%"></td>
             </tr>
           </table>
         </td></tr>
@@ -269,47 +283,67 @@ export async function PATCH(
         <!-- ── QR Code + Code ── -->
         <tr>
           <td style="padding:24px 32px;text-align:center">
-            <p style="margin:0 0 16px;color:#777;font-size:13px">掃描 QR Code 或出示優惠碼即可使用</p>
+            <p style="margin:0 0 18px;color:#888;font-size:13px">結帳時，讓店員掃描下方 QR Code 或輸入優惠碼</p>
 
-            <!-- QR Code -->
-            <div style="display:inline-block;background:#FFF8F0;border-radius:16px;padding:16px;border:2px solid #FFD4A0;margin-bottom:20px">
-              <img src="${qrUrl}" width="160" height="160" alt="優惠碼 QR Code"
-                   style="display:block;border-radius:8px" />
+            <div style="display:inline-flex;align-items:center;gap:24px;flex-wrap:wrap;justify-content:center">
+              <!-- QR Code -->
+              <div style="background:#FFF8F0;border-radius:16px;padding:16px;border:2px solid #FFD4A0">
+                <img src="${qrUrl}" width="150" height="150" alt="優惠碼 QR Code"
+                     style="display:block;border-radius:8px" />
+                <p style="margin:8px 0 0;color:#FF8C00;font-size:10px;font-weight:600">掃描使用</p>
+              </div>
+
+              <!-- Discount Code -->
+              <div>
+                <p style="margin:0 0 8px;color:#999;font-size:12px">或手動輸入</p>
+                <div style="background:#FFF3E0;border:2px dashed #FF8C00;border-radius:14px;padding:18px 28px">
+                  <div style="font-family:Courier,'Courier New',monospace;font-size:32px;font-weight:900;color:#CC5500;letter-spacing:10px;line-height:1">${dcRow.code}</div>
+                  <div style="margin-top:10px;background:#FF8C00;color:#fff;border-radius:50px;padding:5px 16px;font-size:14px;font-weight:700;display:inline-block">${benefitLabel}</div>
+                </div>
+              </div>
             </div>
 
-            <!-- Discount Code -->
-            <div style="background:#FFF3E0;border:2px dashed #FF8C00;border-radius:14px;padding:16px 32px;margin:0 auto;display:inline-block">
-              <div style="font-family:Courier,'Courier New',monospace;font-size:30px;font-weight:900;color:#CC5500;letter-spacing:8px;line-height:1">${dcRow.code}</div>
-              <div style="margin-top:10px;font-size:16px;font-weight:700;color:#FF6B00">${survey.discount_value}</div>
-            </div>
-
-            <p style="margin:16px 0 0;color:#aaa;font-size:12px">⏰ 有效期至 ${expiryDate}</p>
+            <p style="margin:18px 0 0;color:#bbb;font-size:12px">⏰ 優惠期限至 <strong style="color:#FF8C00">${expiryDate}</strong></p>
           </td>
         </tr>
 
         <!-- ── How to use ── -->
         <tr>
           <td style="padding:0 32px 28px">
-            <div style="background:#f9f5f0;border-radius:14px;padding:18px 22px;border-left:4px solid #FF8C00">
-              <p style="margin:0 0 10px;font-weight:800;color:#333;font-size:14px">📌 如何使用</p>
-              <table cellpadding="0" cellspacing="0">
-                <tr><td style="color:#666;font-size:13px;line-height:2">
-                  <span style="color:#FF8C00;font-weight:700">①</span> 下次光臨 <strong>${storeName}</strong><br>
-                  <span style="color:#FF8C00;font-weight:700">②</span> 結帳時讓店員掃 QR Code 或輸入優惠碼<br>
-                  <span style="color:#FF8C00;font-weight:700">③</span> 立即享受 <strong>${survey.discount_value}</strong> 好康 🎁
+            <div style="background:#fff8f0;border-radius:14px;padding:18px 22px;border:1.5px solid #FFD4A0">
+              <p style="margin:0 0 12px;font-weight:800;color:#333;font-size:14px">🛎️ 使用方式</p>
+              <table cellpadding="0" cellspacing="0" width="100%">
+                <tr><td>
+                  <table cellpadding="0" cellspacing="0" width="100%">
+                    <tr>
+                      <td style="padding:6px 0;color:#555;font-size:14px;line-height:1.5">
+                        <span style="display:inline-block;background:#FF8C00;color:#fff;border-radius:50%;width:22px;height:22px;text-align:center;font-weight:700;font-size:12px;line-height:22px;margin-right:10px">1</span>
+                        下次光臨 <strong style="color:#333">${storeName}</strong>，到櫃台結帳時
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding:6px 0;color:#555;font-size:14px;line-height:1.5">
+                        <span style="display:inline-block;background:#FF8C00;color:#fff;border-radius:50%;width:22px;height:22px;text-align:center;font-weight:700;font-size:12px;line-height:22px;margin-right:10px">2</span>
+                        打開此封信，讓店員掃描 QR Code 或輸入優惠碼 <strong style="color:#CC5500">${dcRow.code}</strong>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding:6px 0;color:#555;font-size:14px;line-height:1.5">
+                        <span style="display:inline-block;background:#FF5500;color:#fff;border-radius:50%;width:22px;height:22px;text-align:center;font-weight:700;font-size:12px;line-height:22px;margin-right:10px">3</span>
+                        即可享有 <strong style="color:#FF5500;font-size:15px">${benefitLabel}</strong> 的專屬優惠 ${benefitEmoji}
+                      </td>
+                    </tr>
+                  </table>
                 </td></tr>
               </table>
             </div>
           </td>
         </tr>
 
-        <!-- ── Divider ── -->
-        <tr><td style="padding:0 32px"><div style="border-top:1px solid #f0ebe5"></div></td></tr>
-
         <!-- ── Footer ── -->
         <tr>
-          <td style="background:#faf7f4;padding:20px 32px;text-align:center;border-radius:0 0 24px 24px">
-            <p style="margin:0 0 4px;color:#bbb;font-size:11px">此優惠券由 <strong style="color:#FF8C00">FeedBites</strong> 系統產生</p>
+          <td style="background:#faf7f4;padding:20px 32px;text-align:center;border-radius:0 0 24px 24px;border-top:1px solid #f0ebe5">
+            <p style="margin:0 0 4px;color:#bbb;font-size:11px">此優惠券由 <strong style="color:#FF8C00">FeedBites</strong> 智慧問卷系統產生</p>
             <p style="margin:0;color:#ccc;font-size:10px">Bite · Rate · Save &nbsp;|&nbsp; ${today}</p>
           </td>
         </tr>

@@ -30,6 +30,14 @@ const DEFAULT_PRIZE_COLORS = [
   '#EC407A', '#AB47BC', '#26A69A', '#FFB74D',
 ];
 
+// Extended swatch palette for the color picker
+const SWATCH_COLORS = [
+  '#FF5F00', '#FF8C00', '#FFB74D', '#FFD700',
+  '#66BB6A', '#26A69A', '#42A5F5', '#5C6BC0',
+  '#AB47BC', '#EC407A', '#EF5350', '#8D6E63',
+  '#78909C', '#C5A55A', '#FF6B6B', '#00BCD4',
+];
+
 const EMOJI_PICKER = ['🎫', '🥤', '🔥', '🍰', '💰', '👫', '🍕', '🎁', '🍜', '☕', '🧁', '🍺', '🎂', '🥗', '🍱', '💎'];
 
 // 智慧關鍵字 → 建議選項
@@ -100,6 +108,7 @@ export default function EditClient({
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [prizeItems, setPrizeItems] = useState<PrizeItem[]>(initialPrizeItems || []);
   const [showPrizeEditor, setShowPrizeEditor] = useState(false);
+  const [openSwatchIdx, setOpenSwatchIdx] = useState<number | null>(null);
   const [optionInputs, setOptionInputs] = useState<Record<string, string>>({});
 
   function updateQuestion(index: number, updates: Partial<Question>) {
@@ -243,21 +252,12 @@ export default function EditClient({
       </div>
 
       {/* Discount quick toggle */}
-      <div className="bg-white rounded-2xl border border-[#E8E2D8] p-5 mb-4 flex items-center justify-between">
-        <div>
-          <span className="text-sm font-medium text-[#3A3A3A]">折扣獎勵</span>
-          <span className="text-xs text-[#8A8585] ml-2">{discountEnabled ? discountValue : '已關閉'}</span>
-        </div>
-        <div className="flex items-center gap-3">
-          {discountEnabled && (
-            <input
-              type="text"
-              value={discountValue}
-              onChange={e => setDiscountValue(e.target.value)}
-              placeholder="例如：9折"
-              className="w-24 px-3 py-1.5 rounded-lg border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] bg-[#FAF7F2]"
-            />
-          )}
+      <div className="bg-white rounded-2xl border border-[#E8E2D8] p-5 mb-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="text-sm font-medium text-[#3A3A3A]">🎁 填問卷送優惠</span>
+            <p className="text-xs text-[#8A8585] mt-0.5">客人填完問卷後，獲得一張優惠券</p>
+          </div>
           <button
             onClick={() => setDiscountEnabled(!discountEnabled)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
@@ -267,6 +267,19 @@ export default function EditClient({
             {discountEnabled ? '啟用中' : '已關閉'}
           </button>
         </div>
+        {discountEnabled && (
+          <div className="mt-4 pt-4 border-t border-[#F0EBE3]">
+            <label className="text-xs font-medium text-[#3A3A3A] block mb-1.5">優惠內容說明</label>
+            <input
+              type="text"
+              value={discountValue}
+              onChange={e => setDiscountValue(e.target.value)}
+              placeholder="例如：9折、滿百折20、免費招待飲品一杯"
+              className="w-full px-3 py-2 rounded-lg border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] bg-[#FAF7F2]"
+            />
+            <p className="text-[11px] text-[#8A8585] mt-1.5">這段文字會印在客人的優惠券上，讓客人知道享有什麼折扣</p>
+          </div>
+        )}
       </div>
 
       {/* Coupon expiry + activation settings */}
@@ -321,12 +334,15 @@ export default function EditClient({
       {discountEnabled && (
         <div className="bg-white rounded-2xl border border-[#E8E2D8] p-5 mb-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-base">🎰</span>
-              <span className="text-sm font-medium text-[#3A3A3A]">輪盤獎品設定</span>
-              <span className="text-xs text-[#8A8585]">
-                {prizeItems.length > 0 ? `${prizeItems.length} 個獎品` : '使用預設獎品'}
-              </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-base">🎰</span>
+                <span className="text-sm font-medium text-[#3A3A3A]">轉盤抽獎設定</span>
+                <span className="text-xs text-[#8A8585]">
+                  {prizeItems.length > 0 ? `${prizeItems.length} 個獎品` : '使用預設獎品'}
+                </span>
+              </div>
+              <p className="text-[11px] text-[#8A8585] mt-0.5">轉盤只是趣味抽獎環節，客人每次都能得到上方設定的優惠券</p>
             </div>
             <button
               onClick={() => setShowPrizeEditor(!showPrizeEditor)}
@@ -382,18 +398,51 @@ export default function EditClient({
                     className="flex-1 px-3 py-2 rounded-lg border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] bg-white text-[#3A3A3A]"
                   />
 
-                  {/* Color */}
-                  <input
-                    type="color"
-                    value={prize.color}
-                    onChange={e => {
-                      const updated = [...prizeItems];
-                      updated[i] = { ...updated[i], color: e.target.value };
-                      setPrizeItems(updated);
-                    }}
-                    className="w-8 h-8 rounded-lg border border-[#E8E2D8] cursor-pointer"
-                    title="獎品顏色"
-                  />
+                  {/* Color swatch picker */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setOpenSwatchIdx(openSwatchIdx === i ? null : i)}
+                      className="w-8 h-8 rounded-lg border-2 border-white shadow-md hover:scale-110 transition-transform"
+                      style={{ background: prize.color }}
+                      title="選擇顏色"
+                    />
+                    {openSwatchIdx === i && (
+                      <div className="absolute right-0 top-full mt-1 z-20 bg-white rounded-xl shadow-xl border border-[#E8E2D8] p-2.5 w-[160px]">
+                        <div className="grid grid-cols-4 gap-1.5 mb-2">
+                          {SWATCH_COLORS.map(c => (
+                            <button
+                              key={c}
+                              onClick={() => {
+                                const updated = [...prizeItems];
+                                updated[i] = { ...updated[i], color: c };
+                                setPrizeItems(updated);
+                                setOpenSwatchIdx(null);
+                              }}
+                              className="w-7 h-7 rounded-lg hover:scale-110 transition-transform border-2"
+                              style={{
+                                background: c,
+                                borderColor: prize.color === c ? 'white' : 'transparent',
+                                boxShadow: prize.color === c ? `0 0 0 2px ${c}` : 'none',
+                              }}
+                            />
+                          ))}
+                        </div>
+                        <div className="border-t border-[#F0EBE3] pt-2 flex items-center gap-1.5">
+                          <span className="text-[10px] text-[#8A8585]">自訂</span>
+                          <input
+                            type="color"
+                            value={prize.color}
+                            onChange={e => {
+                              const updated = [...prizeItems];
+                              updated[i] = { ...updated[i], color: e.target.value };
+                              setPrizeItems(updated);
+                            }}
+                            className="w-8 h-6 rounded cursor-pointer border-0"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Delete */}
                   <button

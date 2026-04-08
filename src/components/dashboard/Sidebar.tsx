@@ -132,7 +132,7 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
           ) : (
             <a
               key={s.id}
-              href={`/api/stores/select?id=${s.id}`}
+              href={`/api/stores/select?id=${s.id}&returnTo=${encodeURIComponent(pathname)}`}
               className={`block rounded-xl p-2.5 transition-all hover:translate-x-0.5 ${
                 isMember
                   ? 'hover:bg-blue-50/50 border border-transparent hover:border-blue-200/50'

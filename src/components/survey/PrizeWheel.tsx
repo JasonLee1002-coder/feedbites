@@ -109,7 +109,7 @@ export default function PrizeWheel({ prizes, colors, onResult }: PrizeWheelProps
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.1 }}
               className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium"
-              style={{ background: `${WHEEL_COLORS[i % WHEEL_COLORS.length]}15`, color: WHEEL_COLORS[i % WHEEL_COLORS.length], border: `1px solid ${WHEEL_COLORS[i % WHEEL_COLORS.length]}30` }}
+              style={{ background: `${p.color || WHEEL_COLORS[i % WHEEL_COLORS.length]}15`, color: p.color || WHEEL_COLORS[i % WHEEL_COLORS.length], border: `1px solid ${(p.color || WHEEL_COLORS[i % WHEEL_COLORS.length])}30` }}
             >
               <span>{p.emoji}</span>
               <span>{p.label}</span>
@@ -184,7 +184,7 @@ export default function PrizeWheel({ prizes, colors, onResult }: PrizeWheelProps
                       <g key={i}>
                         <path
                           d={`M100,100 L${x1},${y1} A100,100 0 ${largeArc},1 ${x2},${y2} Z`}
-                          fill={WHEEL_COLORS[i % WHEEL_COLORS.length]}
+                          fill={prize.color || WHEEL_COLORS[i % WHEEL_COLORS.length]}
                           stroke="white"
                           strokeWidth="1.5"
                         />
