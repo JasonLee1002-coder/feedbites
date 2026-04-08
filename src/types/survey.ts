@@ -90,6 +90,7 @@ export interface ThemeColors {
   textLight: string;
   border: string;
   accent: string;
+  texture?: import('@/lib/textures').TextureId;
 }
 
 export interface Template {

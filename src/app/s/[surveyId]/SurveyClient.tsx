@@ -6,6 +6,7 @@ import type { Survey, ThemeColors, TemplateId, DiscountTier } from '@/types/surv
 import { getTemplate } from '@/lib/templates';
 import SurveyRenderer from '@/components/survey/SurveyRenderer';
 import DiscountCodeDisplay from '@/components/survey/DiscountCodeDisplay';
+import { getTextureStyle } from '@/lib/textures';
 
 type SurveyStep = 'already-submitted' | 'survey' | 'submitting' | 'discount' | 'phone-prompt';
 
@@ -186,7 +187,7 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
       {isPreview && <PreviewBar surveyId={survey.id} />}
       <div
         className="min-h-screen flex flex-col items-center justify-center px-6"
-        style={{ background: colors.background, fontFamily: "'Noto Sans TC', sans-serif" }}
+        style={{ background: colors.background, fontFamily: "'Noto Sans TC', sans-serif", ...getTextureStyle(colors.texture) }}
       >
         <div className="text-center max-w-sm">
           <div className="text-6xl mb-4">😊</div>
@@ -253,7 +254,7 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
       {isPreview && <PreviewBar surveyId={survey.id} />}
       <div
         className="min-h-screen flex flex-col items-center justify-center px-6"
-        style={{ background: colors.background, fontFamily: "'Noto Sans TC', sans-serif" }}
+        style={{ background: colors.background, fontFamily: "'Noto Sans TC', sans-serif", ...getTextureStyle(colors.texture) }}
       >
         <div className="text-center" style={{ animation: 'slideUp 0.5s ease forwards' }}>
           <div className="text-5xl mb-4">🎊</div>

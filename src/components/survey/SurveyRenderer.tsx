@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import type { Question, ThemeColors, DiscountTier } from '@/types/survey';
 import { getFrame } from '@/lib/qr-frames';
+import { getTextureStyle } from '@/lib/textures';
 
 const EMOJI_LABELS = ['😫', '😕', '😐', '😊', '🤩'];
 const EMOJI_TEXTS = ['不太行', '還好', '普通', '不錯', '超讚！'];
@@ -905,6 +906,7 @@ export default function SurveyRenderer({
         background: colors.background,
         color: colors.text,
         fontFamily: "'Noto Sans TC', sans-serif",
+        ...getTextureStyle(colors.texture),
       }}
     >
       {/* ───── Keyframe animations ───── */}

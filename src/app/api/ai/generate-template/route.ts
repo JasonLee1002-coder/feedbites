@@ -36,6 +36,8 @@ export async function POST(request: NextRequest) {
 - accent：點綴色（badge、特效、星號）
 - name：這套方案的中文名稱（2-4 字，有意境）
 - vibe：一句話形容這套的氛圍感（8 字以內）
+- texture：背景材質類型，從以下選一（根據描述氛圍選擇）：
+  none=無材質純色，wood=木紋年輪紋路，paper=高級紙細緻顆粒，noir=暗色底點狀暗紋，marble=大理石流線，linen=麻布編織紋
 
 設計原則：
 1. 深色背景 → surface 比 background 亮 10–15%；淺色背景 → surface 比 background 深 5%
@@ -47,7 +49,7 @@ export async function POST(request: NextRequest) {
 
 只輸出純 JSON 陣列，不要 markdown 或說明文字：
 [
-  {"name":"...","vibe":"...","primary":"#...","primaryLight":"#...","primaryDark":"#...","background":"#...","surface":"#...","text":"#...","textLight":"#...","border":"#...","accent":"#..."},
+  {"name":"...","vibe":"...","texture":"wood","primary":"#...","primaryLight":"#...","primaryDark":"#...","background":"#...","surface":"#...","text":"#...","textLight":"#...","border":"#...","accent":"#..."},
   {...},
   {...}
 ]`;
@@ -68,9 +70,13 @@ export async function POST(request: NextRequest) {
 
     // Validate each variant
     const required = ['primary', 'primaryLight', 'primaryDark', 'background', 'surface', 'text', 'textLight', 'border', 'accent'];
+    const validTextures = ['none', 'wood', 'paper', 'noir', 'marble', 'linen'];
     const validated = variants.slice(0, 3).filter(v => {
       return required.every(f => v[f] && /^#[0-9A-Fa-f]{6}$/.test(v[f]));
-    });
+    }).map(v => ({
+      ...v,
+      texture: validTextures.includes(v.texture) ? v.texture : 'none',
+    }));
 
     if (validated.length === 0) {
       return NextResponse.json({ error: 'AI 產生的配色格式有誤，請重試' }, { status: 500 });

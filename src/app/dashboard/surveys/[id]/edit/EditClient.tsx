@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft, Save, Loader2, Plus, Trash2, Check, Palette, Sparkles, X } from 'lucide-react';
 import { templateList } from '@/lib/templates';
 import type { Question, TemplateId, ThemeColors } from '@/types/survey';
+import { TEXTURE_DEFS, getTextureStyle } from '@/lib/textures';
 
 const TYPE_OPTIONS: { value: Question['type']; label: string }[] = [
   { value: 'emoji-rating', label: '表情評分' },
@@ -487,7 +488,7 @@ export default function EditClient({
                       key={i}
                       onClick={() => handleSelectVariant(v)}
                       className="w-full text-left rounded-xl border-2 border-transparent hover:border-purple-400 overflow-hidden transition-all shadow-sm hover:shadow-md group"
-                      style={{ backgroundColor: v.background }}
+                      style={{ backgroundColor: v.background, ...getTextureStyle(v.texture) }}
                     >
                       {/* Color strip */}
                       <div className="h-2 w-full flex">
@@ -508,6 +509,11 @@ export default function EditClient({
                             <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: v.primary + '25', color: v.primary }}>方案 {i + 1}</span>
                           </div>
                           <p className="text-[10px] mt-0.5" style={{ color: v.textLight }}>{v.vibe}</p>
+                          {v.texture && v.texture !== 'none' && (
+                            <span className="inline-flex items-center gap-0.5 mt-1 text-[9px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: v.accent + '22', color: v.accent }}>
+                              {TEXTURE_DEFS[v.texture as keyof typeof TEXTURE_DEFS]?.emoji} {TEXTURE_DEFS[v.texture as keyof typeof TEXTURE_DEFS]?.name}
+                            </span>
+                          )}
                         </div>
                         {/* Mock button */}
                         <div className="shrink-0 px-3 py-1 rounded-lg text-[10px] font-bold text-white group-hover:scale-105 transition-transform" style={{ backgroundColor: v.primary }}>
