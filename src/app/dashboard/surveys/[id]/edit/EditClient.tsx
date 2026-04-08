@@ -644,13 +644,19 @@ export default function EditClient({
             </div>
             <button
               onClick={() => setPrizeSameDayValid(!prizeSameDayValid)}
-              className={`relative w-12 h-6 rounded-full transition-colors ${
-                prizeSameDayValid ? 'bg-emerald-400' : 'bg-gray-200'
+              className={`relative flex items-center w-16 h-8 rounded-full transition-all duration-300 active:scale-95 shadow-inner ${
+                prizeSameDayValid ? 'bg-emerald-500' : 'bg-gray-300'
               }`}
+              title={prizeSameDayValid ? '點擊關閉' : '點擊開啟'}
             >
+              {/* Track label */}
+              <span className={`absolute text-[9px] font-bold transition-all ${prizeSameDayValid ? 'left-2 text-white' : 'right-2 text-gray-500'}`}>
+                {prizeSameDayValid ? 'ON' : 'OFF'}
+              </span>
+              {/* Thumb */}
               <span
-                className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                  prizeSameDayValid ? 'translate-x-7' : 'translate-x-1'
+                className={`absolute w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${
+                  prizeSameDayValid ? 'translate-x-9' : 'translate-x-1'
                 }`}
               />
             </button>
