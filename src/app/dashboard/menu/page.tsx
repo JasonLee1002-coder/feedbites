@@ -37,8 +37,6 @@ export default function MenuPage() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [clearingAll, setClearingAll] = useState(false);
   const [photoToast, setPhotoToast] = useState<string | null>(null);
-  const [isDraftDish, setIsDraftDish] = useState(false); // true = auto-created draft, delete if user cancels
-  const isDraftDishRef = useRef(false); // sync ref for resetForm closure
   const saveButtonRef = useRef<HTMLButtonElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -109,13 +107,7 @@ export default function MenuPage() {
     }
   }
 
-  async function resetForm() {
-    // If user cancels while a draft dish was auto-created, delete it
-    // Use ref for synchronous read — setState hasn't flushed yet when called after setIsDraftDish(false)
-    if (isDraftDishRef.current && editingId) {
-      setDishes(prev => prev.filter(d => d.id !== editingId));
-      fetch(`/api/dishes/${editingId}`, { method: 'DELETE' }).catch(() => {});
-    }
+  function resetForm() {
     setFormName('');
     setFormDesc('');
     setFormCategory('主食');
@@ -123,8 +115,6 @@ export default function MenuPage() {
     setFormPhotoUrl(null);
     setShowAddForm(false);
     setEditingId(null);
-    isDraftDishRef.current = false;
-    setIsDraftDish(false);
   }
 
   function startEdit(dish: Dish) {
@@ -143,29 +133,7 @@ export default function MenuPage() {
 
     setUploading(true);
     try {
-      // In ADD mode with no dishId: auto-create a draft dish in DB first so photo is permanently saved
-      let effectiveDishId = dishId || editingId || undefined;
-      if (!effectiveDishId) {
-        const draftRes = await fetch('/api/dishes', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: formName.trim() || '新菜品',
-            description: formDesc.trim() || null,
-            category: formCategory,
-            price: formPrice.trim() || null,
-            photo_url: null,
-          }),
-        });
-        if (draftRes.ok) {
-          const draft = await draftRes.json();
-          effectiveDishId = draft.id;
-          setEditingId(draft.id);
-          isDraftDishRef.current = true;
-          setIsDraftDish(true);
-          setDishes(prev => [draft, ...prev]);
-        }
-      }
+      const effectiveDishId = dishId || editingId || undefined;
 
       const formData = new FormData();
       formData.append('photo', file);
@@ -179,7 +147,9 @@ export default function MenuPage() {
 
       if (res.ok && data.url) {
         setFormPhotoUrl(data.url);
-        setDishes(prev => prev.map(d => d.id === effectiveDishId ? { ...d, photo_url: data.url } : d));
+        if (effectiveDishId) {
+          setDishes(prev => prev.map(d => d.id === effectiveDishId ? { ...d, photo_url: data.url } : d));
+        }
         setPhotoToast('show');
         setTimeout(() => setPhotoToast(null), 3000);
       }
@@ -211,8 +181,6 @@ export default function MenuPage() {
         if (res.ok) {
           const updated = await res.json();
           setDishes(prev => prev.map(d => d.id === editingId ? updated : d));
-          isDraftDishRef.current = false; // committed — resetForm won't delete
-          setIsDraftDish(false);
           resetForm();
         }
       } else {
