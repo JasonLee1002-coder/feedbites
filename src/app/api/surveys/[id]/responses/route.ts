@@ -269,17 +269,6 @@ export async function PATCH(
           </td>
         </tr>
 
-        <!-- ── Divider with scissors ── -->
-        <tr><td style="padding:24px 32px 0">
-          <table width="100%" cellpadding="0" cellspacing="0">
-            <tr>
-              <td style="border-top:2px dashed #FFD4A0;width:44%"></td>
-              <td style="text-align:center;padding:0 10px;color:#FF8C00;font-size:16px;white-space:nowrap;font-weight:700">✂ 優惠券（撕下保存）</td>
-              <td style="border-top:2px dashed #FFD4A0;width:44%"></td>
-            </tr>
-          </table>
-        </td></tr>
-
         <!-- ── QR Code + Code ── -->
         <tr>
           <td style="padding:24px 32px;text-align:center">
@@ -303,7 +292,7 @@ export async function PATCH(
               </div>
             </div>
 
-            <p style="margin:18px 0 0;color:#bbb;font-size:12px">⏰ 優惠期限至 <strong style="color:#FF8C00">${expiryDate}</strong></p>
+            <p style="margin:24px 0 0;color:#555;font-size:16px;font-weight:700">⏰ 優惠期限至 <strong style="color:#FF8C00;font-size:18px">${expiryDate}</strong></p>
           </td>
         </tr>
 

@@ -37,6 +37,8 @@ export default function MenuPage() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [clearingAll, setClearingAll] = useState(false);
   const [photoToast, setPhotoToast] = useState<string | null>(null);
+  const [isDraftDish, setIsDraftDish] = useState(false); // true = auto-created draft, delete if user cancels
+  const isDraftDishRef = useRef(false); // sync ref for resetForm closure
   const saveButtonRef = useRef<HTMLButtonElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -91,7 +93,13 @@ export default function MenuPage() {
     }
   }
 
-  function resetForm() {
+  async function resetForm() {
+    // If user cancels while a draft dish was auto-created, delete it
+    // Use ref for synchronous read — setState hasn't flushed yet when called after setIsDraftDish(false)
+    if (isDraftDishRef.current && editingId) {
+      setDishes(prev => prev.filter(d => d.id !== editingId));
+      fetch(`/api/dishes/${editingId}`, { method: 'DELETE' }).catch(() => {});
+    }
     setFormName('');
     setFormDesc('');
     setFormCategory('主食');
@@ -99,6 +107,8 @@ export default function MenuPage() {
     setFormPhotoUrl(null);
     setShowAddForm(false);
     setEditingId(null);
+    isDraftDishRef.current = false;
+    setIsDraftDish(false);
   }
 
   function startEdit(dish: Dish) {
@@ -117,10 +127,32 @@ export default function MenuPage() {
 
     setUploading(true);
     try {
+      // In ADD mode with no dishId: auto-create a draft dish in DB first so photo is permanently saved
+      let effectiveDishId = dishId || editingId || undefined;
+      if (!effectiveDishId) {
+        const draftRes = await fetch('/api/dishes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: formName.trim() || '新菜品',
+            description: formDesc.trim() || null,
+            category: formCategory,
+            price: formPrice.trim() || null,
+            photo_url: null,
+          }),
+        });
+        if (draftRes.ok) {
+          const draft = await draftRes.json();
+          effectiveDishId = draft.id;
+          setEditingId(draft.id);
+          isDraftDishRef.current = true;
+          setIsDraftDish(true);
+          setDishes(prev => [draft, ...prev]);
+        }
+      }
+
       const formData = new FormData();
       formData.append('photo', file);
-      // When editing, pass editingId so the upload API saves photo_url to DB immediately
-      const effectiveDishId = dishId || editingId || undefined;
       if (effectiveDishId) formData.append('dishId', effectiveDishId);
 
       const res = await fetch('/api/dishes/upload-photo', {
@@ -131,21 +163,14 @@ export default function MenuPage() {
 
       if (res.ok && data.url) {
         setFormPhotoUrl(data.url);
-        if (effectiveDishId) {
-          setDishes(prev => prev.map(d => d.id === effectiveDishId ? { ...d, photo_url: data.url } : d));
-          // Edit mode: photo auto-saved to DB
-          setPhotoToast('✅ 照片已自動儲存');
-          setTimeout(() => setPhotoToast(null), 3000);
-        } else {
-          // Add mode: photo in state only — remind user to save
-          setPhotoToast('📸 照片上傳成功！記得按「新增菜品」才能儲存');
-          setTimeout(() => setPhotoToast(null), 5000);
-          setTimeout(() => saveButtonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
-        }
+        setDishes(prev => prev.map(d => d.id === effectiveDishId ? { ...d, photo_url: data.url } : d));
+        setPhotoToast('✅ 照片已儲存！可繼續填寫菜品資料');
+        setTimeout(() => setPhotoToast(null), 3000);
       }
     } catch { /* ignore */ } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
     }
   }
 
@@ -170,6 +195,8 @@ export default function MenuPage() {
         if (res.ok) {
           const updated = await res.json();
           setDishes(prev => prev.map(d => d.id === editingId ? updated : d));
+          isDraftDishRef.current = false; // committed — resetForm won't delete
+          setIsDraftDish(false);
           resetForm();
         }
       } else {

@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Save, Loader2, Plus, Trash2, Check, Palette, Sparkles, X } from 'lucide-react';
-import { templateList } from '@/lib/templates';
+import { templateList, templates } from '@/lib/templates';
 import type { Question, TemplateId, ThemeColors } from '@/types/survey';
 import { TEXTURE_DEFS, getTextureStyle } from '@/lib/textures';
 
@@ -165,6 +165,21 @@ export default function EditClient({
   const [savedAiTemplates, setSavedAiTemplates] = useState<(ThemeColors & { name: string; vibe: string })[]>([]);
   const [selectedAiTemplateName, setSelectedAiTemplateName] = useState<string | null>(null);
 
+  // Derive active theme colors from selected template or custom AI colors
+  const activeColors = useMemo(() => {
+    if (customColors) return customColors;
+    if (selectedTemplate && templates[selectedTemplate as keyof typeof templates]) {
+      return templates[selectedTemplate as keyof typeof templates].colors;
+    }
+    return templates['fine-dining'].colors;
+  }, [customColors, selectedTemplate]);
+
+  const themeColor = activeColors.primary;
+  const themeBorder = activeColors.border;
+  const themeBg = activeColors.background;
+  const cardBg = activeColors.surface;
+  const textColor = activeColors.text;
+
   // Load hidden templates from localStorage on mount
   useEffect(() => {
     try {
@@ -303,7 +318,7 @@ export default function EditClient({
       });
       if (res.ok) {
         setSaved(true);
-        setTimeout(() => setSaved(false), 3000);
+        setTimeout(() => router.back(), 1000);
       }
     } catch { /* ignore */ } finally {
       setSaving(false);
@@ -311,21 +326,32 @@ export default function EditClient({
   }
 
   return (
-    <div className="p-4 lg:p-8 max-w-4xl mx-auto">
+    <div
+      className="min-h-screen transition-colors duration-700"
+      style={{ backgroundColor: themeBg }}
+    >
+      {/* Theme accent bar — full width */}
+      <div
+        className="h-1.5 transition-all duration-700"
+        style={{ background: `linear-gradient(90deg, ${themeColor}, ${activeColors.accent || themeColor}80)` }}
+      />
+      <div className="max-w-4xl mx-auto p-4 lg:p-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <Link href={`/dashboard/surveys/${surveyId}`} className="flex items-center justify-center w-9 h-9 rounded-xl bg-[#F0EBE3] hover:bg-[#E0D5C5] active:scale-95 transition-all text-[#3A3A3A] shadow-sm">
+          <Link href={`/dashboard/surveys/${surveyId}`}
+            className="flex items-center justify-center w-9 h-9 rounded-xl active:scale-95 transition-all text-white shadow-sm"
+            style={{ backgroundColor: themeColor }}
+          >
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <h1 className="text-xl font-bold text-[#3A3A3A] font-serif">快速編輯問卷</h1>
+          <h1 className="text-xl font-bold font-serif transition-colors duration-500" style={{ color: textColor }}>快速編輯問卷</h1>
         </div>
         <button
           onClick={handleSave}
           disabled={saving}
-          className={`inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl text-white transition-all active:scale-[0.96] shadow-md hover:shadow-lg hover:-translate-y-0.5 ${
-            saved ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-[#C5A55A] hover:bg-[#A08735]'
-          } disabled:opacity-50 disabled:hover:translate-y-0`}
+          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl text-white transition-all active:scale-[0.96] shadow-md hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0"
+          style={{ backgroundColor: saved ? '#10b981' : themeColor }}
         >
           {saving ? <><Loader2 className="w-4 h-4 animate-spin" />儲存中</>
             : saved ? <><Check className="w-4 h-4" />已儲存</>
@@ -334,21 +360,24 @@ export default function EditClient({
       </div>
 
       {/* Title */}
-      <div className="bg-white rounded-2xl border border-[#E8E2D8] p-5 mb-4">
-        <label className="block text-xs font-medium text-[#3A3A3A] mb-1.5">問卷標題</label>
+      <div className="rounded-2xl border p-5 mb-4 transition-colors duration-500" style={{ backgroundColor: cardBg, borderColor: themeBorder }}>
+        <label className="block text-xs font-medium mb-1.5" style={{ color: themeColor }}>問卷標題</label>
         <input
           type="text"
           value={title}
           onChange={e => setTitle(e.target.value)}
-          className="w-full px-4 py-2.5 rounded-xl border border-[#E8E2D8] text-base font-bold outline-none focus:border-[#C5A55A] bg-[#FAF7F2] font-serif text-[#3A3A3A]"
+          className="w-full px-4 py-2.5 rounded-xl border text-base font-bold outline-none font-serif text-[#3A3A3A] transition-colors duration-500"
+          style={{ borderColor: themeBorder, backgroundColor: themeBg }}
+          onFocus={e => e.currentTarget.style.borderColor = themeColor}
+          onBlur={e => e.currentTarget.style.borderColor = themeBorder}
         />
       </div>
 
       {/* Template picker */}
-      <div className="bg-white rounded-2xl border border-[#E8E2D8] p-5 mb-4">
+      <div className="rounded-2xl border p-5 mb-4 transition-colors duration-500" style={{ backgroundColor: cardBg, borderColor: themeBorder }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Palette className="w-4 h-4 text-[#C5A55A]" />
+            <Palette className="w-4 h-4 transition-colors duration-500" style={{ color: themeColor }} />
             <span className="text-sm font-medium text-[#3A3A3A]">問卷風格模板</span>
             {customColors ? (
               <span className="text-xs text-purple-500">— ✨ AI 自訂配色</span>
@@ -369,7 +398,8 @@ export default function EditClient({
             )}
             <button
               onClick={() => setShowTemplatePicker(!showTemplatePicker)}
-              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#C5A55A] text-white hover:bg-[#A08735] active:scale-95 transition-all shadow-sm hover:shadow-md"
+              className="px-3 py-1.5 rounded-lg text-xs font-bold text-white active:scale-95 transition-all shadow-sm hover:shadow-md"
+              style={{ backgroundColor: themeColor }}
             >
               {showTemplatePicker ? '收起 ↑' : '🎨 更換模板'}
             </button>
@@ -740,7 +770,7 @@ export default function EditClient({
       )}
 
       {/* Discount quick toggle */}
-      <div className="bg-white rounded-2xl border border-[#E8E2D8] p-5 mb-4">
+      <div className="rounded-2xl border p-5 mb-4 transition-colors duration-500" style={{ backgroundColor: cardBg, borderColor: themeBorder }}>
         <div className="flex items-center justify-between">
           <div>
             <span className="text-sm font-medium text-[#3A3A3A]">🎁 填問卷送優惠</span>
@@ -774,7 +804,7 @@ export default function EditClient({
 
       {/* Coupon expiry + activation settings */}
       {discountEnabled && (
-        <div className="bg-white rounded-2xl border border-[#E8E2D8] p-5 mb-4 space-y-4">
+        <div className="rounded-2xl border p-5 mb-4 space-y-4 transition-colors duration-500" style={{ backgroundColor: cardBg, borderColor: themeBorder }}>
           {/* Expiry days */}
           <div className="flex items-center justify-between">
             <div>
@@ -828,7 +858,7 @@ export default function EditClient({
 
       {/* Prize wheel editor */}
       {discountEnabled && (
-        <div className="bg-white rounded-2xl border border-[#E8E2D8] p-5 mb-4">
+        <div className="rounded-2xl border p-5 mb-4 transition-colors duration-500" style={{ backgroundColor: cardBg, borderColor: themeBorder }}>
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2">
@@ -981,12 +1011,13 @@ export default function EditClient({
       )}
 
       {/* Questions list */}
-      <div className="bg-white rounded-2xl border border-[#E8E2D8] p-5 mb-4">
+      <div className="rounded-2xl border p-5 mb-4 transition-colors duration-500" style={{ backgroundColor: cardBg, borderColor: themeBorder }}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-bold text-[#3A3A3A]">問題清單（{questions.filter(q => q.type !== 'section-header').length} 題）</h2>
           <button
             onClick={addQuestion}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#C5A55A] text-white text-xs font-bold rounded-xl hover:bg-[#A08735] active:scale-95 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-white text-xs font-bold rounded-xl active:scale-95 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
+            style={{ backgroundColor: themeColor }}
           >
             <Plus className="w-3.5 h-3.5" />
             新增問題
@@ -997,11 +1028,10 @@ export default function EditClient({
           {questions.map((q, i) => (
             <div
               key={q.id || i}
-              className={`flex items-start gap-2 p-3 rounded-xl border transition-all ${
-                q.type === 'section-header'
-                  ? 'bg-[#C5A55A]/5 border-[#C5A55A]/20'
-                  : 'bg-[#FAF7F2] border-[#E8E2D8]'
-              }`}
+              className="flex items-start gap-2 p-3 rounded-xl border transition-all"
+              style={q.type === 'section-header'
+                ? { backgroundColor: themeColor + '0D', borderColor: themeColor + '33' }
+                : { backgroundColor: themeBg, borderColor: themeBorder }}
             >
               {/* Drag handle + order */}
               <div className="flex flex-col items-center gap-1 shrink-0 pt-1">
@@ -1153,14 +1183,14 @@ export default function EditClient({
         <button
           onClick={handleSave}
           disabled={saving}
-          className={`inline-flex items-center gap-2 px-6 py-3 text-sm font-bold rounded-xl text-white transition-all ${
-            saved ? 'bg-emerald-500' : 'bg-[#C5A55A] hover:bg-[#A08735]'
-          } disabled:opacity-50`}
+          className="inline-flex items-center gap-2 px-6 py-3 text-sm font-bold rounded-xl text-white transition-all disabled:opacity-50"
+          style={{ backgroundColor: saved ? '#10b981' : themeColor }}
         >
           {saving ? <><Loader2 className="w-4 h-4 animate-spin" />儲存中</>
             : saved ? <><Check className="w-4 h-4" />已儲存</>
             : <><Save className="w-4 h-4" />儲存變更</>}
         </button>
+      </div>
       </div>
     </div>
   );
