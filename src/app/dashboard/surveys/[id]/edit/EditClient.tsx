@@ -158,6 +158,8 @@ export default function EditClient({
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiError, setAiError] = useState('');
   const [aiVariants, setAiVariants] = useState<(ThemeColors & { name: string; vibe: string })[]>([]);
+  const [hoveredAiVariantIdx, setHoveredAiVariantIdx] = useState<number | null>(null);
+  const [aiAppliedName, setAiAppliedName] = useState<string | null>(null);
 
   // Load hidden templates from localStorage on mount
   useEffect(() => {
@@ -239,6 +241,9 @@ export default function EditClient({
     setAiVariants([]);
     setAiDescription('');
     setAiSelectedPresets([]);
+    setHoveredAiVariantIdx(null);
+    setAiAppliedName(variant.name);
+    setTimeout(() => setAiAppliedName(null), 3000);
   }
 
   async function handleSave() {
@@ -450,6 +455,14 @@ export default function EditClient({
         )}
       </div>
 
+      {/* AI applied success toast */}
+      {aiAppliedName && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2.5 px-5 py-3 bg-[#1a1a2e] text-white rounded-2xl shadow-2xl animate-bounce-in text-sm font-semibold">
+          <span className="text-emerald-400 text-base">✅</span>
+          <span>「{aiAppliedName}」已套用！記得儲存變更</span>
+        </div>
+      )}
+
       {/* AI Template Modal */}
       {showAiModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6 overflow-y-auto">
@@ -523,12 +536,47 @@ export default function EditClient({
             {/* Result phase — 3 variant cards */}
             {aiVariants.length > 0 && (
               <>
+                {/* Live preview — updates on hover */}
+                {(() => {
+                  const idx = hoveredAiVariantIdx ?? 0;
+                  const prev = aiVariants[idx];
+                  return (
+                    <div className="mb-4 rounded-2xl overflow-hidden border border-purple-200 shadow-md transition-all duration-200">
+                      <div className="flex items-center justify-between px-4 py-2" style={{ background: prev.primary }}>
+                        <span className="text-white text-xs font-bold">{prev.name}</span>
+                        <span className="text-white/80 text-[10px]">{prev.vibe}</span>
+                      </div>
+                      <div className="p-4" style={{ background: prev.background, ...getTextureStyle(prev.texture) }}>
+                        <div className="rounded-xl p-3 mb-3" style={{ background: prev.surface, border: `1.5px solid ${prev.border}` }}>
+                          <p className="text-[11px] font-bold mb-2.5" style={{ color: prev.text }}>⭐ 請評分您的用餐體驗</p>
+                          <div className="flex gap-1.5">
+                            {['😫','😕','😐','😊','🤩'].map((e, i) => (
+                              <div key={i} className="flex-1 text-center text-base py-1.5 rounded-lg"
+                                style={{ background: i === 3 ? prev.primary + '28' : prev.background, border: i === 3 ? `1.5px solid ${prev.primary}` : `1.5px solid ${prev.border}` }}>
+                                {e}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="w-full text-center py-2.5 rounded-xl text-xs font-bold text-white"
+                          style={{ background: prev.primary }}>
+                          提交問卷 →
+                        </div>
+                      </div>
+                      <div className="px-4 py-2 text-[10px] text-center" style={{ background: prev.surface, color: prev.textLight }}>
+                        ↑ Hover 下方方案卡片即時預覽
+                      </div>
+                    </div>
+                  );
+                })()}
                 <p className="text-xs text-[#8A8585] mb-3">✨ AI 生成了 {aiVariants.length} 套方案，點擊選用：</p>
                 <div className="space-y-3">
                   {aiVariants.map((v, i) => (
                     <button
                       key={i}
                       onClick={() => handleSelectVariant(v)}
+                      onMouseEnter={() => setHoveredAiVariantIdx(i)}
+                      onMouseLeave={() => setHoveredAiVariantIdx(null)}
                       className="w-full text-left rounded-xl border-2 border-transparent hover:border-purple-400 overflow-hidden transition-all shadow-sm hover:shadow-md group"
                       style={{ backgroundColor: v.background, ...getTextureStyle(v.texture) }}
                     >

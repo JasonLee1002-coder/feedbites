@@ -212,6 +212,15 @@
   display: inline-block;
 }
 
+/* Toast slide-up */
+@keyframes toast-slide-up {
+  from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+.animate-bounce-in {
+  animation: toast-slide-up 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
 /* Shimmer 光波 */
 @keyframes yuzu-shimmer {
   0% { background-position: -200% 0; }
