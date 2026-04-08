@@ -148,6 +148,9 @@ export default function EditClient({
   const [openSwatchIdx, setOpenSwatchIdx] = useState<number | null>(null);
   const [optionInputs, setOptionInputs] = useState<Record<string, string>>({});
 
+  // Template picker hover preview
+  const [hoveredTemplateId, setHoveredTemplateId] = useState<TemplateId | null>(null);
+
   // AI template modal state
   const [showAiModal, setShowAiModal] = useState(false);
   const [aiDescription, setAiDescription] = useState('');
@@ -333,11 +336,50 @@ export default function EditClient({
         </div>
         {showTemplatePicker && (
           <div className="mt-4">
+            {/* ── Live preview at top ── */}
+            {(() => {
+              const pid = hoveredTemplateId || selectedTemplate;
+              const { templateList: tl, ..._ } = { templateList } as { templateList: typeof templateList };
+              void _;
+              const prev = templateList.find(t => t.id === pid) || templateList[0];
+              return (
+                <div className="mb-4 rounded-2xl overflow-hidden border border-[#E8E2D8] shadow-md">
+                  {/* Mini header */}
+                  <div className="flex items-center justify-between px-4 py-2.5" style={{ background: prev.colors.primary }}>
+                    <span className="text-white text-xs font-bold tracking-wide">{prev.name} · {prev.nameEn}</span>
+                    <span className="text-white/80 text-[10px]">{prev.description}</span>
+                  </div>
+                  {/* Mini survey body */}
+                  <div className="p-4" style={{ background: prev.colors.background, ...getTextureStyle(prev.colors.texture) }}>
+                    {/* Fake question card */}
+                    <div className="rounded-xl p-3 mb-3" style={{ background: prev.colors.surface, border: `1.5px solid ${prev.colors.border}` }}>
+                      <p className="text-[11px] font-bold mb-2.5" style={{ color: prev.colors.text }}>⭐ 請評分您的用餐體驗</p>
+                      <div className="flex gap-1.5">
+                        {['😫','😕','😐','😊','🤩'].map((e, i) => (
+                          <div key={i} className="flex-1 text-center text-base py-1.5 rounded-lg transition-all"
+                            style={{ background: i === 3 ? prev.colors.primary + '28' : prev.colors.background, border: i === 3 ? `1.5px solid ${prev.colors.primary}` : `1.5px solid ${prev.colors.border}` }}>
+                            {e}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Fake CTA button */}
+                    <div className="w-full text-center py-2.5 rounded-xl text-xs font-bold text-white shadow-sm"
+                      style={{ background: prev.colors.primary }}>
+                      提交問卷 →
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {templateList.filter(t => !hiddenTemplates.includes(t.id)).map((tmpl) => {
                 const isSelected = !customColors && selectedTemplate === tmpl.id;
                 return (
-                  <div key={tmpl.id} className="relative group">
+                  <div key={tmpl.id} className="relative group"
+                    onMouseEnter={() => setHoveredTemplateId(tmpl.id as TemplateId)}
+                    onMouseLeave={() => setHoveredTemplateId(null)}
+                  >
                     <button
                       onClick={() => { setSelectedTemplate(tmpl.id as TemplateId); setCustomColors(null); setShowTemplatePicker(false); }}
                       className={`w-full text-left rounded-xl border-2 p-3 transition-all ${
