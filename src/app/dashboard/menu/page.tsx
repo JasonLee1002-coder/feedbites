@@ -36,6 +36,8 @@ export default function MenuPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [clearingAll, setClearingAll] = useState(false);
+  const [photoToast, setPhotoToast] = useState<string | null>(null);
+  const saveButtonRef = useRef<HTMLButtonElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const menuUploadRef = useRef<HTMLInputElement>(null);
@@ -131,6 +133,14 @@ export default function MenuPage() {
         setFormPhotoUrl(data.url);
         if (effectiveDishId) {
           setDishes(prev => prev.map(d => d.id === effectiveDishId ? { ...d, photo_url: data.url } : d));
+          // Edit mode: photo auto-saved to DB
+          setPhotoToast('✅ 照片已自動儲存');
+          setTimeout(() => setPhotoToast(null), 3000);
+        } else {
+          // Add mode: photo in state only — remind user to save
+          setPhotoToast('📸 照片上傳成功！記得按「新增菜品」才能儲存');
+          setTimeout(() => setPhotoToast(null), 5000);
+          setTimeout(() => saveButtonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
         }
       }
     } catch { /* ignore */ } finally {
@@ -508,6 +518,12 @@ export default function MenuPage() {
 
   return (
     <div className="p-4 lg:p-8 max-w-6xl mx-auto">
+      {/* Photo upload toast */}
+      {photoToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2.5 px-5 py-3 bg-[#1a1a2e] text-white rounded-2xl shadow-2xl text-sm font-semibold animate-bounce-in">
+          {photoToast}
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -935,9 +951,10 @@ export default function MenuPage() {
 
               <div className="flex gap-3 pt-2">
                 <button
+                  ref={saveButtonRef}
                   onClick={handleSave}
                   disabled={saving || !formName.trim()}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-[#C5A55A] text-white rounded-full text-sm font-medium hover:bg-[#A08735] transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-6 py-2.5 bg-[#C5A55A] text-white rounded-full text-sm font-medium hover:bg-[#A08735] active:scale-95 transition-all disabled:opacity-50 shadow-sm"
                 >
                   <Check className="w-4 h-4" />
                   {saving ? '儲存中...' : editingId ? '更新菜品' : '新增菜品'}
