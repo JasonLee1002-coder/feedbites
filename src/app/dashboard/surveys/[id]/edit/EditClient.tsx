@@ -71,20 +71,32 @@ function findPreset(label: string): string[] | null {
   return null;
 }
 
-// AI template prompt presets
+// AI template prompt presets — 幫店長快速組出高質感描述
 const AI_TEMPLATE_PRESETS = [
-  { label: '深色背景', value: '深色背景' },
-  { label: '淺色背景', value: '淺色背景' },
-  { label: '金色調', value: '金色調' },
-  { label: '紅色系', value: '紅色系' },
-  { label: '木質感', value: '木質感' },
-  { label: '現代簡約', value: '現代簡約' },
-  { label: '溫暖橘色', value: '溫暖橘色' },
-  { label: '清新綠色', value: '清新綠色' },
-  { label: '霓虹感', value: '霓虹感' },
-  { label: '奢華感', value: '奢華感' },
-  { label: '邊框加粗', value: '邊框加粗' },
-  { label: '金字黑底', value: '金字黑底' },
+  // 底色風格
+  { label: '🖤 深色底', value: '深色背景、沉穩' },
+  { label: '🤍 淺色底', value: '淺色背景、乾淨清爽' },
+  { label: '🪵 木紋質感', value: '木質紋理、溫潤自然' },
+  { label: '🪨 大理石感', value: '大理石紋理、冷調奢華' },
+  // 色彩氛圍
+  { label: '✨ 奢華金', value: '金色調、奢華質感、高端' },
+  { label: '🔴 中式紅', value: '深紅配金、中式傳統、大氣' },
+  { label: '🌿 清新綠', value: '草綠、自然清新、健康' },
+  { label: '💜 神秘紫', value: '深紫、神秘高貴' },
+  { label: '🔵 海洋藍', value: '深藍海洋感、清涼' },
+  { label: '🌸 柔和粉', value: '粉色系、甜點感、夢幻' },
+  // 邊框風格
+  { label: '📐 粗邊框', value: '邊框加粗、強烈對比' },
+  { label: '💡 霓虹感', value: '霓虹色、夜店感、發光邊框' },
+];
+
+// 範例描述 — 給店長靈感
+const AI_TEMPLATE_EXAMPLES = [
+  '黑底紅邊框金字，霸氣中式風',
+  '深木紋底、粗金框、奶白文字，日式禪風',
+  '深海軍藍底、銀白邊框、冰藍點綴，高端海鮮館',
+  '奶油白底、玫瑰金邊框、粉棕文字，法式甜點店',
+  '炭黑底、霓虹橘邊框、電光白字，現代燒烤居酒屋',
 ];
 
 interface EditClientProps {
@@ -141,6 +153,7 @@ export default function EditClient({
   const [aiSelectedPresets, setAiSelectedPresets] = useState<string[]>([]);
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiError, setAiError] = useState('');
+  const [aiVariants, setAiVariants] = useState<(ThemeColors & { name: string; vibe: string })[]>([]);
 
   // Load hidden templates from localStorage on mount
   useEffect(() => {
@@ -197,6 +210,7 @@ export default function EditClient({
     if (!combined) { setAiError('請先描述您想要的風格'); return; }
     setAiGenerating(true);
     setAiError('');
+    setAiVariants([]);
     try {
       const res = await fetch('/api/ai/generate-template', {
         method: 'POST',
@@ -205,16 +219,22 @@ export default function EditClient({
       });
       const data = await res.json();
       if (!res.ok) { setAiError(data.error || '產生失敗，請重試'); return; }
-      setCustomColors(data.colors);
-      setSelectedTemplate(null); // clear built-in template when using custom
-      setShowAiModal(false);
-      setAiDescription('');
-      setAiSelectedPresets([]);
+      setAiVariants(data.variants || []);
     } catch {
       setAiError('網路錯誤，請稍後再試');
     } finally {
       setAiGenerating(false);
     }
+  }
+
+  function handleSelectVariant(variant: ThemeColors & { name: string; vibe: string }) {
+    const { name: _n, vibe: _v, ...colors } = variant;
+    setCustomColors(colors as ThemeColors);
+    setSelectedTemplate(null);
+    setShowAiModal(false);
+    setAiVariants([]);
+    setAiDescription('');
+    setAiSelectedPresets([]);
   }
 
   async function handleSave() {
@@ -389,52 +409,122 @@ export default function EditClient({
 
       {/* AI Template Modal */}
       {showAiModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 my-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-bold text-[#3A3A3A] flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-purple-500" /> AI 模板生成器
               </h2>
-              <button onClick={() => setShowAiModal(false)} className="text-[#8A8585] hover:text-[#3A3A3A]">
+              <button onClick={() => { setShowAiModal(false); setAiVariants([]); }} className="text-[#8A8585] hover:text-[#3A3A3A]">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <label className="block text-xs font-medium text-[#3A3A3A] mb-1.5">描述你想要的風格</label>
-            <textarea
-              value={aiDescription}
-              onChange={e => setAiDescription(e.target.value)}
-              placeholder="例如：黑底紅邊框邊框加粗金字、木紋底金框黑字、溫暖橘色系奶油感..."
-              rows={3}
-              className="w-full px-3 py-2 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-purple-400 bg-[#FAF7F2] resize-none mb-3"
-            />
+            {/* Input phase */}
+            {aiVariants.length === 0 && (
+              <>
+                <label className="block text-xs font-medium text-[#3A3A3A] mb-1.5">描述你想要的風格</label>
+                <textarea
+                  value={aiDescription}
+                  onChange={e => setAiDescription(e.target.value)}
+                  placeholder="例如：黑底紅邊框金字、木紋底金框黑字、奶油白底玫瑰金邊框..."
+                  rows={2}
+                  className="w-full px-3 py-2 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-purple-400 bg-[#FAF7F2] resize-none mb-2"
+                />
 
-            <p className="text-xs font-medium text-[#3A3A3A] mb-2">或快速選擇（可多選）</p>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {AI_TEMPLATE_PRESETS.map(p => (
+                {/* Example prompts */}
+                <p className="text-[10px] text-[#8A8585] mb-1">💡 點擊範例快速套入：</p>
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {AI_TEMPLATE_EXAMPLES.map(ex => (
+                    <button
+                      key={ex}
+                      onClick={() => setAiDescription(ex)}
+                      className="px-2 py-0.5 rounded-full text-[10px] bg-purple-50 text-purple-600 hover:bg-purple-100 border border-purple-200 transition-colors"
+                    >
+                      {ex}
+                    </button>
+                  ))}
+                </div>
+
+                <p className="text-xs font-medium text-[#3A3A3A] mb-2">或快速勾選風格（可多選）</p>
+                <div className="flex flex-wrap gap-1.5 mb-4">
+                  {AI_TEMPLATE_PRESETS.map(p => (
+                    <button
+                      key={p.value}
+                      onClick={() => togglePreset(p.value)}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                        aiSelectedPresets.includes(p.value)
+                          ? 'bg-purple-500 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-purple-100'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+
+                {aiError && <p className="text-xs text-red-500 mb-3">{aiError}</p>}
+
                 <button
-                  key={p.value}
-                  onClick={() => togglePreset(p.value)}
-                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                    aiSelectedPresets.includes(p.value)
-                      ? 'bg-purple-500 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-purple-100'
-                  }`}
+                  onClick={handleGenerateTemplate}
+                  disabled={aiGenerating}
+                  className="w-full py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:opacity-60 flex items-center justify-center gap-2 transition-all"
                 >
-                  {p.label}
+                  {aiGenerating
+                    ? <><Loader2 className="w-4 h-4 animate-spin" />AI 生成 3 套方案中...</>
+                    : <><Sparkles className="w-4 h-4" />生成 3 套配色方案</>}
                 </button>
-              ))}
-            </div>
+              </>
+            )}
 
-            {aiError && <p className="text-xs text-red-500 mb-3">{aiError}</p>}
-
-            <button
-              onClick={handleGenerateTemplate}
-              disabled={aiGenerating}
-              className="w-full py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:opacity-60 flex items-center justify-center gap-2 transition-all"
-            >
-              {aiGenerating ? <><Loader2 className="w-4 h-4 animate-spin" />AI 生成中...</> : <><Sparkles className="w-4 h-4" />生成配色</>}
-            </button>
+            {/* Result phase — 3 variant cards */}
+            {aiVariants.length > 0 && (
+              <>
+                <p className="text-xs text-[#8A8585] mb-3">✨ AI 生成了 {aiVariants.length} 套方案，點擊選用：</p>
+                <div className="space-y-3">
+                  {aiVariants.map((v, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleSelectVariant(v)}
+                      className="w-full text-left rounded-xl border-2 border-transparent hover:border-purple-400 overflow-hidden transition-all shadow-sm hover:shadow-md group"
+                      style={{ backgroundColor: v.background }}
+                    >
+                      {/* Color strip */}
+                      <div className="h-2 w-full flex">
+                        {[v.primary, v.accent, v.primaryLight, v.border, v.surface].map((c, ci) => (
+                          <div key={ci} className="flex-1" style={{ backgroundColor: c }} />
+                        ))}
+                      </div>
+                      <div className="p-3 flex items-center gap-3">
+                        {/* Color dots */}
+                        <div className="flex gap-1 shrink-0">
+                          {[v.primary, v.accent, v.border].map((c, ci) => (
+                            <div key={ci} className="w-5 h-5 rounded-full border-2" style={{ backgroundColor: c, borderColor: v.surface }} />
+                          ))}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold" style={{ color: v.text }}>{v.name}</span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: v.primary + '25', color: v.primary }}>方案 {i + 1}</span>
+                          </div>
+                          <p className="text-[10px] mt-0.5" style={{ color: v.textLight }}>{v.vibe}</p>
+                        </div>
+                        {/* Mock button */}
+                        <div className="shrink-0 px-3 py-1 rounded-lg text-[10px] font-bold text-white group-hover:scale-105 transition-transform" style={{ backgroundColor: v.primary }}>
+                          選用
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => { setAiVariants([]); setAiError(''); }}
+                  className="mt-3 w-full py-2 rounded-xl text-xs text-purple-600 hover:bg-purple-50 transition-colors"
+                >
+                  ← 重新描述
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
