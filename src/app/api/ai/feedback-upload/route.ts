@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceSupabase } from '@/lib/supabase/server';
+import { uploadToS3 } from '@/lib/s3';
 
-// POST: Public screenshot upload for feedback genie widget
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -21,26 +20,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '僅支援 PNG / JPG / WebP' }, { status: 400 });
     }
 
-    const db = createServiceSupabase();
     const ext = file.name.split('.').pop() || 'jpg';
-    const fileName = `feedback-genie/${storeId}/${crypto.randomUUID()}.${ext}`;
-    const bytes = await file.arrayBuffer();
-
-    const { error: uploadError } = await db.storage
-      .from('store-assets')
-      .upload(fileName, bytes, {
-        contentType: file.type,
-        upsert: false,
-      });
-
-    if (uploadError) {
-      console.error('Feedback genie upload error:', uploadError);
-      return NextResponse.json({ error: '上傳失敗' }, { status: 500 });
-    }
-
-    const { data: { publicUrl } } = db.storage
-      .from('store-assets')
-      .getPublicUrl(fileName);
+    const key = `feedbites/feedback-genie/${storeId}/${crypto.randomUUID()}.${ext}`;
+    const publicUrl = await uploadToS3(await file.arrayBuffer(), key, file.type);
 
     return NextResponse.json({ url: publicUrl });
   } catch (err) {

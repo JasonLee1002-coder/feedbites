@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
+import { uploadToS3 } from '@/lib/s3';
 
-// POST: Upload screenshot for a feedback report
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerSupabase();
@@ -25,39 +25,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '僅支援 PNG / JPG / WebP' }, { status: 400 });
     }
 
-    const adminDb = createServiceSupabase();
     const ext = file.name.split('.').pop() || 'jpg';
-    const fileName = `feedback/${reportId}/${crypto.randomUUID()}.${ext}`;
-    const bytes = await file.arrayBuffer();
+    const key = `feedbites/feedback/${reportId}/${crypto.randomUUID()}.${ext}`;
+    const publicUrl = await uploadToS3(await file.arrayBuffer(), key, file.type);
 
-    const { error: uploadError } = await adminDb.storage
-      .from('store-assets')
-      .upload(fileName, bytes, {
-        contentType: file.type,
-        upsert: false,
-      });
-
-    if (uploadError) {
-      console.error('Feedback upload error:', uploadError);
-      return NextResponse.json({ error: '上傳失敗' }, { status: 500 });
-    }
-
-    const { data: { publicUrl } } = adminDb.storage
-      .from('store-assets')
-      .getPublicUrl(fileName);
-
-    // Save attachment record
+    const adminDb = createServiceSupabase();
     const { error: insertError } = await adminDb
       .from('feedback_attachments')
-      .insert({
-        report_id: reportId,
-        file_url: publicUrl,
-        file_name: file.name,
-      });
-
-    if (insertError) {
-      console.error('Feedback attachment insert error:', insertError);
-    }
+      .insert({ report_id: reportId, file_url: publicUrl, file_name: file.name });
+    if (insertError) console.error('Feedback attachment insert error:', insertError);
 
     return NextResponse.json({ url: publicUrl, file_name: file.name });
   } catch (err) {

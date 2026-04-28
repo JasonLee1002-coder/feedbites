@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
 import { getSelectedStore } from '@/lib/store-context';
+import { uploadToS3 } from '@/lib/s3';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,9 +18,7 @@ export async function POST(request: NextRequest) {
 
     if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
 
-    // Validate
-    const maxSize = 5 * 1024 * 1024; // 5MB for food photos
-    if (file.size > maxSize) {
+    if (file.size > 5 * 1024 * 1024) {
       return NextResponse.json({ error: '檔案過大（最大 5MB）' }, { status: 400 });
     }
 
@@ -28,39 +27,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '僅支援 PNG / JPG / WebP' }, { status: 400 });
     }
 
-    const adminDb = createServiceSupabase();
     const ext = file.name.split('.').pop() || 'jpg';
-    const fileName = `dishes/${store.id}/${dishId || Date.now()}.${ext}`;
+    const key = `feedbites/dishes/${store.id}/${dishId || Date.now()}.${ext}`;
+    const publicUrl = await uploadToS3(await file.arrayBuffer(), key, file.type);
 
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = new Uint8Array(arrayBuffer);
-
-    const { error: uploadError } = await adminDb.storage
-      .from('store-assets')
-      .upload(fileName, buffer, {
-        contentType: file.type,
-        upsert: true,
-      });
-
-    if (uploadError) {
-      console.error('Upload error:', uploadError);
-      return NextResponse.json({ error: '上傳失敗' }, { status: 500 });
-    }
-
-    const { data: { publicUrl } } = adminDb.storage
-      .from('store-assets')
-      .getPublicUrl(fileName);
-
-    // If dishId provided, update the dish record
     if (dishId) {
+      const adminDb = createServiceSupabase();
       const { error: updateErr } = await adminDb
         .from('dishes')
         .update({ photo_url: publicUrl })
         .eq('id', dishId)
         .eq('store_id', store.id);
-      if (updateErr) {
-        console.error('Failed to update dish photo_url:', updateErr.message);
-      }
+      if (updateErr) console.error('Failed to update dish photo_url:', updateErr.message);
     }
 
     return NextResponse.json({ url: publicUrl });

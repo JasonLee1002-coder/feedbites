@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
 import { getSelectedStore } from '@/lib/store-context';
+import { uploadToS3, deleteFromS3, keyFromUrl } from '@/lib/s3';
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,32 +27,10 @@ export async function POST(request: NextRequest) {
     }
 
     const ext = file.name.split('.').pop() || 'png';
-    const filePath = `avatars/${user.id}.${ext}`;
-    const bytes = await file.arrayBuffer();
+    const key = `feedbites/avatars/${user.id}.${ext}`;
+    const avatarUrl = await uploadToS3(await file.arrayBuffer(), key, file.type);
 
-    const { error: uploadError } = await adminDb.storage
-      .from('store-assets')
-      .upload(filePath, bytes, {
-        contentType: file.type,
-        upsert: true,
-      });
-
-    if (uploadError) {
-      console.error('Avatar upload error:', uploadError);
-      return NextResponse.json({ error: '上傳失敗' }, { status: 500 });
-    }
-
-    const { data: urlData } = adminDb.storage
-      .from('store-assets')
-      .getPublicUrl(filePath);
-
-    const avatarUrl = urlData.publicUrl;
-
-    // Update store
-    await adminDb
-      .from('stores')
-      .update({ owner_avatar_url: avatarUrl })
-      .eq('id', store.id);
+    await adminDb.from('stores').update({ owner_avatar_url: avatarUrl }).eq('id', store.id);
 
     return NextResponse.json({ avatar_url: avatarUrl });
   } catch (err) {
@@ -70,22 +49,12 @@ export async function DELETE() {
     const store = await getSelectedStore(user.id);
     if (!store) return NextResponse.json({ error: '找不到店家' }, { status: 404 });
 
-    // Remove all avatar files for this user (could be .png, .jpg, .webp)
-    const { data: files } = await adminDb.storage
-      .from('store-assets')
-      .list('avatars', { search: user.id });
-
-    if (files && files.length > 0) {
-      await adminDb.storage
-        .from('store-assets')
-        .remove(files.map(f => `avatars/${f.name}`));
+    // Delete from S3 using URL stored in DB
+    if (store.owner_avatar_url) {
+      await deleteFromS3(keyFromUrl(store.owner_avatar_url)).catch(() => {});
     }
 
-    // Clear avatar URL in store
-    await adminDb
-      .from('stores')
-      .update({ owner_avatar_url: null })
-      .eq('id', store.id);
+    await adminDb.from('stores').update({ owner_avatar_url: null }).eq('id', store.id);
 
     return NextResponse.json({ success: true });
   } catch (err) {
