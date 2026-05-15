@@ -1,6 +1,7 @@
 import { createServerSupabase } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import Sidebar from '@/components/dashboard/Sidebar';
+import MobileNav from '@/components/dashboard/MobileNav';
 import { getSelectedStore, getUserStores } from '@/lib/store-context';
 
 export const dynamic = 'force-dynamic';
@@ -41,7 +42,7 @@ export default async function DashboardLayout({
       />
       {/* Main content */}
       <main className="lg:pl-60 overflow-x-hidden">
-        <div className="pt-14 lg:pt-0 max-w-full">
+        <div className="pt-14 lg:pt-0 pb-20 lg:pb-0 max-w-full">
           {/* Store context banner — especially visible for collab stores */}
           {isCollab && (
             <div className="bg-blue-50 border-b border-blue-200 px-5 py-2.5 flex items-center gap-3">
@@ -57,6 +58,7 @@ export default async function DashboardLayout({
           {children}
         </div>
       </main>
+      <MobileNav />
     </div>
   );
 }
