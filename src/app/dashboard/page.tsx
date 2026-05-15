@@ -154,8 +154,8 @@ export default async function DashboardPage() {
   const maxDailyCount = dailyCounts.length > 0 ? Math.max(...dailyCounts.map(d => d.count), 1) : 1;
   const weekTrend = weekResponses - prevWeekResponses;
 
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? '早安' : hour < 18 ? '午安' : '晚安';
+  const hour = parseInt(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei', hour: 'numeric', hour12: false }), 10);
+  const greeting = hour < 6 ? '深夜好' : hour < 12 ? '早安' : hour < 18 ? '午安' : '晚安';
 
   return (
     <DashboardClient
