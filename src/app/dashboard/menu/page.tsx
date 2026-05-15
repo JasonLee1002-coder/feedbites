@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, Camera, Pencil, Trash2, X, Check, ImageIcon, Star, ChefHat, Upload, Sparkles, Loader2, ZoomIn, Crop, Move, PartyPopper } from 'lucide-react';
+import DishRatingBadge from '@/components/dashboard/DishRatingBadge';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import VoiceRecorder from '@/components/shared/VoiceRecorder';
@@ -1070,6 +1071,7 @@ export default function MenuPage() {
                       <span className="text-xs font-medium text-[#FF8C00] shrink-0 ml-1">{dish.price}</span>
                     )}
                   </div>
+                  <DishRatingBadge dishId={dish.id} />
                   {dish.description && (
                     <p className="text-xs text-[#8A8585] line-clamp-2 leading-relaxed">{dish.description}</p>
                   )}
