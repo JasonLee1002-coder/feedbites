@@ -5,6 +5,7 @@ import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/serv
 import { templates } from '@/lib/templates';
 import { Plus } from 'lucide-react';
 import SurveyDeleteButton from './SurveyDeleteButton';
+import SurveyToggle from '@/components/dashboard/SurveyToggle';
 import type { TemplateId, Question } from '@/types/survey';
 import { getSelectedStore } from '@/lib/store-context';
 
@@ -115,11 +116,7 @@ export default async function SurveysPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-3">
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                        survey.is_active ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'
-                      }`}>
-                        {survey.is_active ? '啟用中' : '停用'}
-                      </span>
+                      <SurveyToggle surveyId={survey.id} initialActive={survey.is_active ?? false} />
                       <span className="text-[10px] text-[#8A8585]">{responses.length} 則</span>
                     </div>
                   </div>
