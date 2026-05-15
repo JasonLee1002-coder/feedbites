@@ -23,7 +23,7 @@ const icons = [
 const outDir = path.join(__dirname, '..', 'public', 'icons');
 if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 
-async function generateWithModel(modelName, prompt) {
+async function generateWithGemini(modelName, prompt) {
   const model = genAI.getGenerativeModel({ model: modelName });
   const result = await model.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -33,7 +33,32 @@ async function generateWithModel(modelName, prompt) {
   return parts.find(p => p.inlineData?.mimeType?.startsWith('image/'));
 }
 
-const models = ['imagen-3.0-generate-002', 'gemini-2.0-flash-preview-image-generation', 'gemini-2.0-flash-exp'];
+async function generateWithImagen(modelName, prompt) {
+  // Imagen uses /v1beta/models/{model}:predict endpoint
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predict?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        instances: [{ prompt }],
+        parameters: { sampleCount: 1 },
+      }),
+    }
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  const b64 = data.predictions?.[0]?.bytesBase64Encoded;
+  if (!b64) return null;
+  return { inlineData: { data: b64, mimeType: 'image/png' } };
+}
+
+async function generateWithModel(modelName, prompt) {
+  if (modelName.startsWith('imagen-')) return generateWithImagen(modelName, prompt);
+  return generateWithGemini(modelName, prompt);
+}
+
+const models = ['imagen-4.0-fast-generate-001', 'gemini-2.5-flash-image', 'gemini-3.1-flash-image-preview'];
 
 for (const icon of icons) {
   const outPath = path.join(outDir, `${icon.name}.png`);
