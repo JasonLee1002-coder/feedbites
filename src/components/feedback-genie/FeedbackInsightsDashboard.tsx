@@ -74,8 +74,10 @@ export default function FeedbackInsightsDashboard() {
   const [currentReport, setCurrentReport] = useState<AnalysisReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [days, setDays] = useState(7);
   const [expandedIssue, setExpandedIssue] = useState<number | null>(null);
+  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
   const [responseCount, setResponseCount] = useState<number | null>(null);
 
   useEffect(() => { fetchInsights(); fetchResponseCount(); }, []);
@@ -101,18 +103,23 @@ export default function FeedbackInsightsDashboard() {
 
   async function runAnalysis() {
     setAnalyzing(true);
+    setAnalyzeError(null);
     try {
       const res = await fetch('/api/ai/feedback-analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ days }),
       });
+      const data = await res.json();
       if (res.ok) {
-        const data = await res.json();
         setCurrentReport(data);
         fetchInsights();
+      } else {
+        setAnalyzeError(data?.error || '分析失敗，請稍後再試');
       }
-    } catch { /* ignore */ } finally {
+    } catch {
+      setAnalyzeError('網路錯誤，請確認連線後再試');
+    } finally {
       setAnalyzing(false);
     }
   }
@@ -179,11 +186,17 @@ export default function FeedbackInsightsDashboard() {
             whileTap={{ scale: 0.98 }}
           >
             {analyzing ? (
-              <><Loader2 className="w-4 h-4 animate-spin" />分析中...</>
+              <><Loader2 className="w-4 h-4 animate-spin" />AI 分析中，約 10-20 秒...</>
             ) : (
               <><Brain className="w-4 h-4" />開始分析</>
             )}
           </motion.button>
+          {analyzeError && (
+            <div className="w-full mt-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              {analyzeError}
+            </div>
+          )}
         </div>
       </div>
 
@@ -386,23 +399,93 @@ export default function FeedbackInsightsDashboard() {
         </div>
       )}
 
-      {/* 歷史報告 — 只在沒有當前分析時顯示 */}
+      {/* 歷史報告 — 可展開查看詳細 */}
       {insights.length > 0 && !currentReport && (
         <div className="bg-white rounded-2xl border border-[#E8E2D8] p-5">
           <h3 className="font-bold text-[#3A3A3A] mb-4">過去的分析</h3>
           <div className="space-y-2">
-            {insights.map(insight => (
-              <div key={insight.id} className="flex items-center gap-3 p-3 bg-[#FAF7F2] rounded-xl">
-                <div className="flex-1">
-                  <div className="text-sm font-medium text-[#3A3A3A]">
-                    {new Date(insight.period_start).toLocaleDateString('zh-TW')} ~ {new Date(insight.period_end).toLocaleDateString('zh-TW')}
-                  </div>
-                  <div className="text-xs text-[#8A8585] mt-0.5 line-clamp-1">{insight.summary}</div>
+            {insights.map((insight: Insight & { issues?: Issue[]; highlights?: Highlight[]; recommendations?: Recommendation[] }) => {
+              const isExpanded = expandedHistoryId === insight.id;
+              return (
+                <div key={insight.id} className="border border-[#E8E2D8] rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => setExpandedHistoryId(isExpanded ? null : insight.id)}
+                    className="w-full flex items-center gap-3 p-3.5 text-left hover:bg-[#FAF7F2] transition-colors"
+                  >
+                    <div className="text-xl">{sentimentEmoji(insight.avg_sentiment || 0.5)}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-[#3A3A3A]">
+                        {new Date(insight.period_start).toLocaleDateString('zh-TW')} ~ {new Date(insight.period_end).toLocaleDateString('zh-TW')}
+                      </div>
+                      <div className="text-xs text-[#8A8585] mt-0.5 line-clamp-1">{insight.summary}</div>
+                    </div>
+                    <div className="text-xs text-[#8A8585] shrink-0">{insight.conversation_count} 則</div>
+                    <motion.div animate={{ rotate: isExpanded ? 90 : 0 }} className="shrink-0">
+                      <ChevronRight className="w-4 h-4 text-[#8A8585]" />
+                    </motion.div>
+                  </button>
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ height: 0 }}
+                        animate={{ height: 'auto' }}
+                        exit={{ height: 0 }}
+                        className="overflow-hidden border-t border-[#E8E2D8]"
+                      >
+                        <div className="p-4 space-y-3">
+                          <p className="text-sm text-[#3A3A3A] leading-relaxed">{insight.summary}</p>
+                          {insight.issues && insight.issues.length > 0 && (
+                            <div>
+                              <div className="text-xs font-bold text-[#EF4444] mb-1.5">待改善</div>
+                              {insight.issues.map((issue, i) => (
+                                <div key={i} className="text-xs text-[#5A5050] py-1 border-b border-[#E8E2D8] last:border-0">
+                                  • {issue.title}
+                                  {issue.proposed_fix && <span className="text-[#8A8585]"> — {issue.proposed_fix}</span>}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {insight.highlights && insight.highlights.length > 0 && (
+                            <div>
+                              <div className="text-xs font-bold text-[#10B981] mb-1.5">正面亮點</div>
+                              {insight.highlights.map((hl, i) => (
+                                <div key={i} className="text-xs text-[#5A5050] py-1 border-b border-[#E8E2D8] last:border-0">
+                                  • {hl.title}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {insight.recommendations && insight.recommendations.length > 0 && (
+                            <div>
+                              <div className="text-xs font-bold text-[#C5A55A] mb-1.5">改善建議</div>
+                              {insight.recommendations.map((rec, i) => (
+                                <div key={i} className="text-xs text-[#5A5050] py-1 border-b border-[#E8E2D8] last:border-0">
+                                  • {rec.action}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <button
+                            onClick={() => {
+                              setCurrentReport({
+                                summary: insight.summary,
+                                issues: insight.issues || [],
+                                highlights: insight.highlights || [],
+                                recommendations: insight.recommendations || [],
+                                kpi: { total_conversations: insight.conversation_count, avg_sentiment: insight.avg_sentiment || 0.5, top_topics: [], response_rate_change: '' },
+                              });
+                            }}
+                            className="text-xs font-bold text-[#C5A55A] mt-1 hover:underline"
+                          >
+                            查看完整報告 →
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
-                <div className="text-xs text-[#8A8585]">{insight.conversation_count} 則</div>
-                <div className="text-lg">{sentimentEmoji(insight.avg_sentiment || 0.5)}</div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

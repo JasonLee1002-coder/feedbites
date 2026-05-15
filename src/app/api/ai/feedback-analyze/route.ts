@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     const avgSentiment = totalVotes > 0 ? (avgRating - 1) / 4 : 0.5;
 
     // AI 深度分析
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
     const result = await model.generateContent(
       `你是餐廳經營分析師。請分析以下問卷回覆資料，產出洞察報告。
 
@@ -177,6 +177,7 @@ ${JSON.stringify(responseSummaries, null, 2)}
       period_end: periodEnd.toISOString(),
       summary: analysis.summary,
       issues: analysis.issues,
+      highlights: analysis.highlights,
       recommendations: analysis.recommendations,
       conversation_count: responses.length,
       avg_sentiment: analysis.kpi?.avg_sentiment ?? avgSentiment,
