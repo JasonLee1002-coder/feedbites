@@ -108,25 +108,23 @@ export async function POST(
       const storeLineId = storeRow.line_user_id as string;
       const storeName = storeRow.store_name as string;
       const hourAgo = new Date(Date.now() - 3600000).toISOString();
-      adminDb
-        .from('responses')
-        .select('answers')
-        .eq('survey_id', id)
-        .gte('submitted_at', hourAgo)
-        .then(({ data: recentResps }) => {
+      // 非阻塞：不 await，錯誤靜默忽略
+      void (async () => {
+        try {
+          const { data: recentResps } = await adminDb
+            .from('responses')
+            .select('answers')
+            .eq('survey_id', id)
+            .gte('submitted_at', hourAgo);
           const recentTexts: string[] = [];
           for (const r of recentResps ?? []) {
             for (const v of Object.values(r.answers ?? {})) {
               if (typeof v === 'string' && v.length > 2) recentTexts.push(v);
             }
           }
-          return checkAndPushUrgentAlert({
-            lineUserId: storeLineId,
-            storeName,
-            recentTexts,
-          });
-        })
-        .catch(() => {}); // 不影響主流程
+          await checkAndPushUrgentAlert({ lineUserId: storeLineId, storeName, recentTexts });
+        } catch {}
+      })();
     }
 
     // Generate discount code if enabled (and user didn't skip)

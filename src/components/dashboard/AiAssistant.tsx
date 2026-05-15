@@ -275,7 +275,6 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
   // Show bubble — always show on page load after 1.5s
   useEffect(() => {
     setShowBubble(false);
-    setBubbleTimestamp(null);
     setHasInteracted(false);
     const timer = setTimeout(() => {
       if (!isOpen && !isQrCodePage) setShowBubble(true);
