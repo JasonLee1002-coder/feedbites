@@ -3,6 +3,7 @@ import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/serv
 import { createDiscountCode, getExpiryDate } from '@/lib/discount';
 import { getSelectedStore } from '@/lib/store-context';
 import { Resend } from 'resend';
+import { checkAndPushUrgentAlert } from '@/lib/line/urgent-alert';
 
 // GET: List responses (owner only)
 export async function GET(
@@ -94,6 +95,38 @@ export async function POST(
 
     if (responseError) {
       return NextResponse.json({ error: responseError.message }, { status: 500 });
+    }
+
+    // Trigger urgent alert (non-blocking) — fetch store for line_user_id
+    const { data: storeRow } = await adminDb
+      .from('stores')
+      .select('store_name, line_user_id')
+      .eq('id', survey.store_id)
+      .single();
+
+    if (storeRow?.line_user_id) {
+      const storeLineId = storeRow.line_user_id as string;
+      const storeName = storeRow.store_name as string;
+      const hourAgo = new Date(Date.now() - 3600000).toISOString();
+      adminDb
+        .from('responses')
+        .select('answers')
+        .eq('survey_id', id)
+        .gte('submitted_at', hourAgo)
+        .then(({ data: recentResps }) => {
+          const recentTexts: string[] = [];
+          for (const r of recentResps ?? []) {
+            for (const v of Object.values(r.answers ?? {})) {
+              if (typeof v === 'string' && v.length > 2) recentTexts.push(v);
+            }
+          }
+          return checkAndPushUrgentAlert({
+            lineUserId: storeLineId,
+            storeName,
+            recentTexts,
+          });
+        })
+        .catch(() => {}); // 不影響主流程
     }
 
     // Generate discount code if enabled (and user didn't skip)
