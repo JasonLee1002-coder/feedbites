@@ -305,12 +305,9 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
   }, [showBubble]);
 
   useEffect(() => {
-    if (isOpen) {
-      const now = new Date();
-      setMessages(pageMessages.map(m => ({ ...m, timestamp: now })));
-      setShowBubble(false);
-    }
-  }, [isOpen, pathname]);
+    // Reset messages when page changes (so next open gets fresh context)
+    setMessages([]);
+  }, [pathname]);
 
   useEffect(() => {
     if (showBubble && pageMessages[0]) {
@@ -640,9 +637,15 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
         onPointerUp={() => {
           if (!isDragging) {
             // It was a click, not a drag
-            setIsOpen(!isOpen);
+            const opening = !isOpen;
+            setIsOpen(opening);
             setHasInteracted(true);
             setShowBubble(false);
+            if (opening) {
+              // Stamp timestamps immediately — no useEffect delay
+              const now = new Date();
+              setMessages(pageMessages.map(m => ({ ...m, timestamp: now })));
+            }
           }
           dragStartRef.current = null;
           setTimeout(() => setIsDragging(false), 50);
