@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, ClipboardList, LogOut, Menu, Settings, Plus, UtensilsCrossed, MessageSquareWarning, Brain } from 'lucide-react';
+import { LogOut, Menu, Plus } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 interface StoreInfo {
   id: string;
@@ -22,11 +23,11 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { href: '/dashboard',          label: '總覽',    icon: LayoutDashboard,      emoji: '🏠' },
-  { href: '/dashboard/menu',     label: '菜單管理', icon: UtensilsCrossed,      emoji: '🍽️' },
-  { href: '/dashboard/surveys',  label: '問卷管理', icon: ClipboardList,        emoji: '📋' },
-  { href: '/dashboard/insights', label: 'AI 洞察', icon: Brain,                emoji: '🧠' },
-  { href: '/dashboard/settings', label: '店家設定', icon: Settings,             emoji: '⚙️' },
+  { href: '/dashboard',          label: '總覽',    img: '/icons/home.png' },
+  { href: '/dashboard/menu',     label: '菜單管理', img: '/icons/menu.png' },
+  { href: '/dashboard/surveys',  label: '問卷管理', img: '/icons/survey.png' },
+  { href: '/dashboard/insights', label: 'AI 洞察', img: '/icons/insights.png' },
+  { href: '/dashboard/settings', label: '店家設定', img: '/icons/settings.png' },
 ];
 
 export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: SidebarProps) {
@@ -168,7 +169,7 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
       {storeSelector}
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-3 py-4 space-y-1.5">
         {navItems.map((item) => {
           const active = isActive(item.href);
           return (
@@ -176,17 +177,17 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
               key={item.href}
               href={item.href}
               onClick={() => setMobileOpen(false)}
-              className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.97] ${
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl font-bold transition-all active:scale-[0.97] ${
                 active
-                  ? 'bg-[#C5A55A] text-white shadow-md shadow-[#C5A55A]/30 translate-x-0.5'
-                  : 'text-[#5A5050] hover:bg-[#F5EFE6] hover:text-[#3A3A3A] hover:translate-x-1'
+                  ? 'bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] text-white shadow-lg shadow-[#FF8C00]/25'
+                  : 'text-[#5A5050] hover:bg-[#F5EFE6] hover:text-[#3A3A3A]'
               }`}
             >
-              <span className="text-lg leading-none">{item.emoji}</span>
-              <span className="flex-1">{item.label}</span>
-              {active && (
-                <span className="w-2 h-2 rounded-full bg-white/70 shadow-inner" />
-              )}
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${active ? 'bg-white/20' : 'bg-white shadow-sm'}`}>
+                <Image src={item.img} alt={item.label} width={28} height={28} className="object-contain" />
+              </div>
+              <span className="flex-1 text-[15px]">{item.label}</span>
+              {active && <span className="w-2 h-2 rounded-full bg-white/80" />}
             </Link>
           );
         })}
@@ -197,17 +198,17 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
         <Link
           href="/dashboard/feedback"
           onClick={() => setMobileOpen(false)}
-          className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.97] ${
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl font-bold transition-all active:scale-[0.97] ${
             isActive('/dashboard/feedback')
-              ? 'bg-[#C5A55A] text-white shadow-md shadow-[#C5A55A]/30'
-              : 'text-[#5A5050] hover:bg-[#F5EFE6] hover:text-[#3A3A3A] hover:translate-x-1'
+              ? 'bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] text-white shadow-lg shadow-[#FF8C00]/25'
+              : 'text-[#5A5050] hover:bg-[#F5EFE6] hover:text-[#3A3A3A]'
           }`}
         >
-          <span className="text-lg leading-none">📮</span>
-          <span className="flex-1">問題回報</span>
-          {isActive('/dashboard/feedback') && (
-            <span className="w-2 h-2 rounded-full bg-white/70 shadow-inner" />
-          )}
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isActive('/dashboard/feedback') ? 'bg-white/20' : 'bg-white shadow-sm'}`}>
+            <Image src="/icons/feedback.png" alt="問題回報" width={28} height={28} className="object-contain" />
+          </div>
+          <span className="flex-1 text-[15px]">問題回報</span>
+          {isActive('/dashboard/feedback') && <span className="w-2 h-2 rounded-full bg-white/80" />}
         </Link>
       </div>
 
