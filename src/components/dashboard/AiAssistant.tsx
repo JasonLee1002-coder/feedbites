@@ -20,7 +20,9 @@ function formatMsgTime(date: Date): string {
   const msgDay = new Date(date); msgDay.setHours(0, 0, 0, 0);
   const diffDays = Math.round((today.getTime() - msgDay.getTime()) / 86400000);
   if (diffDays === 0) {
-    return date.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const h = String(date.getHours()).padStart(2, '0');
+    const m = String(date.getMinutes()).padStart(2, '0');
+    return `${h}:${m}`;
   }
   if (diffDays === 1) return '昨天';
   if (diffDays === 2) return '前天';
@@ -515,7 +517,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
                       )}
                     </div>
                     {msg.timestamp && (
-                      <span className={`text-[9px] text-[#B0A090] mt-0.5 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+                      <span className={`text-[10px] text-[#999080] mt-1 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
                         {formatMsgTime(msg.timestamp)}
                       </span>
                     )}
