@@ -83,6 +83,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<BubbleMessage[]>([]);
   const [showBubble, setShowBubble] = useState(false);
+  const [bubbleTimestamp, setBubbleTimestamp] = useState<Date | null>(null);
   const [displayedText, setDisplayedText] = useState('');
   const [hasInteracted, setHasInteracted] = useState(false);
   const [chatInput, setChatInput] = useState('');
@@ -197,6 +198,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
 
       // Force show bubble with celebration
       setShowBubble(true);
+      setBubbleTimestamp(new Date());
       setDisplayedText('');
       let i = 0;
       const timer = setInterval(() => {
@@ -290,9 +292,13 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
   // Show bubble — always show on page load after 1.5s
   useEffect(() => {
     setShowBubble(false);
+    setBubbleTimestamp(null);
     setHasInteracted(false);
     const timer = setTimeout(() => {
-      if (!isOpen && !isQrCodePage) setShowBubble(true);
+      if (!isOpen && !isQrCodePage) {
+        setShowBubble(true);
+        setBubbleTimestamp(new Date());
+      }
     }, 1500);
     return () => clearTimeout(timer);
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -427,6 +433,11 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
                     >
                       {proactiveMsg.linkLabel || '前往 →'}
                     </Link>
+                  )}
+                  {bubbleTimestamp && (
+                    <div className="text-[10px] text-[#999080] mt-1.5">
+                      {formatMsgTime(bubbleTimestamp)}
+                    </div>
                   )}
                 </div>
               </div>
