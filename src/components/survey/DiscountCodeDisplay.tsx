@@ -253,6 +253,7 @@ export default function DiscountCodeDisplay({
 
   const [scratched, setScratched] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const [wonPrize, setWonPrize] = useState<{ label: string; emoji: string } | null>(null);
   const confettiFired = useRef(false);
 
@@ -309,6 +310,22 @@ export default function DiscountCodeDisplay({
     navigator.clipboard.writeText(code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function handleShare() {
+    const url = window.location.href;
+    const text = `我在 ${storeName} 填了問卷，獲得優惠碼 ${code}！你也來試試 👇`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: storeName, text, url });
+      } catch {
+        // user cancelled share — do nothing
+      }
+    } else {
+      await navigator.clipboard.writeText(url);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    }
   }
 
   // Floating particle positions (stable across renders)
@@ -553,6 +570,16 @@ export default function DiscountCodeDisplay({
                   </AnimatePresence>
                 </button>
 
+                {/* How to use tip */}
+                <div
+                  className="mt-3 px-4 py-2.5 rounded-xl text-center"
+                  style={{ background: `${colors.primary}12`, border: `1px dashed ${colors.primary}60` }}
+                >
+                  <p className="text-xs font-medium" style={{ color: colors.primary }}>
+                    💡 向服務人員出示此畫面，即可享折扣
+                  </p>
+                </div>
+
                 {/* Activation notice */}
                 {!prizeValidToday && (
                   <motion.div
@@ -616,6 +643,28 @@ export default function DiscountCodeDisplay({
           prizeEmoji={wonPrize?.emoji}
         />
       )}
+
+      {/* ---- Share Button ---- */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.2, duration: 0.5 }}
+        className="w-full max-w-sm mt-4"
+      >
+        <button
+          onClick={handleShare}
+          className="w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
+          style={{ background: `${colors.primary}15`, color: colors.primary, border: `1px solid ${colors.primary}40` }}
+        >
+          <span>📤</span>
+          {shareCopied ? '已複製連結！' : '分享給朋友'}
+        </button>
+      </motion.div>
+
+      {/* ---- Come Back Message ---- */}
+      <p className="text-center text-xs mt-4 font-medium" style={{ color: colors.textLight }}>
+        🌟 期待你的下次光臨，{storeName} 會一直進步！
+      </p>
 
       {/* ---- FeedBites Branding ---- */}
       <motion.div
