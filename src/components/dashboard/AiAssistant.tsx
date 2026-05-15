@@ -12,21 +12,6 @@ interface BubbleMessage {
   link?: string;  // clickable navigation
   linkLabel?: string;
   role?: 'assistant' | 'user';
-  timestamp?: Date;
-}
-
-function formatMsgTime(date: Date): string {
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const msgDay = new Date(date); msgDay.setHours(0, 0, 0, 0);
-  const diffDays = Math.round((today.getTime() - msgDay.getTime()) / 86400000);
-  if (diffDays === 0) {
-    const h = String(date.getHours()).padStart(2, '0');
-    const m = String(date.getMinutes()).padStart(2, '0');
-    return `${h}:${m}`;
-  }
-  if (diffDays === 1) return '昨天';
-  if (diffDays === 2) return '前天';
-  return `${date.getMonth() + 1}/${date.getDate()}`;
 }
 
 function getPageMessages(pathname: string, context?: { dishCount?: number; surveyCount?: number }): string[] {
@@ -83,7 +68,6 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<BubbleMessage[]>([]);
   const [showBubble, setShowBubble] = useState(false);
-  const [bubbleTimestamp, setBubbleTimestamp] = useState<Date | null>(null);
   const [displayedText, setDisplayedText] = useState('');
   const [hasInteracted, setHasInteracted] = useState(false);
   const [chatInput, setChatInput] = useState('');
@@ -198,7 +182,6 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
 
       // Force show bubble with celebration
       setShowBubble(true);
-      setBubbleTimestamp(new Date());
       setDisplayedText('');
       let i = 0;
       const timer = setInterval(() => {
@@ -295,10 +278,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
     setBubbleTimestamp(null);
     setHasInteracted(false);
     const timer = setTimeout(() => {
-      if (!isOpen && !isQrCodePage) {
-        setShowBubble(true);
-        setBubbleTimestamp(new Date());
-      }
+      if (!isOpen && !isQrCodePage) setShowBubble(true);
     }, 1500);
     return () => clearTimeout(timer);
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -336,7 +316,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
   // AI 對話功能
   const sendChat = useCallback(async (text: string) => {
     if (!text.trim() || chatLoading) return;
-    const userMsg: BubbleMessage = { text: text.trim(), role: 'user', timestamp: new Date() };
+    const userMsg: BubbleMessage = { text: text.trim(), role: 'user' };
     setMessages(prev => [...prev, userMsg]);
     setChatInput('');
     setChatLoading(true);
@@ -357,7 +337,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
 
       if (res.ok) {
         const data = await res.json();
-        const aiMsg: BubbleMessage = { text: data.reply, role: 'assistant', timestamp: new Date() };
+        const aiMsg: BubbleMessage = { text: data.reply, role: 'assistant' };
         setMessages(prev => [...prev, aiMsg]);
         setChatHistory(prev => [...prev, { role: 'assistant', content: data.reply }]);
       } else {
@@ -434,11 +414,6 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
                       {proactiveMsg.linkLabel || '前往 →'}
                     </Link>
                   )}
-                  {bubbleTimestamp && (
-                    <div className="text-[10px] text-[#999080] mt-1.5">
-                      {formatMsgTime(bubbleTimestamp)}
-                    </div>
-                  )}
                 </div>
               </div>
               <button
@@ -507,27 +482,20 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
                       )}
                     </div>
                   )}
-                  <div className="flex flex-col">
-                    <div className={`rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed max-w-[260px] ${
-                      msg.role === 'user'
-                        ? 'rounded-br-md bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] text-white'
-                        : 'rounded-tl-md bg-[#FAF7F2] text-[#3A3A3A]'
-                    }`}>
-                      <span>{msg.text}</span>
-                      {msg.link && (
-                        <Link
-                          href={msg.link}
-                          onClick={() => setIsOpen(false)}
-                          className="block mt-2 px-3 py-1.5 bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] text-white text-[11px] font-bold rounded-lg text-center hover:shadow-md hover:shadow-[#FF8C00]/20 transition-all"
-                        >
-                          {msg.linkLabel || '前往 →'}
-                        </Link>
-                      )}
-                    </div>
-                    {msg.timestamp && (
-                      <span className={`text-[10px] text-[#999080] mt-1 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-                        {formatMsgTime(msg.timestamp)}
-                      </span>
+                  <div className={`rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed max-w-[260px] ${
+                    msg.role === 'user'
+                      ? 'rounded-br-md bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] text-white'
+                      : 'rounded-tl-md bg-[#FAF7F2] text-[#3A3A3A]'
+                  }`}>
+                    <span>{msg.text}</span>
+                    {msg.link && (
+                      <Link
+                        href={msg.link}
+                        onClick={() => setIsOpen(false)}
+                        className="block mt-2 px-3 py-1.5 bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] text-white text-[11px] font-bold rounded-lg text-center hover:shadow-md hover:shadow-[#FF8C00]/20 transition-all"
+                      >
+                        {msg.linkLabel || '前往 →'}
+                      </Link>
                     )}
                   </div>
                 </motion.div>
@@ -653,9 +621,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
             setHasInteracted(true);
             setShowBubble(false);
             if (opening) {
-              // Stamp timestamps immediately — no useEffect delay
-              const now = new Date();
-              setMessages(pageMessages.map(m => ({ ...m, timestamp: now })));
+              setMessages(pageMessages);
             }
           }
           dragStartRef.current = null;
