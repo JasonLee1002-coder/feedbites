@@ -193,25 +193,6 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
         })}
       </nav>
 
-      {/* Feedback */}
-      <div className="px-3 pb-2">
-        <Link
-          href="/dashboard/feedback"
-          onClick={() => setMobileOpen(false)}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl font-bold transition-all active:scale-[0.97] ${
-            isActive('/dashboard/feedback')
-              ? 'bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] text-white shadow-lg shadow-[#FF8C00]/25'
-              : 'text-[#5A5050] hover:bg-[#F5EFE6] hover:text-[#3A3A3A]'
-          }`}
-        >
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isActive('/dashboard/feedback') ? 'bg-white/20' : 'bg-white shadow-sm'}`}>
-            <Image src="/icons/feedback.png" alt="問題回報" width={28} height={28} className="object-contain" />
-          </div>
-          <span className="flex-1 text-[15px]">問題回報</span>
-          {isActive('/dashboard/feedback') && <span className="w-2 h-2 rounded-full bg-white/80" />}
-        </Link>
-      </div>
-
       {/* User section */}
       <div className="px-4 py-4 border-t border-[#E8E2D8]">
         <div className="flex items-center justify-between gap-2">
@@ -236,6 +217,11 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
             <LogOut className="w-3.5 h-3.5" />
             登出
           </button>
+        </div>
+        <div className="mt-2 text-center">
+          <a href="/dashboard/feedback" className="text-[10px] text-[#A09090] hover:text-[#C5A55A] transition-colors">
+            意見回饋給 FeedBites
+          </a>
         </div>
       </div>
     </>

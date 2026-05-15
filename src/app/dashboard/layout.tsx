@@ -2,6 +2,7 @@ import { createServerSupabase } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import Sidebar from '@/components/dashboard/Sidebar';
 import MobileNav from '@/components/dashboard/MobileNav';
+import AiAssistant from '@/components/dashboard/AiAssistant';
 import { getSelectedStore, getUserStores } from '@/lib/store-context';
 
 export const dynamic = 'force-dynamic';
@@ -59,6 +60,10 @@ export default async function DashboardLayout({
         </div>
       </main>
       <MobileNav />
+      <AiAssistant
+        storeName={store.store_name}
+        avatarUrl={store.owner_avatar_url}
+      />
     </div>
   );
 }

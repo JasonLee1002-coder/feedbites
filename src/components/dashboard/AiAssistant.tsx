@@ -75,6 +75,14 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
   const [chatHistory, setChatHistory] = useState<{ role: 'assistant' | 'user'; content: string }[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
+  const [liveStats, setLiveStats] = useState<{
+    todayResponses?: number;
+    responseCount?: number;
+    overallAvg?: number | null;
+    dishCount?: number;
+    surveyCount?: number;
+    hasLogo?: boolean;
+  }>({});
 
   // Position — uses top/right relative to viewport, floats in content area
   const [pos, setPos] = useState({ top: 300, right: 40 });
@@ -101,6 +109,13 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
     top: Math.max(80, Math.min(p.top, (typeof window !== 'undefined' ? window.innerHeight : 800) - 100)),
     right: Math.max(10, Math.min(p.right, 200)),
   });
+
+  useEffect(() => {
+    fetch('/api/ai/assistant-stats')
+      .then(r => r.ok ? r.json() : {})
+      .then(data => setLiveStats(data))
+      .catch(() => {});
+  }, []);
 
   const rawPageMessages = getPageMessages(pathname, { dishCount, surveyCount });
 
@@ -140,8 +155,22 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
   };
 
   const proactiveMsg = getProactiveMessage();
+
+  const liveProactiveMsg: BubbleMessage | null = (() => {
+    if (!(pathname === '/dashboard' || pathname === '/dashboard/')) return null;
+    const today = liveStats.todayResponses;
+    const avg = liveStats.overallAvg;
+    if (today !== undefined && today > 0 && avg) {
+      return { text: `今天已有 ${today} 筆回饋，平均 ${avg.toFixed(1)} 分 ${avg >= 4 ? '🎉' : '💪'} 點我看詳細！` };
+    }
+    if (today !== undefined && today > 0) {
+      return { text: `今天有 ${today} 筆新回饋！點我查看顧客都說了什麼` };
+    }
+    return null;
+  })();
+
   const pageMessages: BubbleMessage[] = [
-    ...(proactiveMsg ? [proactiveMsg] : []),
+    ...(liveProactiveMsg ? [liveProactiveMsg] : proactiveMsg ? [proactiveMsg] : []),
     ...rawPageMessages.map(text => ({ text })),
   ];
 
