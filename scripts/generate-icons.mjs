@@ -10,14 +10,14 @@ if (!apiKey) { console.error('GEMINI_API_KEY not set'); process.exit(1); }
 const genAI = new GoogleGenerativeAI(apiKey);
 
 const icons = [
-  { name: 'home',     prompt: 'A cute 3D cartoon house icon, warm orange color #FF8C00, rounded corners, soft shadows, white background, minimal flat-ish 3D style, suitable for mobile app navigation, 512x512, PNG format' },
-  { name: 'menu',     prompt: 'A cute 3D cartoon fork and spoon crossed icon, warm orange color #FF8C00, rounded shape, soft 3D shadow, white background, minimal, mobile app icon style, 512x512, PNG format' },
-  { name: 'survey',   prompt: 'A cute 3D cartoon clipboard with a checkmark icon, orange color #FF8C00, rounded corners, soft shadow, white background, minimal 3D style, mobile app icon, 512x512, PNG format' },
-  { name: 'insights', prompt: 'A cute 3D cartoon glowing brain or lightbulb icon, golden color #C5A55A, soft glow effect, white background, minimal 3D style, mobile app icon, 512x512, PNG format' },
-  { name: 'settings', prompt: 'A cute 3D cartoon gear cog icon, warm orange color #FF8C00, rounded edges, soft 3D shadow, white background, minimal style, mobile app navigation icon, 512x512, PNG format' },
-  { name: 'alert',    prompt: 'A cute 3D cartoon red bell with a small exclamation mark, red color #DC2626, rounded, soft shadow, white background, minimal 3D style, warning icon for mobile app, 512x512, PNG format' },
-  { name: 'star',     prompt: 'A cute 3D cartoon shiny gold star icon, golden yellow color, rounded points, sparkle effect, white background, minimal 3D style, rating icon for mobile app, 512x512, PNG format' },
-  { name: 'feedback', prompt: 'A cute 3D cartoon speech bubble with a small heart inside, orange color #FF8C00, rounded, soft shadow, white background, minimal 3D style, feedback icon for mobile app, 512x512, PNG format' },
+  { name: 'home',     prompt: 'A vibrant glossy 3D app icon of a cute house, bright vivid orange gradient (#FF6B00 to #FF9500), shiny plastic-like surface with specular highlight, soft drop shadow, pure white background, bold saturated colors, modern iOS-style icon design, 512x512 PNG' },
+  { name: 'menu',     prompt: 'A vibrant glossy 3D app icon of a cute fork and knife crossed, bright vivid coral-orange gradient (#FF5500 to #FF8C00), shiny inflated 3D style, specular highlight, soft drop shadow, pure white background, bold saturated colors, modern iOS-style icon design, 512x512 PNG' },
+  { name: 'survey',   prompt: 'A vibrant glossy 3D app icon of a cute clipboard with colorful checkmark, bright vivid blue-to-teal gradient (#3B82F6 to #06B6D4), shiny inflated bubbly 3D style, specular highlight, soft drop shadow, pure white background, bold saturated colors, modern iOS-style icon design, 512x512 PNG' },
+  { name: 'insights', prompt: 'A vibrant glossy 3D app icon of a cute glowing lightbulb with sparkles, bright vivid purple-to-pink gradient (#8B5CF6 to #EC4899), shiny inflated bubbly 3D style, glowing effect, specular highlight, soft drop shadow, pure white background, bold saturated colors, modern iOS-style icon design, 512x512 PNG' },
+  { name: 'settings', prompt: 'A vibrant glossy 3D app icon of a cute gear/cog wheel, bright vivid teal-to-green gradient (#14B8A6 to #22C55E), shiny inflated bubbly 3D style, specular highlight, soft drop shadow, pure white background, bold saturated colors, modern iOS-style icon design, 512x512 PNG' },
+  { name: 'alert',    prompt: 'A vibrant glossy 3D app icon of a cute bell with notification dot, bright vivid red-to-pink gradient (#EF4444 to #F97316), shiny inflated bubbly 3D style, glowing red dot, specular highlight, soft drop shadow, pure white background, bold saturated colors, modern iOS-style icon design, 512x512 PNG' },
+  { name: 'star',     prompt: 'A vibrant glossy 3D app icon of a cute shiny star with sparkles, bright vivid yellow-to-amber gradient (#FBBF24 to #F59E0B), shiny inflated bubbly 3D style, glitter sparkle effect, specular highlight, soft drop shadow, pure white background, bold saturated colors, modern iOS-style icon design, 512x512 PNG' },
+  { name: 'feedback', prompt: 'A vibrant glossy 3D app icon of a cute speech bubble with a heart, bright vivid pink-to-rose gradient (#EC4899 to #F43F5E), shiny inflated bubbly 3D style, specular highlight, soft drop shadow, pure white background, bold saturated colors, modern iOS-style icon design, 512x512 PNG' },
 ];
 
 const outDir = path.join(__dirname, '..', 'public', 'icons');
