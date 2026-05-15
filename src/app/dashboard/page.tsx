@@ -38,6 +38,7 @@ export default async function DashboardPage() {
   }> = [];
 
   const dailyCounts: { label: string; count: number }[] = [];
+  let topUrgent: { keyword: string; count: number; samples: string[] }[] = [];
 
   if (storeId) {
     const { data: surveys } = await adminDb
@@ -66,6 +67,25 @@ export default async function DashboardPage() {
 
       const allResp = allResponses || [];
       responseCount = allResp.length;
+
+      // 分析近 24 小時負面關鍵字
+      const urgentKeywords: { keyword: string; count: number; samples: string[] }[] = [];
+      const NEGATIVE_WORDS = ['鹹', '淡', '慢', '貴', '冷', '硬', '油', '臭', '差', '爛', '等太久', '不新鮮', '不好', '難吃'];
+      const dayAgo = new Date(Date.now() - 24 * 3600000).toISOString();
+      const recentTexts: string[] = [];
+      for (const r of allResp.filter(r => r.submitted_at >= dayAgo)) {
+        if (r.answers) {
+          for (const v of Object.values(r.answers)) {
+            if (typeof v === 'string' && v.length > 2) recentTexts.push(v);
+          }
+        }
+      }
+      for (const kw of NEGATIVE_WORDS) {
+        const matches = recentTexts.filter(t => t.includes(kw));
+        if (matches.length >= 2) urgentKeywords.push({ keyword: kw, count: matches.length, samples: matches.slice(0, 2) });
+      }
+      urgentKeywords.sort((a, b) => b.count - a.count);
+      topUrgent = urgentKeywords.slice(0, 3);
 
       const todayStr = new Date().toISOString().slice(0, 10);
       todayResponses = allResp.filter(r => r.submitted_at.slice(0, 10) === todayStr).length;
@@ -152,6 +172,7 @@ export default async function DashboardPage() {
       dailyCounts={dailyCounts}
       maxDailyCount={maxDailyCount}
       recentResponses={recentResponses}
+      urgentKeywords={topUrgent}
     />
   );
 }

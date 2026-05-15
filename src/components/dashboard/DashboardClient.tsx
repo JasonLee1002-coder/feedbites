@@ -7,6 +7,7 @@ import {
   MessageCircle, TrendingUp, TrendingDown,
 } from 'lucide-react';
 import WhatsNew from './WhatsNew';
+import UrgentAlert from './UrgentAlert';
 
 interface DashboardData {
   storeName: string;
@@ -30,6 +31,7 @@ interface DashboardData {
     xp_earned?: number | null;
     avg?: number | null;
   }>;
+  urgentKeywords: { keyword: string; count: number; samples: string[] }[];
 }
 
 const ratingEmoji = (v: number) =>
@@ -75,7 +77,7 @@ export default function DashboardClient(props: DashboardData) {
   const {
     storeName, greeting, responseCount, todayResponses,
     weekTrend, overallAvg, recentResponses, activeSurveyCount,
-    dailyCounts, maxDailyCount,
+    dailyCounts, maxDailyCount, urgentKeywords,
   } = props;
 
   const tip = getConsultantTip(props);
@@ -84,6 +86,13 @@ export default function DashboardClient(props: DashboardData) {
   return (
     <div className="p-5 lg:p-8 max-w-3xl mx-auto">
       <WhatsNew />
+
+      <UrgentAlert
+        keywords={urgentKeywords}
+        todayResponses={todayResponses}
+        overallAvg={overallAvg}
+        pendingCount={recentResponses.length > 0 ? Math.min(recentResponses.length, 5) : 0}
+      />
 
       {/* ═══ Store Hero Banner ═══ */}
       <motion.div
