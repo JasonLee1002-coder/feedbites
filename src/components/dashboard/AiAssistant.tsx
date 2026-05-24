@@ -66,6 +66,7 @@ interface AiProps {
 export default function AiAssistant({ storeName = '', hasLogo = false, dishCount = 0, surveyCount = 0, responseCount = 0, avatarUrl }: AiProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [messages, setMessages] = useState<BubbleMessage[]>([]);
   const [showBubble, setShowBubble] = useState(false);
   const [displayedText, setDisplayedText] = useState('');
@@ -116,6 +117,29 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
       .then(data => setLiveStats(data))
       .catch(() => {});
   }, []);
+
+  // 第一次打開聊天面板時，載入歷史對話記錄
+  useEffect(() => {
+    if (!isOpen || historyLoaded) return;
+    fetch('/api/ai/assistant-history')
+      .then((r) => r.ok ? r.json() : { history: [] })
+      .then(({ history }: { history: Array<{ role: string; content: string }> }) => {
+        if (history.length > 0) {
+          const bubbles = history.map((h) => ({
+            text: h.content,
+            role: h.role as 'user' | 'assistant',
+          }));
+          const chatH = history.map((h) => ({
+            role: h.role as 'user' | 'assistant',
+            content: h.content,
+          }));
+          setMessages(bubbles);
+          setChatHistory(chatH);
+        }
+        setHistoryLoaded(true);
+      })
+      .catch(() => setHistoryLoaded(true));
+  }, [isOpen, historyLoaded]);
 
   const rawPageMessages = getPageMessages(pathname, { dishCount, surveyCount });
 
@@ -319,9 +343,11 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
   }, [showBubble]);
 
   useEffect(() => {
-    // Reset messages when page changes (so next open gets fresh context)
-    setMessages([]);
-  }, [pathname]);
+    // 路徑切換時，若還沒有歷史對話就清空頁面提示
+    if (!historyLoaded || chatHistory.length === 0) {
+      setMessages([]);
+    }
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (showBubble && pageMessages[0]) {
