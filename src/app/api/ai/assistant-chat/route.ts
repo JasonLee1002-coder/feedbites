@@ -53,7 +53,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ reply });
   } catch (err) {
-    console.error('Assistant chat error:', err);
-    return NextResponse.json({ error: '副店長暫時走神了' }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('Assistant chat error:', msg);
+    return NextResponse.json({ error: '副店長暫時走神了', _debug: msg }, { status: 500 });
   }
 }
