@@ -32,18 +32,37 @@ export async function POST(request: NextRequest) {
 
     const db = createServiceSupabase();
 
-    const context = await loadStoreContext(store.id, db);
+    // Step-by-step to surface exact error location
+    let context;
+    try {
+      context = await loadStoreContext(store.id, db);
+    } catch (e) {
+      console.error('[1] loadStoreContext failed:', e);
+      return NextResponse.json({ error: '副店長暫時走神了', _debug: 'loadStoreContext: ' + String(e) }, { status: 500 });
+    }
 
-    const prompt = buildAdvisorPrompt(
-      store.store_name || '這家餐廳',
-      context,
-      (history || []) as ChatMessage[],
-      currentPage || '',
-      message.trim()
-    );
+    let prompt;
+    try {
+      prompt = buildAdvisorPrompt(
+        store.store_name || '這家餐廳',
+        context,
+        (history || []) as ChatMessage[],
+        currentPage || '',
+        message.trim()
+      );
+    } catch (e) {
+      console.error('[2] buildAdvisorPrompt failed:', e);
+      return NextResponse.json({ error: '副店長暫時走神了', _debug: 'buildAdvisorPrompt: ' + String(e) }, { status: 500 });
+    }
 
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const result = await model.generateContent(prompt);
+    let result;
+    try {
+      result = await model.generateContent(prompt);
+    } catch (e) {
+      console.error('[3] Gemini failed:', e);
+      return NextResponse.json({ error: '副店長暫時走神了', _debug: 'Gemini: ' + String(e) }, { status: 500 });
+    }
     const reply = result.response.text().trim();
 
     Promise.all([
