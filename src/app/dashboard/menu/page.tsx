@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, Camera, Pencil, Trash2, X, Check, ImageIcon, Star, ChefHat, Upload, Sparkles, Loader2, ZoomIn, Crop, Move, PartyPopper } from 'lucide-react';
+import { Plus, Camera, Pencil, Trash2, X, Check, ImageIcon, Star, ChefHat, Upload, Sparkles, Loader2, ZoomIn, Crop, Move, PartyPopper, Settings2, GripVertical } from 'lucide-react';
 import DishRatingBadge from '@/components/dashboard/DishRatingBadge';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
@@ -18,7 +18,11 @@ interface Dish {
   created_at: string;
 }
 
-const CATEGORIES = ['主食', '前菜', '湯品', '甜點', '飲品', '小吃', '套餐', '其他'];
+interface Category {
+  id: string;
+  name: string;
+  position: number;
+}
 
 export default function MenuPage() {
   const [dishes, setDishes] = useState<Dish[]>([]);
@@ -27,10 +31,25 @@ export default function MenuPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>('全部');
 
+  // Dynamic categories
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [newCatInput, setNewCatInput] = useState('');
+  const [showNewCatInput, setShowNewCatInput] = useState(false);
+  const [savingCat, setSavingCat] = useState(false);
+  const newCatRef = useRef<HTMLInputElement>(null);
+
+  // Category management modal
+  const [showCatManager, setShowCatManager] = useState(false);
+  const [editingCatId, setEditingCatId] = useState<string | null>(null);
+  const [editingCatName, setEditingCatName] = useState('');
+  const [deletingCatId, setDeletingCatId] = useState<string | null>(null);
+  const [managerNewCat, setManagerNewCat] = useState('');
+  const [savingManagerCat, setSavingManagerCat] = useState(false);
+
   // Form state
   const [formName, setFormName] = useState('');
   const [formDesc, setFormDesc] = useState('');
-  const [formCategory, setFormCategory] = useState('主食');
+  const [formCategory, setFormCategory] = useState('');
   const [formPrice, setFormPrice] = useState('');
   const [formPhotoUrl, setFormPhotoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -83,7 +102,44 @@ export default function MenuPage() {
 
   useEffect(() => {
     fetchDishes();
+    fetchCategories();
   }, []);
+
+  async function fetchCategories() {
+    try {
+      const res = await fetch('/api/menu/categories');
+      if (res.ok) {
+        const data = await res.json();
+        setCategories(data);
+        if (data.length > 0) setFormCategory(data[0].name);
+      }
+    } catch { /* ignore */ }
+  }
+
+  async function handleAddCategory() {
+    const name = newCatInput.trim();
+    if (!name) return;
+    setSavingCat(true);
+    try {
+      const res = await fetch('/api/menu/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      if (res.ok) {
+        const cat = await res.json();
+        setCategories(prev => [...prev, cat]);
+        setFormCategory(cat.name);
+        setNewCatInput('');
+        setShowNewCatInput(false);
+      } else {
+        const err = await res.json();
+        alert(err.error || '新增失敗');
+      }
+    } catch { /* ignore */ } finally {
+      setSavingCat(false);
+    }
+  }
 
   // Sync parsedDishes to sessionStorage so navigation doesn't wipe unsaved results
   useEffect(() => {
@@ -95,6 +151,67 @@ export default function MenuPage() {
       }
     } catch { /* ignore */ }
   }, [parsedDishes, PARSED_KEY]);
+
+  async function handleRenameCategory(id: string, name: string) {
+    if (!name.trim()) return;
+    try {
+      const res = await fetch(`/api/menu/categories/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim() }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setCategories(prev => prev.map(c => c.id === id ? updated : c));
+        setEditingCatId(null);
+      } else {
+        const err = await res.json();
+        alert(err.error || '更新失敗');
+      }
+    } catch { /* ignore */ }
+  }
+
+  async function handleDeleteCategory(id: string) {
+    const cat = categories.find(c => c.id === id);
+    const affectedCount = dishes.filter(d => d.category === cat?.name).length;
+    const msg = affectedCount > 0
+      ? `確定刪除「${cat?.name}」？\n${affectedCount} 道菜將顯示為「未分類」。`
+      : `確定刪除「${cat?.name}」？`;
+    if (!confirm(msg)) return;
+    setDeletingCatId(id);
+    try {
+      const res = await fetch(`/api/menu/categories/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setCategories(prev => prev.filter(c => c.id !== id));
+        if (filterCategory === cat?.name) setFilterCategory('全部');
+      }
+    } catch { /* ignore */ } finally {
+      setDeletingCatId(null);
+    }
+  }
+
+  async function handleManagerAddCategory() {
+    const name = managerNewCat.trim();
+    if (!name) return;
+    setSavingManagerCat(true);
+    try {
+      const res = await fetch('/api/menu/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      if (res.ok) {
+        const cat = await res.json();
+        setCategories(prev => [...prev, cat]);
+        setManagerNewCat('');
+      } else {
+        const err = await res.json();
+        alert(err.error || '新增失敗');
+      }
+    } catch { /* ignore */ } finally {
+      setSavingManagerCat(false);
+    }
+  }
 
   async function fetchDishes() {
     try {
@@ -111,11 +228,13 @@ export default function MenuPage() {
   function resetForm() {
     setFormName('');
     setFormDesc('');
-    setFormCategory('主食');
+    setFormCategory(categories[0]?.name || '');
     setFormPrice('');
     setFormPhotoUrl(null);
     setShowAddForm(false);
     setEditingId(null);
+    setShowNewCatInput(false);
+    setNewCatInput('');
   }
 
   function startEdit(dish: Dish) {
@@ -811,8 +930,8 @@ export default function MenuPage() {
 
       {/* Category Filter */}
       {dishes.length > 0 && (
-        <div className="flex gap-2 mb-6 flex-wrap">
-          {categories.map(cat => (
+        <div className="flex gap-2 mb-6 flex-wrap items-center">
+          {['全部', ...categories.map(c => c.name)].map(cat => (
             <button
               key={cat}
               onClick={() => setFilterCategory(cat)}
@@ -825,8 +944,118 @@ export default function MenuPage() {
               {cat} {cat !== '全部' && `(${dishes.filter(d => d.category === cat).length})`}
             </button>
           ))}
+          <button
+            onClick={() => setShowCatManager(true)}
+            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs text-[#A08735] border border-[#E8E2D8] hover:border-[#C5A55A] hover:bg-[#FAF7F2] transition-colors"
+          >
+            <Settings2 className="w-3 h-3" />
+            管理分類
+          </button>
         </div>
       )}
+
+      {/* Category Manager Modal */}
+      <AnimatePresence>
+        {showCatManager && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+            onClick={() => setShowCatManager(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 10 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 10 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-sm"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 py-4 border-b border-[#E8E2D8]">
+                <h3 className="font-bold text-[#3A3A3A] flex items-center gap-2">
+                  <Settings2 className="w-4 h-4 text-[#C5A55A]" />
+                  管理菜單分類
+                </h3>
+                <button onClick={() => setShowCatManager(false)} className="text-[#8A8585] hover:text-[#3A3A3A]">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-4 max-h-[60vh] overflow-y-auto">
+                {categories.length === 0 ? (
+                  <p className="text-sm text-[#8A8585] text-center py-4">尚無分類，請新增</p>
+                ) : (
+                  <div className="space-y-2 mb-4">
+                    {categories.map(cat => (
+                      <div key={cat.id} className="flex items-center gap-2 p-2.5 rounded-xl bg-[#FAF7F2] border border-[#E8E2D8]">
+                        <GripVertical className="w-4 h-4 text-[#C5A55A]/40 shrink-0" />
+                        {editingCatId === cat.id ? (
+                          <>
+                            <input
+                              type="text"
+                              value={editingCatName}
+                              onChange={e => setEditingCatName(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') handleRenameCategory(cat.id, editingCatName);
+                                if (e.key === 'Escape') setEditingCatId(null);
+                              }}
+                              autoFocus
+                              className="flex-1 px-2 py-1 rounded-lg border border-[#C5A55A] text-sm outline-none bg-white"
+                            />
+                            <button onClick={() => handleRenameCategory(cat.id, editingCatName)} className="p-1.5 bg-[#C5A55A] text-white rounded-lg">
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => setEditingCatId(null)} className="p-1.5 text-[#8A8585] hover:text-[#3A3A3A] rounded-lg">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="flex-1 text-sm font-medium text-[#3A3A3A]">{cat.name}</span>
+                            <span className="text-xs text-[#B0AAA0]">{dishes.filter(d => d.category === cat.name).length} 道</span>
+                            <button
+                              onClick={() => { setEditingCatId(cat.id); setEditingCatName(cat.name); }}
+                              className="p-1.5 text-[#8A8585] hover:text-[#C5A55A] rounded-lg transition-colors"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCategory(cat.id)}
+                              disabled={deletingCatId === cat.id}
+                              className="p-1.5 text-[#8A8585] hover:text-red-500 rounded-lg transition-colors disabled:opacity-50"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add new category in manager */}
+                <div className="flex gap-2 pt-2 border-t border-[#E8E2D8]">
+                  <input
+                    type="text"
+                    value={managerNewCat}
+                    onChange={e => setManagerNewCat(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleManagerAddCategory(); }}
+                    placeholder="新增分類..."
+                    className="flex-1 px-3 py-2 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] bg-[#FAF7F2]"
+                  />
+                  <button
+                    onClick={handleManagerAddCategory}
+                    disabled={savingManagerCat || !managerNewCat.trim()}
+                    className="px-3 py-2 bg-[#C5A55A] text-white rounded-xl text-sm font-medium disabled:opacity-50"
+                  >
+                    {savingManagerCat ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Add/Edit Form */}
       {(showAddForm || editingId) && (
@@ -948,22 +1177,55 @@ export default function MenuPage() {
 
               <div>
                 <label className="block text-sm font-medium text-[#3A3A3A] mb-1">分類</label>
-                <div className="flex flex-wrap gap-2">
-                  {CATEGORIES.map(cat => (
+                {showNewCatInput ? (
+                  <div className="flex gap-2">
+                    <input
+                      ref={newCatRef}
+                      type="text"
+                      value={newCatInput}
+                      onChange={e => setNewCatInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleAddCategory(); if (e.key === 'Escape') { setShowNewCatInput(false); setNewCatInput(''); } }}
+                      placeholder="輸入新分類名稱..."
+                      autoFocus
+                      className="flex-1 px-3 py-2 rounded-xl border border-[#C5A55A] text-sm outline-none bg-[#FAF7F2]"
+                    />
                     <button
-                      key={cat}
                       type="button"
-                      onClick={() => setFormCategory(cat)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                        formCategory === cat
-                          ? 'bg-[#C5A55A] text-white'
-                          : 'bg-[#FAF7F2] text-[#8A8585] border border-[#E8E2D8] hover:border-[#C5A55A]'
-                      }`}
+                      onClick={handleAddCategory}
+                      disabled={savingCat || !newCatInput.trim()}
+                      className="px-3 py-2 bg-[#C5A55A] text-white rounded-xl text-sm font-medium disabled:opacity-50"
                     >
-                      {cat}
+                      {savingCat ? '...' : '新增'}
                     </button>
-                  ))}
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => { setShowNewCatInput(false); setNewCatInput(''); }}
+                      className="px-3 py-2 text-[#8A8585] rounded-xl text-sm hover:bg-[#FAF7F2]"
+                    >
+                      取消
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <select
+                      value={formCategory}
+                      onChange={e => setFormCategory(e.target.value)}
+                      className="flex-1 px-3 py-2 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-[#C5A55A] bg-[#FAF7F2] text-[#3A3A3A]"
+                    >
+                      {categories.map(cat => (
+                        <option key={cat.id} value={cat.name}>{cat.name}</option>
+                      ))}
+                      {categories.length === 0 && <option value="">尚無分類</option>}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewCatInput(true)}
+                      className="px-3 py-2 bg-[#FAF7F2] text-[#C5A55A] border border-[#C5A55A]/40 rounded-xl text-sm font-medium hover:bg-[#C5A55A]/10 transition-colors whitespace-nowrap"
+                    >
+                      ＋ 新增分類
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 pt-2">
@@ -1417,7 +1679,7 @@ export default function MenuPage() {
                           onChange={e => updateField('category', e.target.value)}
                           className="w-full px-3 py-2 rounded-xl border border-[#E8E2D8] text-sm outline-none focus:border-[#FF8C00] bg-[#FAF7F2] text-[#3A3A3A]"
                         >
-                          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                          {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                         </select>
                       </div>
                     </div>
