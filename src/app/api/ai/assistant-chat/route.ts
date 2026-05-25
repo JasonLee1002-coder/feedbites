@@ -53,9 +53,21 @@ export async function POST(request: NextRequest) {
       message.trim()
     );
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const result = await model.generateContent(prompt);
-    const reply = result.response.text().trim();
+    let reply: string;
+    try {
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+      const result = await model.generateContent(prompt);
+      reply = result.response.text().trim();
+    } catch (geminiErr) {
+      const msg = geminiErr instanceof Error ? geminiErr.message : String(geminiErr);
+      console.error('[gemini] generateContent failed:', msg);
+      // Return a graceful fallback instead of 500
+      return NextResponse.json({ reply: `抱歉，我的 AI 服務暫時有點問題（${msg.slice(0, 60)}），等等再問我吧！` });
+    }
+
+    if (!reply) {
+      return NextResponse.json({ reply: '我剛剛沒想清楚，你再說一次？' });
+    }
 
     Promise.all([
       extractMemories(message.trim(), reply, store.id, db),
@@ -65,7 +77,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ reply });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error('Assistant chat error:', msg);
+    console.error('Assistant chat error (outer):', msg);
     return NextResponse.json({ error: '副店長暫時走神了', _debug: msg }, { status: 500 });
   }
 }

@@ -193,13 +193,14 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
         }),
       });
 
-      if (res.ok) {
-        const data = await res.json();
+      const data = await res.json();
+      if (res.ok && data.reply) {
         const aiMsg: BubbleMessage = { text: data.reply, role: 'assistant' };
         setMessages(prev => [...prev, aiMsg]);
         setChatHistory(prev => [...prev, { role: 'assistant', content: data.reply }]);
       } else {
-        setMessages(prev => [...prev, { text: '抱歉，我剛剛走神了 😅 再說一次？', role: 'assistant' }]);
+        const errText = data?._debug ? `走神了 😅（${data._debug.slice(0, 80)}）` : '抱歉，我剛剛走神了 😅 再說一次？';
+        setMessages(prev => [...prev, { text: errText, role: 'assistant' }]);
       }
     } catch {
       setMessages(prev => [...prev, { text: '網路好像有點問題，等等再試？', role: 'assistant' }]);
