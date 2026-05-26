@@ -1,6 +1,7 @@
 // src/lib/ai-advisor.ts
 import { SupabaseClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { analyzeKnowledgeGaps } from './gap-analysis';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -52,6 +53,7 @@ export async function loadDomainKnowledge(db: SupabaseClient): Promise<string[]>
     .from('domain_knowledge')
     .select('category, subject, content')
     .eq('project', 'feedbites')
+    .eq('is_stale', false)          // v7.0 Mode C：只用新鮮知識
     .or(`valid_until.is.null,valid_until.gte.${today}`)
     .order('confidence', { ascending: false })
     .limit(15);

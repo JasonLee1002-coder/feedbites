@@ -9,6 +9,7 @@ import {
   persistChatTurn,
   initDomainKnowledge,
 } from '@/lib/ai-advisor';
+import { analyzeKnowledgeGaps } from '@/lib/gap-analysis';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -75,9 +76,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ reply: '我剛剛沒想清楚，你再說一次？' });
     }
 
+    // v7.0 Mode C：fire-and-forget 背景任務（不阻塞回應）
     Promise.all([
       extractMemories(message.trim(), reply, store.id, db),
       persistChatTurn(store.id, message.trim(), reply, db),
+      analyzeKnowledgeGaps(message.trim(), reply, 'restaurant', 'feedbites', db),
     ]).catch((err) => { console.error('Assistant background task error:', err); });
 
     return NextResponse.json({ reply });
