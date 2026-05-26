@@ -621,7 +621,6 @@ export default function MenuPage() {
     if (result.suggestedName && !formName) setFormName(result.suggestedName);
   }, [formName]);
 
-  const categories = ['全部', ...new Set(dishes.map(d => d.category))];
   const filteredDishes = filterCategory === '全部'
     ? dishes
     : dishes.filter(d => d.category === filterCategory);
