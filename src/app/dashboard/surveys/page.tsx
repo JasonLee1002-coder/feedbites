@@ -62,16 +62,16 @@ export default async function SurveysPage() {
   return (
     <div className="p-5 lg:p-8 max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-7">
         <div>
-          <h1 className="text-2xl font-bold text-[#3A3A3A] font-serif flex items-center gap-2">
-            💬 顧客心聲
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+            <span className="text-2xl">💬</span> 顧客心聲
           </h1>
-          <p className="text-sm text-[#8A8585] mt-1">看看客人怎麼說你的店</p>
+          <p className="text-sm text-slate-500 mt-1 font-medium">看看客人怎麼說你的店</p>
         </div>
         <Link
           href="/dashboard/surveys/new"
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#C5A55A] text-white text-sm font-bold rounded-xl hover:bg-[#A08735] transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-orange-500 text-white text-sm font-bold rounded-xl hover:bg-orange-600 active:scale-[0.97] transition-all shadow-md shadow-orange-500/25"
         >
           <Plus className="w-4 h-4" />
           新問卷
@@ -79,161 +79,148 @@ export default async function SurveysPage() {
       </div>
 
       {surveyList.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-[#E8E2D8] text-center py-16 px-6">
+        <div className="bg-white rounded-2xl border border-slate-200 text-center py-16 px-6 shadow-sm">
           <div className="text-5xl mb-4 yuzu-float">📋</div>
-          <h2 className="text-lg font-bold text-[#3A3A3A] font-serif mb-2">還沒有問卷</h2>
-          <p className="text-sm text-[#8A8585] mb-6">建立第一份問卷，開始聽顧客的聲音</p>
+          <h2 className="text-lg font-bold text-slate-900 mb-2">還沒有問卷</h2>
+          <p className="text-sm text-slate-500 mb-6">建立第一份問卷，開始聽顧客的聲音</p>
           <Link
             href="/dashboard/surveys/new"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#C5A55A] text-white text-sm font-bold rounded-xl hover:bg-[#A08735] transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 text-white text-sm font-bold rounded-xl hover:bg-orange-600 transition-all shadow-md shadow-orange-500/25"
           >
             <Plus className="w-4 h-4" />
             建立問卷
           </Link>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {surveyList.map((survey) => {
             const template = templates[survey.template_id as TemplateId];
+            const accentColor = template?.colors.primary || '#f97316';
             const responses = responsesBySurvey[survey.id] || [];
             const recentResponses = responses.slice(0, 3);
             const questions = (survey.questions || []) as Question[];
             const ratingQIds = questions.filter(q => q.type === 'rating' || q.type === 'emoji-rating').map(q => q.id);
 
             return (
-              <div key={survey.id} className="bg-white rounded-2xl border-2 border-[#E8E2D8] overflow-hidden yuzu-card shadow-md hover:shadow-xl transition-all" style={{ borderLeft: `4px solid ${template?.colors.primary || '#C5A55A'}` }}>
-                {/* Survey header — compact */}
-                <div className="px-5 py-4 border-b border-[#E8E2D8]/50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <div
-                        className="w-3 h-3 rounded-full shrink-0"
-                        style={{ backgroundColor: template?.colors.primary || '#C5A55A' }}
-                      />
-                      <div className="px-3 py-2 bg-[#FAF7F2] rounded-lg border border-[#E8E2D8] flex-1 min-w-0">
-                        <span className="text-[10px] text-[#8A8585] block">問卷名稱</span>
-                        <span className="text-sm font-bold text-[#3A3A3A] block truncate">{survey.title}</span>
+              <div key={survey.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                {/* Accent top bar */}
+                <div className="h-1" style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}99)` }} />
+
+                {/* Survey header */}
+                <div className="px-5 pt-4 pb-3 border-b border-slate-100">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-white text-sm font-black shadow-md"
+                        style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)` }}>
+                        {survey.title.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-base font-bold text-slate-900 truncate leading-tight">{survey.title}</h3>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs text-slate-400 font-medium">
+                            {responses.length > 0 ? `${responses.length} 則回覆` : '尚無回覆'}
+                          </span>
+                          {responses.length > 0 && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full border border-emerald-200">
+                              ● 收集中
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0 ml-3">
+                    <div className="shrink-0">
                       <SurveyToggle surveyId={survey.id} initialActive={survey.is_active ?? false} />
-                      <span className="text-[10px] text-[#8A8585]">{responses.length} 則</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Customer voices — the main content */}
+                {/* Customer voices */}
                 {recentResponses.length === 0 ? (
-                  <div className="px-5 py-8 text-center">
-                    <div className="text-3xl mb-2">📭</div>
-                    <p className="text-sm text-[#8A8585]">還沒有回覆，分享 QR Code 給客人吧</p>
-                    <Link
-                      href={`/dashboard/surveys/${survey.id}/qrcode`}
-                      className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 bg-[#C5A55A]/10 text-[#A08735] text-xs font-medium rounded-lg hover:bg-[#C5A55A]/20 transition-colors"
-                    >
-                      列印 QR Code →
+                  <div className="px-5 py-7 text-center">
+                    <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">📭</div>
+                    <p className="text-sm font-semibold text-slate-600 mb-1">還沒有回覆</p>
+                    <p className="text-xs text-slate-400 mb-3">把 QR Code 放到桌上，客人掃一掃就能留回饋</p>
+                    <Link href={`/dashboard/surveys/${survey.id}/qrcode`}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-orange-50 text-orange-600 text-xs font-bold rounded-lg hover:bg-orange-100 transition-colors border border-orange-200">
+                      取得 QR Code →
                     </Link>
                   </div>
                 ) : (
-                  <div className="divide-y divide-[#E8E2D8]/50">
+                  <div>
                     {recentResponses.map((r) => {
-                      // Calculate avg rating
                       const ratingValues = ratingQIds
                         .map(qId => Number(r.answers?.[qId]))
                         .filter(v => !isNaN(v) && v > 0);
                       const avg = ratingValues.length > 0
                         ? ratingValues.reduce((a, b) => a + b, 0) / ratingValues.length
                         : null;
-
-                      // Find a text answer to show
                       const textAnswer = Object.values(r.answers || {}).find(
                         v => typeof v === 'string' && v.length > 3 && isNaN(Number(v))
                       ) as string | undefined;
-
-                      const timeAgo = (() => {
-                        const diff = Date.now() - new Date(r.submitted_at).getTime();
-                        const mins = Math.floor(diff / 60000);
-                        if (mins < 60) return `${mins} 分鐘前`;
-                        const hours = Math.floor(mins / 60);
-                        if (hours < 24) return `${hours} 小時前`;
-                        const days = Math.floor(hours / 24);
-                        return `${days} 天前`;
-                      })();
+                      const diff = Date.now() - new Date(r.submitted_at).getTime();
+                      const mins = Math.floor(diff / 60000);
+                      const timeAgo = mins < 60 ? `${mins} 分前`
+                        : mins < 1440 ? `${Math.floor(mins / 60)} 小時前`
+                        : `${Math.floor(mins / 1440)} 天前`;
 
                       return (
-                        <div key={r.id} className="px-5 py-4">
-                          <div className="flex items-start gap-3">
-                            {/* Rating emoji — big and prominent */}
-                            {avg != null && (
-                              <div className="text-center shrink-0">
-                                <div className="text-3xl">{ratingEmoji(avg)}</div>
-                                <div className={`text-xs font-bold mt-0.5 ${
-                                  avg >= 4 ? 'text-green-600' : avg >= 3 ? 'text-yellow-600' : 'text-red-500'
-                                }`}>
-                                  {avg.toFixed(1)}
-                                </div>
-                              </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="text-sm font-medium text-[#3A3A3A]">
-                                  {r.respondent_name || '匿名顧客'}
-                                </span>
-                                <span className="text-[10px] text-[#8A8585]">{timeAgo}</span>
-                              </div>
-                              {textAnswer && (
-                                <p className="text-sm text-[#3A3A3A] leading-relaxed bg-[#FAF7F2] rounded-lg px-3 py-2 italic">
-                                  &ldquo;{textAnswer}&rdquo;
-                                </p>
-                              )}
-                              {!textAnswer && avg != null && (
-                                <p className="text-xs text-[#8A8585]">
-                                  {avg >= 4.5 ? '超滿意的回覆！' : avg >= 3.5 ? '正面回饋' : avg >= 2.5 ? '普通評價' : '需要關注'}
-                                </p>
-                              )}
+                        <div key={r.id} className="px-5 py-3.5 border-b border-slate-50 last:border-0 flex items-start gap-3 hover:bg-slate-50/50 transition-colors">
+                          {avg != null ? (
+                            <div className="shrink-0 w-10 h-10 rounded-xl flex flex-col items-center justify-center text-center"
+                              style={{ background: avg >= 4 ? '#f0fdf4' : avg >= 3 ? '#fefce8' : '#fef2f2', border: `1.5px solid ${avg >= 4 ? '#bbf7d0' : avg >= 3 ? '#fef08a' : '#fecaca'}` }}>
+                              <span className="text-lg leading-none">{ratingEmoji(avg)}</span>
+                              <span className={`text-[9px] font-black leading-none mt-0.5 ${avg >= 4 ? 'text-green-600' : avg >= 3 ? 'text-yellow-600' : 'text-red-500'}`}>
+                                {avg.toFixed(1)}
+                              </span>
                             </div>
+                          ) : (
+                            <div className="shrink-0 w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
+                              <span className="text-slate-400 text-xs font-bold">匿</span>
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-sm font-semibold text-slate-800">{r.respondent_name || '匿名顧客'}</span>
+                              <span className="text-[10px] text-slate-400 font-medium">{timeAgo}</span>
+                            </div>
+                            {textAnswer ? (
+                              <p className="text-sm text-slate-600 leading-relaxed bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">
+                                &ldquo;{textAnswer}&rdquo;
+                              </p>
+                            ) : avg != null ? (
+                              <p className="text-xs text-slate-400 font-medium">
+                                {avg >= 4.5 ? '⭐ 超滿意的回覆！' : avg >= 3.5 ? '👍 正面回饋' : avg >= 2.5 ? '😐 普通評價' : '⚠️ 需要關注'}
+                              </p>
+                            ) : null}
                           </div>
                         </div>
                       );
                     })}
-
                     {responses.length > 3 && (
-                      <Link
-                        href={`/dashboard/surveys/${survey.id}`}
-                        className="block px-5 py-3 text-center text-xs text-[#C5A55A] font-medium hover:bg-[#FAF7F2] transition-colors"
-                      >
+                      <Link href={`/dashboard/surveys/${survey.id}`}
+                        className="flex items-center justify-center gap-1.5 py-3 text-xs font-bold text-slate-500 hover:text-orange-600 hover:bg-orange-50 transition-colors border-t border-slate-100">
                         查看全部 {responses.length} 則回覆 →
                       </Link>
                     )}
                   </div>
                 )}
 
-                {/* Action bar — always visible */}
-                <div className="px-4 py-3 bg-[#FAF7F2]/50 border-t border-[#E8E2D8]/50 flex items-center gap-2 flex-wrap">
-                  <a
-                    href={`/s/${survey.id}?preview=1`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-emerald-500 rounded-lg hover:bg-emerald-600 transition-colors"
-                  >
-                    👁️ 體驗問卷
+                {/* Action bar */}
+                <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center gap-1.5 flex-wrap">
+                  <a href={`/s/${survey.id}?preview=1`} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-emerald-500 rounded-lg hover:bg-emerald-600 active:scale-[0.97] transition-all shadow-sm">
+                    👁️ 體驗
                   </a>
-                  <Link
-                    href={`/dashboard/surveys/${survey.id}/qrcode`}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-[#FF8C00] rounded-lg hover:bg-[#E07800] transition-colors"
-                  >
+                  <Link href={`/dashboard/surveys/${survey.id}/qrcode`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-orange-500 rounded-lg hover:bg-orange-600 active:scale-[0.97] transition-all shadow-sm">
                     📱 QR Code
                   </Link>
-                  <Link
-                    href={`/dashboard/surveys/${survey.id}/edit`}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#3A3A3A] bg-white border border-[#E8E2D8] rounded-lg hover:border-[#C5A55A] transition-colors"
-                  >
-                    ✏️ 編輯問卷
+                  <Link href={`/dashboard/surveys/${survey.id}/edit`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:border-slate-400 hover:text-slate-900 active:scale-[0.97] transition-all">
+                    ✏️ 編輯
                   </Link>
-                  <Link
-                    href={`/dashboard/surveys/${survey.id}`}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#3A3A3A] bg-white border border-[#E8E2D8] rounded-lg hover:border-[#C5A55A] transition-colors"
-                  >
+                  <Link href={`/dashboard/surveys/${survey.id}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:border-slate-400 hover:text-slate-900 active:scale-[0.97] transition-all">
                     📊 統計
                   </Link>
                   <div className="ml-auto">

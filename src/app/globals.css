@@ -120,11 +120,27 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   html {
     @apply font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "kern" 1, "liga" 1;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+  /* Prevent blurry thin text */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  /* Sharp borders */
+  * {
+    border-color: inherit;
+    box-sizing: border-box;
   }
 }
 

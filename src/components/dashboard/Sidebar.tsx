@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LogOut, Menu, Plus } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { LogOut, Menu, Plus, LayoutDashboard, UtensilsCrossed, ClipboardList, Sparkles, Settings } from 'lucide-react';
+import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -23,28 +23,17 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { href: '/dashboard',          label: '總覽',    img: '/icons/home.png' },
-  { href: '/dashboard/menu',     label: '菜單管理', img: '/icons/menu.png' },
-  { href: '/dashboard/surveys',  label: '問卷管理', img: '/icons/survey.png' },
-  { href: '/dashboard/insights', label: 'AI 洞察', img: '/icons/insights.png' },
-  { href: '/dashboard/settings', label: '店家設定', img: '/icons/settings.png' },
+  { href: '/dashboard',          label: '總覽',    icon: LayoutDashboard },
+  { href: '/dashboard/menu',     label: '菜單管理', icon: UtensilsCrossed },
+  { href: '/dashboard/surveys',  label: '問卷管理', icon: ClipboardList },
+  { href: '/dashboard/insights', label: 'AI 洞察', icon: Sparkles },
+  { href: '/dashboard/settings', label: '店家設定', icon: Settings },
 ];
 
 export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        // nothing needed
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -57,7 +46,7 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
     if (newStoreId === storeId) return;
     const overlay = document.createElement('div');
     overlay.innerHTML = `
-      <div style="position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a1a2e,#16213e);animation:fbFadeIn 0.3s ease-out">
+      <div style="position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f172a,#1e293b);animation:fbFadeIn 0.3s ease-out">
         <style>
           @keyframes fbFadeIn{from{opacity:0}to{opacity:1}}
           @keyframes fbBounce{0%{transform:scale(0.5);opacity:0}60%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
@@ -65,12 +54,12 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
           @keyframes fbDot{0%,100%{opacity:0.3;transform:scale(0.8)}50%{opacity:1;transform:scale(1.2)}}
         </style>
         <div style="font-size:4.5rem;animation:fbBounce 0.5s ease-out,fbFloat 2s ease-in-out 0.5s infinite">🏪</div>
-        <p style="color:rgba(255,255,255,0.5);font-size:0.875rem;margin:1rem 0 0.5rem">正在切換到</p>
-        <h1 style="color:#C5A55A;font-size:1.75rem;font-weight:bold;animation:fbBounce 0.6s ease-out 0.2s both">${name}</h1>
+        <p style="color:rgba(255,255,255,0.4);font-size:0.875rem;margin:1rem 0 0.5rem">正在切換到</p>
+        <h1 style="color:#f97316;font-size:1.75rem;font-weight:bold;animation:fbBounce 0.6s ease-out 0.2s both">${name}</h1>
         <div style="display:flex;gap:0.5rem;margin-top:1rem">
-          <div style="width:10px;height:10px;border-radius:50%;background:#C5A55A;animation:fbDot 1.2s ease-in-out 0s infinite"></div>
-          <div style="width:10px;height:10px;border-radius:50%;background:#C5A55A;animation:fbDot 1.2s ease-in-out 0.25s infinite"></div>
-          <div style="width:10px;height:10px;border-radius:50%;background:#C5A55A;animation:fbDot 1.2s ease-in-out 0.5s infinite"></div>
+          <div style="width:8px;height:8px;border-radius:50%;background:#f97316;animation:fbDot 1.2s ease-in-out 0s infinite"></div>
+          <div style="width:8px;height:8px;border-radius:50%;background:#f97316;animation:fbDot 1.2s ease-in-out 0.25s infinite"></div>
+          <div style="width:8px;height:8px;border-radius:50%;background:#f97316;animation:fbDot 1.2s ease-in-out 0.5s infinite"></div>
         </div>
       </div>
     `;
@@ -85,182 +74,157 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
     return pathname.startsWith(href);
   };
 
-  const storeSelector = (
-    <div className="px-3 py-3 border-b border-[#E8E2D8]">
-      <div className="space-y-1.5">
-        {allStores.map((s) => {
-          const isCurrent = s.id === storeId;
-          const isMember = s.role === 'member';
-          return isCurrent ? (
-            <div
-              key={s.id}
-              className={`rounded-xl p-2.5 ${
-                isMember
-                  ? 'bg-blue-100 border-2 border-blue-300'
-                  : 'bg-[#C5A55A] border-2 border-[#A08735]'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold shadow-sm ${
-                  isMember ? 'bg-blue-200 text-blue-700' : 'bg-white/30 text-white'
-                }`}>
-                  {s.store_name.charAt(0)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-bold truncate ${isMember ? 'text-blue-800' : 'text-white'}`}>
-                    {s.store_name}
-                  </p>
-                  <p className={`text-[9px] font-semibold ${isMember ? 'text-blue-500' : 'text-white/80'}`}>
-                    {isMember ? '🤝 協作中' : '👑 目前使用'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <button
-              key={s.id}
-              onClick={() => handleSwitchStore(s.id, s.store_name)}
-              className={`w-full text-left rounded-xl p-2.5 transition-all active:scale-[0.98] border ${
-                isMember
-                  ? 'border-blue-200 hover:bg-blue-50 hover:border-blue-300'
-                  : 'border-[#E8E2D8] hover:bg-[#F5EFE6] hover:border-[#C5A55A]/40'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold ${
-                  isMember ? 'bg-blue-50 text-blue-400' : 'bg-gray-100 text-gray-500'
-                }`}>
-                  {s.store_name.charAt(0)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#5A5050] truncate">{s.store_name}</p>
-                  <p className={`text-[9px] font-medium ${isMember ? 'text-blue-400' : 'text-[#A09090]'}`}>
-                    {isMember ? '🤝 點擊切換' : '點擊切換'}
-                  </p>
-                </div>
-                <span className="text-[#C5A55A] font-bold text-sm">›</span>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      <a
-        href="/dashboard/new-store"
-        className="flex items-center gap-2 px-2.5 py-2 mt-2 text-xs font-semibold text-[#C5A55A] hover:text-white hover:bg-[#C5A55A] rounded-lg transition-all active:scale-[0.97] border border-dashed border-[#C5A55A]/40 hover:border-[#C5A55A]"
-      >
-        <Plus className="w-3.5 h-3.5" />
-        新增店家
-      </a>
-    </div>
-  );
-
   const navContent = (
-    <>
+    <div className="flex flex-col h-full" style={{ background: '#141926' }}>
+
       {/* Logo */}
-      <div className="px-6 py-5 border-b border-[#E8E2D8]">
-        <Link href="/dashboard" className="text-xl font-black text-[#3A3A3A] font-serif tracking-tight">
-          Feed<span className="text-[#C5A55A]">Bites</span>
+      <div className="px-5 py-5 border-b border-white/[0.07]">
+        <Link href="/dashboard" className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/30">
+            <span className="text-white font-black text-sm">F</span>
+          </div>
+          <div>
+            <span className="text-white font-black text-lg tracking-tight">Feed<span className="text-orange-400">Bites</span></span>
+            <p className="text-white/30 text-[9px] font-medium tracking-widest uppercase leading-none">智慧餐飲問卷</p>
+          </div>
         </Link>
-        <p className="text-[9px] text-[#B0A898] mt-0.5 font-medium tracking-wider uppercase">智慧餐飲問卷</p>
       </div>
 
       {/* Store Selector */}
-      {storeSelector}
+      <div className="px-3 py-3 border-b border-white/[0.07]">
+        <p className="text-white/30 text-[9px] font-semibold uppercase tracking-widest mb-2 px-2">店家</p>
+        <div className="space-y-1">
+          {allStores.map((s) => {
+            const isCurrent = s.id === storeId;
+            const isMember = s.role === 'member';
+            return isCurrent ? (
+              <div key={s.id} className="rounded-xl px-3 py-2.5" style={{ background: isMember ? 'rgba(59,130,246,0.2)' : 'rgba(249,115,22,0.15)', border: `1px solid ${isMember ? 'rgba(59,130,246,0.3)' : 'rgba(249,115,22,0.3)'}` }}>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black shadow-inner"
+                    style={{ background: isMember ? 'rgba(59,130,246,0.3)' : 'rgba(249,115,22,0.25)', color: isMember ? '#60a5fa' : '#fb923c' }}>
+                    {s.store_name.charAt(0)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold truncate" style={{ color: isMember ? '#93c5fd' : '#fed7aa' }}>{s.store_name}</p>
+                    <p className="text-[9px] font-semibold" style={{ color: isMember ? 'rgba(147,197,253,0.6)' : 'rgba(253,215,170,0.6)' }}>
+                      {isMember ? '🤝 協作中' : '✓ 目前使用'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <button key={s.id} onClick={() => handleSwitchStore(s.id, s.store_name)}
+                className="w-full text-left rounded-xl px-3 py-2.5 transition-all active:scale-[0.98] hover:bg-white/[0.06] border border-transparent hover:border-white/[0.08]">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-white/[0.08] flex items-center justify-center text-xs font-bold text-white/50">
+                    {s.store_name.charAt(0)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white/50 truncate">{s.store_name}</p>
+                    <p className="text-[9px] text-white/25">{isMember ? '🤝 點擊切換' : '點擊切換'}</p>
+                  </div>
+                  <span className="text-white/25 text-xs">›</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <a href="/dashboard/new-store"
+          className="flex items-center gap-2 px-3 py-2 mt-1.5 text-xs font-semibold text-orange-400/70 hover:text-orange-400 hover:bg-orange-500/10 rounded-xl transition-all border border-dashed border-orange-500/20 hover:border-orange-500/40">
+          <Plus className="w-3.5 h-3.5" />
+          新增店家
+        </a>
+      </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1.5">
+      <nav className="flex-1 px-3 py-4 space-y-0.5">
+        <p className="text-white/30 text-[9px] font-semibold uppercase tracking-widest mb-2 px-2">主選單</p>
         {navItems.map((item) => {
           const active = isActive(item.href);
+          const Icon = item.icon;
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setMobileOpen(false)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl font-bold transition-all active:scale-[0.97] ${
+            <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold transition-all active:scale-[0.97] ${
                 active
-                  ? 'bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] text-white shadow-lg shadow-[#FF8C00]/25'
-                  : 'text-[#5A5050] hover:bg-[#F5EFE6] hover:text-[#3A3A3A]'
+                  ? 'text-white shadow-lg'
+                  : 'text-white/50 hover:text-white/80 hover:bg-white/[0.06]'
               }`}
-            >
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${active ? 'bg-white/20' : 'bg-white shadow-sm'}`}>
-                <Image src={item.img} alt={item.label} width={28} height={28} className="object-contain" />
+              style={active ? { background: 'linear-gradient(135deg, #f97316, #ea580c)', boxShadow: '0 4px 14px rgba(249,115,22,0.35)' } : {}}>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                active ? 'bg-white/20' : 'bg-white/[0.06]'
+              }`}>
+                <Icon className="w-4 h-4" />
               </div>
-              <span className="flex-1 text-[15px]">{item.label}</span>
-              {active && <span className="w-2 h-2 rounded-full bg-white/80" />}
+              <span className="text-[14px]">{item.label}</span>
+              {active && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white/70" />}
             </Link>
           );
         })}
       </nav>
 
       {/* User section */}
-      <div className="px-4 py-4 border-t border-[#E8E2D8]">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-[#C5A55A] flex items-center justify-center shrink-0 overflow-hidden border-2 border-[#A08735] shadow-sm">
-              {avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarUrl} alt="店長" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-xs text-white font-bold">👤</span>
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-[#3A3A3A] truncate">店長</p>
-              <p className="text-[9px] text-[#A09090]">已登入</p>
-            </div>
+      <div className="px-3 py-4 border-t border-white/[0.07]">
+        <div className="flex items-center gap-2.5 px-2 mb-3">
+          <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white/20 shadow-md">
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarUrl} alt="店長" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-orange-500/30 flex items-center justify-center">
+                <span className="text-xs text-orange-300 font-bold">店</span>
+              </div>
+            )}
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-500 hover:text-white hover:bg-red-500 rounded-lg transition-all active:scale-95 border border-red-200 hover:border-red-500"
-          >
-            <LogOut className="w-3.5 h-3.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-white/80 truncate">店長</p>
+            <p className="text-[9px] text-white/30">已登入</p>
+          </div>
+          <button onClick={handleLogout}
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-red-400/70 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-all border border-red-500/20 hover:border-red-400/40">
+            <LogOut className="w-3 h-3" />
             登出
           </button>
         </div>
-        <div className="mt-2 text-center">
-          <a href="/dashboard/feedback" className="text-[10px] text-[#A09090] hover:text-[#C5A55A] transition-colors">
+        <div className="text-center">
+          <a href="/dashboard/feedback" className="text-[9px] text-white/20 hover:text-white/40 transition-colors">
             意見回饋給 FeedBites
           </a>
         </div>
       </div>
-    </>
+    </div>
   );
 
   return (
     <>
       {/* Mobile hamburger */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 flex items-center px-4 py-3 bg-white border-b border-[#E8E2D8] shadow-sm">
-        <button
-          onClick={() => setMobileOpen(!mobileOpen)}
-          className="p-2 text-[#3A3A3A] hover:bg-[#F5EFE6] active:scale-95 rounded-lg transition-all"
-        >
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 flex items-center px-4 py-3 shadow-sm" style={{ background: '#141926', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        <button onClick={() => setMobileOpen(!mobileOpen)}
+          className="p-2 text-white/60 hover:text-white hover:bg-white/10 active:scale-95 rounded-lg transition-all">
           <Menu className="w-5 h-5" />
         </button>
-        <span className="ml-3 text-lg font-black text-[#3A3A3A] font-serif">
-          Feed<span className="text-[#C5A55A]">Bites</span>
-        </span>
+        <div className="ml-3 flex items-center gap-2">
+          <div className="w-6 h-6 rounded-md bg-orange-500 flex items-center justify-center">
+            <span className="text-white font-black text-xs">F</span>
+          </div>
+          <span className="text-white font-black text-lg">Feed<span className="text-orange-400">Bites</span></span>
+        </div>
       </div>
 
       {/* Mobile overlay */}
       {mobileOpen && (
-        <div
-          className="lg:hidden fixed inset-0 z-40 bg-black/30"
-          onClick={() => setMobileOpen(false)}
-        />
+        <div className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+          onClick={() => setMobileOpen(false)} />
       )}
 
       {/* Mobile sidebar */}
-      <aside
-        className={`lg:hidden fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-[#E8E2D8] flex flex-col transform transition-transform duration-200 shadow-xl ${
-          mobileOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
+      <aside className={`lg:hidden fixed inset-y-0 left-0 z-50 w-64 flex flex-col transform transition-transform duration-200 shadow-2xl ${
+        mobileOpen ? 'translate-x-0' : '-translate-x-full'
+      }`} style={{ background: '#141926' }}>
         {navContent}
       </aside>
 
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex lg:w-60 lg:flex-col lg:fixed lg:inset-y-0 bg-white border-r border-[#E8E2D8] shadow-sm">
+      <aside className="hidden lg:flex lg:w-60 lg:flex-col lg:fixed lg:inset-y-0 shadow-xl" style={{ background: '#141926' }}>
         {navContent}
       </aside>
     </>
