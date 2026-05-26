@@ -21,14 +21,14 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerSupabase();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: '未授權' }, { status: 401 });
+    if (!user) return NextResponse.json({ error: '登入已過期，請重新整理頁面', _debug: '401: no session' }, { status: 401 });
 
     const store = await getSelectedStore(user.id);
-    if (!store) return NextResponse.json({ error: '找不到店家' }, { status: 404 });
+    if (!store) return NextResponse.json({ error: '找不到店家，請確認已建立店家', _debug: '404: no store for ' + user.id }, { status: 404 });
 
     const { message, history, currentPage } = await request.json();
     if (!message?.trim()) {
-      return NextResponse.json({ error: '訊息不可為空' }, { status: 400 });
+      return NextResponse.json({ error: '訊息不可為空', _debug: '400: empty message' }, { status: 400 });
     }
 
     const db = createServiceSupabase();

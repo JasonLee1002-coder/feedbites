@@ -18,14 +18,14 @@ function getPageMessages(pathname: string, context?: { dishCount?: number; surve
   if (pathname.includes('/menu')) {
     if (context?.dishCount === 0) {
       return [
-        '嗨！我是你的副店長 🤖 上傳現有菜單圖片，我幫你自動拆成一道一道菜！',
-        '你也可以一道一道手動新增，拍照 + 語音描述最快哦。',
-        '小提醒：有照片的菜品在問卷裡會更吸引客人評分！',
+        '菜單還是空的！頁面右上角有「上傳現有菜單」按鈕，拍一張菜單照片，AI 會自動幫你拆成一道一道菜 📷',
+        '或者點「新增菜品」一道一道加，記得同時上傳照片，客人評分意願會高很多！',
+        '有什麼問題隨時問我，我幫你想怎麼規劃菜單 😊',
       ];
     }
     return [
-      '菜單看起來不錯！記得幫每道菜都加上照片，客人評分意願會提升 2 倍。',
-      '試試「上傳現有菜單」功能，我可以幫你快速擴充菜品。',
+      '菜單有東西了！記得幫每道菜都加上照片，有圖的菜品客人評分意願約高 2 倍。',
+      '想調整菜單分類嗎？或者有哪道菜想問我的，直接說！',
     ];
   }
   if (pathname.includes('/surveys/new')) {
@@ -199,7 +199,12 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
         setMessages(prev => [...prev, aiMsg]);
         setChatHistory(prev => [...prev, { role: 'assistant', content: data.reply }]);
       } else {
-        const errText = data?._debug ? `走神了 😅（${data._debug.slice(0, 80)}）` : '抱歉，我剛剛走神了 😅 再說一次？';
+        // Show the actual error so we can diagnose — prefer reply > error > _debug > generic
+        const errText = data?.reply || data?.error
+          ? `⚠️ ${(data.reply || data.error).slice(0, 120)}`
+          : data?._debug
+          ? `走神了 😅（${data._debug.slice(0, 80)}）`
+          : '抱歉，我剛剛走神了 😅 再說一次？';
         setMessages(prev => [...prev, { text: errText, role: 'assistant' }]);
       }
     } catch {
