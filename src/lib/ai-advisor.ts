@@ -16,6 +16,7 @@ export interface Memory {
 export interface StoreContext {
   memories: Memory[];
   knowledgeSnippets: string[];
+  domainKnowledge: string[];  // Mode B — 行業知識庫
   recentTrend: {
     last7DaysCount: number;
     avgRating: number | null;
@@ -24,13 +25,49 @@ export interface StoreContext {
   unresolvedReportCount: number;
 }
 
+// ─── Mode B: Domain Knowledge（行業知識庫）───────────────────────────────────
+
+/**
+ * 初始化種子知識（第一次執行後跳過）
+ */
+export async function initDomainKnowledge(db: SupabaseClient): Promise<void> {
+  const { count } = await db
+    .from('domain_knowledge')
+    .select('*', { count: 'exact', head: true })
+    .eq('project', 'feedbites');
+
+  if ((count ?? 0) > 0) return; // 已初始化
+
+  const { seeds } = await import('./domain-knowledge-seed');
+  await db.from('domain_knowledge').insert(seeds);
+}
+
+/**
+ * 載入行業知識（依月份優先排序，最多 15 筆）
+ */
+export async function loadDomainKnowledge(db: SupabaseClient): Promise<string[]> {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data } = await db
+    .from('domain_knowledge')
+    .select('category, subject, content')
+    .eq('project', 'feedbites')
+    .or(`valid_until.is.null,valid_until.gte.${today}`)
+    .order('confidence', { ascending: false })
+    .limit(15);
+
+  return (data || []).map(
+    (d: { category: string; subject: string | null; content: string }) =>
+      `[${d.category}] ${d.subject ? d.subject + '：' : ''}${d.content}`
+  );
+}
+
 // ─── loadStoreContext ────────────────────────────────────────────────────────
 
 export async function loadStoreContext(
   storeId: string,
   db: SupabaseClient
 ): Promise<StoreContext> {
-  const [memoriesRes, knowledgeRes, surveysRes, reportsRes] = await Promise.all([
+  const [memoriesRes, knowledgeRes, surveysRes, reportsRes, domainKnowledge] = await Promise.all([
     db
       .from('ai_memories')
       .select('category, subject, content, confidence')
@@ -51,6 +88,7 @@ export async function loadStoreContext(
       .select('id', { count: 'exact', head: true })
       .eq('store_id', storeId)
       .eq('status', 'open'),
+    loadDomainKnowledge(db),
   ]);
 
   const memories: Memory[] = (memoriesRes.data || []).map((m) => ({
@@ -124,6 +162,7 @@ export async function loadStoreContext(
   return {
     memories,
     knowledgeSnippets,
+    domainKnowledge,
     recentTrend: { last7DaysCount, avgRating, lowScoreTopics },
     unresolvedReportCount: reportsRes.count || 0,
   };
@@ -148,6 +187,10 @@ export function buildAdvisorPrompt(
     ? `\n## 店家資料\n${context.knowledgeSnippets.join('\n')}`
     : '';
 
+  const domainKnowledgeBlock = context.domainKnowledge.length > 0
+    ? `\n## 行業知識庫（台灣餐飲業）\n${context.domainKnowledge.map((d) => `- ${d}`).join('\n')}`
+    : '';
+
   const { last7DaysCount, avgRating, lowScoreTopics } = context.recentTrend;
   let trendBlock = `\n## 近況數據\n- 過去 7 天收到 ${last7DaysCount} 筆回饋`;
   if (avgRating !== null) trendBlock += `，平均評分 ${avgRating} 分`;
@@ -167,15 +210,25 @@ export function buildAdvisorPrompt(
     ? '\n## 這一輪請主動提出一個業績相關問題或建議（不要每次問，只這一輪）。'
     : '';
 
+  // 每 5 輪主動分享行業洞察
+  const industryInsightInstruction = turnCount > 0 && turnCount % 5 === 0
+    ? '\n## 行業洞察提醒：這一輪請從行業知識庫中挑一條與當前情境最相關的洞察，用「對了，根據...」的方式自然帶入對話。'
+    : '';
+
   return `你是 FeedBites 的副店長 AI，是「${storeName}」的餐飲經營顧問老朋友。
 
 ## 你的身份
 - 認識這家店很久了，熟悉他們的客戶群和問題
 - 真正懂餐飲業，知道開店的辛苦
 - 根據數據給具體建議，語氣像跟老朋友聊天
-- 關心業績、顧客喜好、問卷狀況、未處理回報${memoriesBlock}${knowledgeBlock}${trendBlock}
+- 關心業績、顧客喜好、問卷狀況、未處理回報${memoriesBlock}${knowledgeBlock}${domainKnowledgeBlock}${trendBlock}
 
-## 當前頁面：${currentPage || '未知'}${historyBlock}${proactiveInstruction}
+## 當前頁面：${currentPage || '未知'}${historyBlock}${proactiveInstruction}${industryInsightInstruction}
+
+## 主動行為指示（Mode B — 行業智能）
+- 對話中適時帶出相關行業知識，用「對了，根據台灣餐飲業的狀況...」等方式自然引入
+- 若店家數據有異常（評分低、回饋少），對照行業知識給出有依據的解釋
+- 不要只回答問題，要主動給出行業視角的補充建議
 
 ## 語氣規範
 - 自然口語，2-4 句話，精簡有力
@@ -196,7 +249,7 @@ export async function extractMemories(
   storeId: string,
   db: SupabaseClient
 ): Promise<void> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
   const prompt = `從以下對話中，萃取值得長期記憶的新事實（只要明確說出的事，不要推測）。
 分類：customer（顧客偏好）、performance（業績）、survey（問卷趨勢）、preference（店長習慣）、general（其他）。

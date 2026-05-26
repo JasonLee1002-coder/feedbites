@@ -7,6 +7,7 @@ import {
   buildAdvisorPrompt,
   extractMemories,
   persistChatTurn,
+  initDomainKnowledge,
 } from '@/lib/ai-advisor';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -32,10 +33,14 @@ export async function POST(request: NextRequest) {
 
     const db = createServiceSupabase();
 
+    // 確保種子知識已初始化（async，不阻塞主流程）
+    initDomainKnowledge(db).catch((e) => console.error('[domain] initDomainKnowledge failed:', e));
+
     // loadStoreContext 失敗時降級為空 context，AI 仍可正常回答
     const emptyContext: import('@/lib/ai-advisor').StoreContext = {
       memories: [],
       knowledgeSnippets: [],
+      domainKnowledge: [],
       recentTrend: { last7DaysCount: 0, avgRating: null, lowScoreTopics: [] },
       unresolvedReportCount: 0,
     };
@@ -55,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     let reply: string;
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
       const result = await model.generateContent(prompt);
       reply = result.response.text().trim();
     } catch (geminiErr) {
