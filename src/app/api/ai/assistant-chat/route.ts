@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
       memories: [],
       knowledgeSnippets: [],
       domainKnowledge: [],
+      dishes: [],
       recentTrend: { last7DaysCount: 0, avgRating: null, lowScoreTopics: [] },
       unresolvedReportCount: 0,
     };
@@ -83,6 +84,11 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('Assistant chat error (outer):', msg);
-    return NextResponse.json({ error: '副店長暫時走神了', _debug: msg }, { status: 500 });
+    // Return a user-friendly message with enough info to diagnose
+    const isAuthErr = msg.includes('auth') || msg.includes('session') || msg.includes('cookie');
+    const friendlyMsg = isAuthErr
+      ? '登入狀態有點問題，請重新整理頁面再試'
+      : `副店長暫時走神了（${msg.slice(0, 50)}），等一下再試？`;
+    return NextResponse.json({ error: friendlyMsg, _debug: msg }, { status: 500 });
   }
 }

@@ -17,6 +17,7 @@ export interface StoreContext {
   memories: Memory[];
   knowledgeSnippets: string[];
   domainKnowledge: string[];  // Mode B — 行業知識庫
+  dishes: string[];           // 店家菜單摘要
   recentTrend: {
     last7DaysCount: number;
     avgRating: number | null;
@@ -67,7 +68,7 @@ export async function loadStoreContext(
   storeId: string,
   db: SupabaseClient
 ): Promise<StoreContext> {
-  const [memoriesRes, knowledgeRes, surveysRes, reportsRes, domainKnowledge] = await Promise.all([
+  const [memoriesRes, knowledgeRes, surveysRes, reportsRes, dishesRes, domainKnowledge] = await Promise.all([
     db
       .from('ai_memories')
       .select('category, subject, content, confidence')
@@ -87,7 +88,13 @@ export async function loadStoreContext(
       .from('feedback_reports')
       .select('id', { count: 'exact', head: true })
       .eq('store_id', storeId)
-      .eq('status', 'open'),
+      .eq('status', 'pending'),
+    db
+      .from('dishes')
+      .select('name, category, price, description')
+      .eq('store_id', storeId)
+      .eq('is_active', true)
+      .limit(30),
     loadDomainKnowledge(db),
   ]);
 
@@ -105,7 +112,7 @@ export async function loadStoreContext(
   const qMap = new Map(
     (surveysRes.data || []).map((s: { id: string; questions: unknown }) => [
       s.id,
-      (s.questions as Array<{ id: string; text: string; type: string }>) || [],
+      (s.questions as Array<{ id: string; label?: string; text?: string; type: string }>) || [],
     ])
   );
 
@@ -139,7 +146,7 @@ export async function loadStoreContext(
         if (q.type === 'rating' || q.type === 'emoji-rating') {
           const v = Number(r.answers?.[q.id]);
           if (!isNaN(v) && v >= 1 && v <= 5) {
-            if (!qSums[q.id]) qSums[q.id] = { sum: 0, cnt: 0, text: q.text };
+            if (!qSums[q.id]) qSums[q.id] = { sum: 0, cnt: 0, text: q.label || q.text || q.id };
             qSums[q.id].sum += v;
             qSums[q.id].cnt += 1;
           }
@@ -159,10 +166,16 @@ export async function loadStoreContext(
     if (totalCnt > 0) avgRating = Math.round((totalSum / totalCnt) * 10) / 10;
   }
 
+  const dishes = (dishesRes.data || []).map(
+    (d: { name: string; category?: string | null; price?: number | null; description?: string | null }) =>
+      `${d.name}${d.price ? `（$${d.price}）` : ''}${d.description ? `：${d.description.slice(0, 40)}` : ''}`
+  );
+
   return {
     memories,
     knowledgeSnippets,
     domainKnowledge,
+    dishes,
     recentTrend: { last7DaysCount, avgRating, lowScoreTopics },
     unresolvedReportCount: reportsRes.count || 0,
   };
@@ -185,6 +198,10 @@ export function buildAdvisorPrompt(
 
   const knowledgeBlock = context.knowledgeSnippets.length > 0
     ? `\n## 店家資料\n${context.knowledgeSnippets.join('\n')}`
+    : '';
+
+  const dishesBlock = context.dishes && context.dishes.length > 0
+    ? `\n## 店家菜單（${context.dishes.length} 道菜）\n${context.dishes.join('、')}`
     : '';
 
   const domainKnowledgeBlock = context.domainKnowledge.length > 0
@@ -221,7 +238,7 @@ export function buildAdvisorPrompt(
 - 認識這家店很久了，熟悉他們的客戶群和問題
 - 真正懂餐飲業，知道開店的辛苦
 - 根據數據給具體建議，語氣像跟老朋友聊天
-- 關心業績、顧客喜好、問卷狀況、未處理回報${memoriesBlock}${knowledgeBlock}${domainKnowledgeBlock}${trendBlock}
+- 關心業績、顧客喜好、問卷狀況、未處理回報${memoriesBlock}${knowledgeBlock}${dishesBlock}${domainKnowledgeBlock}${trendBlock}
 
 ## 當前頁面：${currentPage || '未知'}${historyBlock}${proactiveInstruction}${industryInsightInstruction}
 
