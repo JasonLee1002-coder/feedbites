@@ -1,9 +1,15 @@
 export const dynamic = "force-dynamic";
+import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
+import { db } from '@/lib/db';
+import { surveys } from '@/lib/db/schema';
+import { and, eq } from 'drizzle-orm';
 import { getSelectedStore } from '@/lib/store-context';
 import EditClient from './EditClient';
+import type { Question, TemplateId, ThemeColors } from '@/types/survey';
+
+interface PrizeItem { label: string; emoji: string; color: string }
 
 export default async function SurveyEditPage({
   params,
@@ -12,22 +18,19 @@ export default async function SurveyEditPage({
 }) {
   const { id } = await params;
 
-  const supabase = await createServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  const session = await auth();
+  if (!session?.user?.id) redirect('/login');
 
-  const store = await getSelectedStore(user.id);
+  const store = await getSelectedStore(session.user.id);
   if (!store) redirect('/dashboard/new-store');
 
-  const adminDb = createServiceSupabase();
-  const { data: survey, error } = await adminDb
-    .from('surveys')
-    .select('*')
-    .eq('id', id)
-    .eq('store_id', store.id)
-    .single();
+  const [survey] = await db
+    .select()
+    .from(surveys)
+    .where(and(eq(surveys.id, id), eq(surveys.store_id, store.id)))
+    .limit(1);
 
-  if (error || !survey) {
+  if (!survey) {
     return (
       <div className="p-8 max-w-lg mx-auto text-center">
         <div className="text-5xl mb-4">🔍</div>
@@ -50,12 +53,12 @@ export default async function SurveyEditPage({
       surveyId={id}
       storeId={store.id}
       initialTitle={survey.title || ''}
-      initialQuestions={survey.questions || []}
+      initialQuestions={(survey.questions as Question[]) || []}
       initialDiscountValue={survey.discount_value || ''}
       initialDiscountEnabled={survey.discount_enabled ?? true}
-      initialTemplateId={survey.template_id || null}
-      initialCustomColors={survey.custom_colors || null}
-      initialPrizeItems={survey.prize_items || null}
+      initialTemplateId={(survey.template_id as TemplateId) || null}
+      initialCustomColors={(survey.custom_colors as ThemeColors) || null}
+      initialPrizeItems={(survey.prize_items as PrizeItem[]) || null}
       initialDiscountExpiryDays={survey.discount_expiry_days ?? 30}
       initialPrizeSameDayValid={survey.prize_same_day_valid ?? true}
     />

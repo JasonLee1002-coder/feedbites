@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
+import { auth } from '@/auth';
+import { db } from '@/lib/db';
+import { dishes } from '@/lib/db/schema';
+import { eq, and } from 'drizzle-orm';
 import { getSelectedStore } from '@/lib/store-context';
-import { uploadToS3 } from '@/lib/s3';
+import { saveToLocal } from '@/lib/local-upload';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const session = await auth();
+    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const store = await getSelectedStore(user.id);
+    const store = await getSelectedStore(session.user.id);
     if (!store) return NextResponse.json({ error: 'Store not found' }, { status: 404 });
 
     const formData = await request.formData();
@@ -29,16 +31,17 @@ export async function POST(request: NextRequest) {
 
     const ext = file.name.split('.').pop() || 'jpg';
     const key = `feedbites/dishes/${store.id}/${dishId || Date.now()}.${ext}`;
-    const publicUrl = await uploadToS3(await file.arrayBuffer(), key, file.type);
+    const publicUrl = await saveToLocal(await file.arrayBuffer(), key);
 
     if (dishId) {
-      const adminDb = createServiceSupabase();
-      const { error: updateErr } = await adminDb
-        .from('dishes')
-        .update({ photo_url: publicUrl })
-        .eq('id', dishId)
-        .eq('store_id', store.id);
-      if (updateErr) console.error('Failed to update dish photo_url:', updateErr.message);
+      try {
+        await db
+          .update(dishes)
+          .set({ photo_url: publicUrl })
+          .where(and(eq(dishes.id, dishId), eq(dishes.store_id, store.id)));
+      } catch (updateErr) {
+        console.error('Failed to update dish photo_url:', updateErr);
+      }
     }
 
     return NextResponse.json({ url: publicUrl });

@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
-import { uploadToS3 } from '@/lib/s3';
+import { auth } from '@/auth';
+import { db } from '@/lib/db';
+import { feedback_attachments } from '@/lib/db/schema';
+import { saveToLocal } from '@/lib/local-upload';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: '未授權' }, { status: 401 });
+    const session = await auth();
+    if (!session?.user?.id) return NextResponse.json({ error: '未授權' }, { status: 401 });
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
@@ -27,13 +28,17 @@ export async function POST(request: NextRequest) {
 
     const ext = file.name.split('.').pop() || 'jpg';
     const key = `feedbites/feedback/${reportId}/${crypto.randomUUID()}.${ext}`;
-    const publicUrl = await uploadToS3(await file.arrayBuffer(), key, file.type);
+    const publicUrl = await saveToLocal(await file.arrayBuffer(), key);
 
-    const adminDb = createServiceSupabase();
-    const { error: insertError } = await adminDb
-      .from('feedback_attachments')
-      .insert({ report_id: reportId, file_url: publicUrl, file_name: file.name });
-    if (insertError) console.error('Feedback attachment insert error:', insertError);
+    try {
+      await db.insert(feedback_attachments).values({
+        report_id: reportId,
+        file_url: publicUrl,
+        file_name: file.name,
+      });
+    } catch (insertError) {
+      console.error('Feedback attachment insert error:', insertError);
+    }
 
     return NextResponse.json({ url: publicUrl, file_name: file.name });
   } catch (err) {

@@ -1,4 +1,6 @@
-import { createServiceSupabase } from '@/lib/supabase/server';
+import { db } from '@/lib/db';
+import { stores, dishes } from '@/lib/db/schema';
+import { and, eq, asc, desc } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import MenuClient from './MenuClient';
@@ -9,12 +11,12 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { storeId } = await params;
-  const db = createServiceSupabase();
-  const { data: store } = await db
-    .from('stores')
-    .select('store_name')
-    .eq('id', storeId)
-    .single();
+
+  const [store] = await db
+    .select({ store_name: stores.store_name })
+    .from(stores)
+    .where(eq(stores.id, storeId))
+    .limit(1);
 
   if (!store) {
     return { title: '菜單不存在 | FeedBites' };
@@ -28,27 +30,38 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function PublicMenuPage({ params }: Props) {
   const { storeId } = await params;
-  const db = createServiceSupabase();
 
   // Fetch store info
-  const { data: store } = await db
-    .from('stores')
-    .select('id, store_name, logo_url, template_id, frame_id')
-    .eq('id', storeId)
-    .single();
+  const [store] = await db
+    .select({
+      id: stores.id,
+      store_name: stores.store_name,
+      logo_url: stores.logo_url,
+      frame_id: stores.frame_id,
+    })
+    .from(stores)
+    .where(eq(stores.id, storeId))
+    .limit(1);
 
   if (!store) {
     notFound();
   }
 
   // Fetch active dishes
-  const { data: dishes } = await db
-    .from('dishes')
-    .select('id, name, description, category, photo_url, price, is_active')
-    .eq('store_id', storeId)
-    .eq('is_active', true)
-    .order('category')
-    .order('created_at', { ascending: false });
+  const dishList = await db
+    .select({
+      id: dishes.id,
+      name: dishes.name,
+      description: dishes.description,
+      category: dishes.category,
+      photo_url: dishes.photo_url,
+      price: dishes.price,
+      is_active: dishes.is_active,
+    })
+    .from(dishes)
+    .where(and(eq(dishes.store_id, storeId), eq(dishes.is_active, true)))
+    .orderBy(asc(dishes.category), desc(dishes.created_at));
 
-  return <MenuClient store={store} dishes={dishes || []} />;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return <MenuClient store={store as any} dishes={dishList.map(d => ({ ...d, is_active: d.is_active ?? true, created_at: null }))} />;
 }

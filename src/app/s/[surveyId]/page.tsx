@@ -1,5 +1,7 @@
 import { Suspense } from 'react';
-import { createServiceSupabase } from '@/lib/supabase/server';
+import { db } from '@/lib/db';
+import { surveys, stores } from '@/lib/db/schema';
+import { and, eq } from 'drizzle-orm';
 import type { Metadata } from 'next';
 import SurveyClient from './SurveyClient';
 
@@ -9,38 +11,41 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { surveyId } = await params;
-  const db = createServiceSupabase();
-  const { data: survey } = await db
-    .from('surveys')
-    .select('title, stores(store_name)')
-    .eq('id', surveyId)
-    .eq('is_active', true)
-    .single();
 
-  if (!survey) {
+  const [row] = await db
+    .select({ title: surveys.title, store_id: surveys.store_id })
+    .from(surveys)
+    .where(and(eq(surveys.id, surveyId), eq(surveys.is_active, true)))
+    .limit(1);
+
+  if (!row) {
     return { title: '問卷不存在 — FeedBites' };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const storeData = survey.stores as any;
-  const storeName = storeData?.store_name || '';
+  const [store] = await db
+    .select({ store_name: stores.store_name })
+    .from(stores)
+    .where(eq(stores.id, row.store_id))
+    .limit(1);
+
+  const storeName = store?.store_name || '';
   return {
-    title: `${survey.title} — ${storeName}`,
+    title: `${row.title} — ${storeName}`,
     description: `${storeName} 邀請您填寫問卷，完成即可獲得優惠！`,
   };
 }
 
 export default async function PublicSurveyPage({ params }: Props) {
   const { surveyId } = await params;
-  const db = createServiceSupabase();
-  const { data: survey } = await db
-    .from('surveys')
-    .select('*, stores(store_name, logo_url, frame_id, owner_avatar_url)')
-    .eq('id', surveyId)
-    .eq('is_active', true)
-    .single();
 
-  if (!survey) {
+  // Fetch survey with store info via join
+  const [surveyRow] = await db
+    .select()
+    .from(surveys)
+    .where(and(eq(surveys.id, surveyId), eq(surveys.is_active, true)))
+    .limit(1);
+
+  if (!surveyRow) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-[#FAF7F2]">
         <div className="text-6xl mb-6">🍽️</div>
@@ -62,6 +67,27 @@ export default async function PublicSurveyPage({ params }: Props) {
       </div>
     );
   }
+
+  // Fetch store info separately
+  const [storeRow] = await db
+    .select({
+      store_name: stores.store_name,
+      logo_url: stores.logo_url,
+      frame_id: stores.frame_id,
+      owner_avatar_url: stores.owner_avatar_url,
+    })
+    .from(stores)
+    .where(eq(stores.id, surveyRow.store_id))
+    .limit(1);
+
+  // Build a survey object compatible with SurveyClient (which expects stores nested)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const survey = {
+    ...surveyRow,
+    template_id: surveyRow.template_id as import('@/types/survey').TemplateId,
+    custom_colors: surveyRow.custom_colors as import('@/types/survey').ThemeColors | null,
+    stores: storeRow ?? null,
+  } as any;
 
   return (
     <Suspense>

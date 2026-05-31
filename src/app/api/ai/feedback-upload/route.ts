@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { uploadToS3 } from '@/lib/s3';
+import { saveToLocal } from '@/lib/local-upload';
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
     const ext = file.name.split('.').pop() || 'jpg';
     const key = `feedbites/feedback-genie/${storeId}/${crypto.randomUUID()}.${ext}`;
-    const publicUrl = await uploadToS3(await file.arrayBuffer(), key, file.type);
+    const publicUrl = await saveToLocal(await file.arrayBuffer(), key);
 
     return NextResponse.json({ url: publicUrl });
   } catch (err) {
