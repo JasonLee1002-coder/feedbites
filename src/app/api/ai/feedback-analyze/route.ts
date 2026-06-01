@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
+import { auth } from '@/auth';
+import { db } from '@/lib/db';
+import { surveys, responses, feedback_insights } from '@/lib/db/schema';
+import { eq, gte, lte, inArray, desc, count } from 'drizzle-orm';
 import { getSelectedStore } from '@/lib/store-context';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -8,27 +11,25 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 // POST: AI 洞察分析 — 分析問卷回覆，產出洞察報告
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: '未授權' }, { status: 401 });
+    const session = await auth();
+    if (!session?.user?.id) return NextResponse.json({ error: '未授權' }, { status: 401 });
 
-    const store = await getSelectedStore(user.id);
+    const store = await getSelectedStore(session.user.id);
     if (!store) return NextResponse.json({ error: '找不到店家' }, { status: 404 });
 
     const { days = 7 } = await request.json();
-    const db = createServiceSupabase();
 
     const periodEnd = new Date();
     const periodStart = new Date();
     periodStart.setDate(periodStart.getDate() - days);
 
     // 撈取店家的問卷
-    const { data: surveys } = await db
-      .from('surveys')
-      .select('id, title, questions')
-      .eq('store_id', store.id);
+    const surveyRows = await db
+      .select({ id: surveys.id, title: surveys.title, questions: surveys.questions })
+      .from(surveys)
+      .where(eq(surveys.store_id, store.id));
 
-    if (!surveys || surveys.length === 0) {
+    if (surveyRows.length === 0) {
       return NextResponse.json({
         summary: '尚未建立任何問卷',
         issues: [],
@@ -38,19 +39,33 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const surveyIds = surveys.map(s => s.id);
-    const surveyMap = new Map(surveys.map(s => [s.id, s]));
+    const surveyIds = surveyRows.map((s) => s.id);
+    const surveyMap = new Map(surveyRows.map((s) => [s.id, s]));
 
     // 撈取期間內的問卷回覆
-    const { data: responses } = await db
-      .from('responses')
-      .select('id, survey_id, respondent_name, answers, submitted_at, xp_earned')
-      .in('survey_id', surveyIds)
-      .gte('submitted_at', periodStart.toISOString())
-      .lte('submitted_at', periodEnd.toISOString())
-      .order('submitted_at', { ascending: false });
+    const responseRows = await db
+      .select({
+        id: responses.id,
+        survey_id: responses.survey_id,
+        respondent_name: responses.respondent_name,
+        answers: responses.answers,
+        submitted_at: responses.submitted_at,
+        xp_earned: responses.xp_earned,
+      })
+      .from(responses)
+      .where(
+        inArray(responses.survey_id, surveyIds)
+      )
+      .orderBy(desc(responses.submitted_at));
 
-    if (!responses || responses.length === 0) {
+    // Filter by period in memory (avoids complex date range with inArray)
+    const filteredResponses = responseRows.filter((r) => {
+      if (!r.submitted_at) return false;
+      const t = new Date(r.submitted_at);
+      return t >= periodStart && t <= periodEnd;
+    });
+
+    if (filteredResponses.length === 0) {
       return NextResponse.json({
         summary: '這段期間沒有收到任何問卷回覆',
         issues: [],
@@ -61,13 +76,14 @@ export async function POST(request: NextRequest) {
     }
 
     // 整理回覆摘要給 AI 分析
-    const responseSummaries = responses.map(r => {
+    const responseSummaries = filteredResponses.map((r) => {
       const survey = surveyMap.get(r.survey_id);
-      const questions = (survey?.questions || []) as Array<{ id: string; type: string; title: string; options?: string[] }>;
+      const questions = (survey?.questions as unknown as Array<{ id: string; type: string; title: string; options?: string[] }>) || [];
+      const answersObj = r.answers as unknown as Record<string, unknown>;
       const answerDetails: Record<string, string> = {};
 
       for (const q of questions) {
-        const val = r.answers?.[q.id];
+        const val = answersObj?.[q.id];
         if (val !== undefined && val !== null && val !== '') {
           answerDetails[q.title] = Array.isArray(val) ? val.join(', ') : String(val);
         }
@@ -84,13 +100,14 @@ export async function POST(request: NextRequest) {
     // 計算整體評分
     let totalScore = 0;
     let totalVotes = 0;
-    for (const survey of surveys) {
-      const qs = (survey.questions || []) as Array<{ id: string; type: string }>;
-      const ratingQIds = qs.filter(q => q.type === 'rating' || q.type === 'emoji-rating').map(q => q.id);
-      for (const r of responses) {
+    for (const survey of surveyRows) {
+      const qs = (survey.questions as unknown as Array<{ id: string; type: string }>) || [];
+      const ratingQIds = qs.filter((q) => q.type === 'rating' || q.type === 'emoji-rating').map((q) => q.id);
+      for (const r of filteredResponses) {
         if (r.survey_id !== survey.id) continue;
+        const answersObj = r.answers as unknown as Record<string, unknown>;
         for (const qId of ratingQIds) {
-          const v = Number(r.answers?.[qId]);
+          const v = Number(answersObj?.[qId]);
           if (!isNaN(v) && v > 0) {
             totalScore += v;
             totalVotes++;
@@ -99,7 +116,6 @@ export async function POST(request: NextRequest) {
       }
     }
     const avgRating = totalVotes > 0 ? totalScore / totalVotes : 0;
-    // Convert 1-5 rating to 0-1 sentiment
     const avgSentiment = totalVotes > 0 ? (avgRating - 1) / 4 : 0.5;
 
     // AI 深度分析
@@ -109,7 +125,7 @@ export async function POST(request: NextRequest) {
 
 ## 店家：${store.store_name}
 ## 分析期間：${periodStart.toLocaleDateString('zh-TW')} ~ ${periodEnd.toLocaleDateString('zh-TW')}
-## 回覆數量：${responses.length} 筆
+## 回覆數量：${filteredResponses.length} 筆
 ## 平均評分：${avgRating > 0 ? avgRating.toFixed(1) + ' / 5' : '無評分資料'}
 
 ## 問卷回覆明細
@@ -147,7 +163,7 @@ ${JSON.stringify(responseSummaries, null, 2)}
     }
   ],
   "kpi": {
-    "total_conversations": ${responses.length},
+    "total_conversations": ${filteredResponses.length},
     "avg_sentiment": ${avgSentiment.toFixed(2)},
     "top_topics": ["從回答中歸納出的熱門話題，最多5個"],
     "response_rate_change": "趨勢描述"
@@ -171,15 +187,14 @@ ${JSON.stringify(responseSummaries, null, 2)}
     const analysis = JSON.parse(match[0]);
 
     // 儲存洞察報告
-    await db.from('feedback_insights').insert({
+    await db.insert(feedback_insights).values({
       store_id: store.id,
-      period_start: periodStart.toISOString(),
-      period_end: periodEnd.toISOString(),
+      period_start: periodStart,
+      period_end: periodEnd,
       summary: analysis.summary,
       issues: analysis.issues,
-      highlights: analysis.highlights,
       recommendations: analysis.recommendations,
-      conversation_count: responses.length,
+      conversation_count: filteredResponses.length,
       avg_sentiment: analysis.kpi?.avg_sentiment ?? avgSentiment,
     });
 
@@ -193,44 +208,43 @@ ${JSON.stringify(responseSummaries, null, 2)}
 // GET: 取得歷史洞察報告，或查詢實際回覆數量
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: '未授權' }, { status: 401 });
+    const session = await auth();
+    if (!session?.user?.id) return NextResponse.json({ error: '未授權' }, { status: 401 });
 
-    const store = await getSelectedStore(user.id);
+    const store = await getSelectedStore(session.user.id);
     if (!store) return NextResponse.json({ error: '找不到店家' }, { status: 404 });
 
-    const db = createServiceSupabase();
     const { searchParams } = new URL(request.url);
 
     // ?check=count → 回傳實際問卷回覆數量
     if (searchParams.get('check') === 'count') {
-      const { data: surveys } = await db
-        .from('surveys')
-        .select('id')
-        .eq('store_id', store.id);
+      const surveyRows = await db
+        .select({ id: surveys.id })
+        .from(surveys)
+        .where(eq(surveys.store_id, store.id));
 
-      if (!surveys || surveys.length === 0) {
+      if (surveyRows.length === 0) {
         return NextResponse.json({ count: 0 });
       }
 
-      const { count } = await db
-        .from('responses')
-        .select('*', { count: 'exact', head: true })
-        .in('survey_id', surveys.map(s => s.id));
+      const surveyIds = surveyRows.map((s) => s.id);
+      const [row] = await db
+        .select({ count: count() })
+        .from(responses)
+        .where(inArray(responses.survey_id, surveyIds));
 
-      return NextResponse.json({ count: count || 0 });
+      return NextResponse.json({ count: row?.count ?? 0 });
     }
 
     // 預設：取得歷史洞察報告
-    const { data: insights } = await db
-      .from('feedback_insights')
-      .select('*')
-      .eq('store_id', store.id)
-      .order('created_at', { ascending: false })
+    const insights = await db
+      .select()
+      .from(feedback_insights)
+      .where(eq(feedback_insights.store_id, store.id))
+      .orderBy(desc(feedback_insights.created_at))
       .limit(10);
 
-    return NextResponse.json(insights || []);
+    return NextResponse.json(insights);
   } catch {
     return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 });
   }

@@ -1,5 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
+import { auth } from '@/auth'
+import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
+import { stores, surveys, responses, discount_codes, dishes, feedback_reports } from '@/lib/db/schema'
+import { and, eq, inArray } from 'drizzle-orm'
 
 // POST: Reset (clear) specific data categories for a store
 export async function POST(
@@ -7,112 +10,81 @@ export async function POST(
   { params }: { params: Promise<{ storeId: string }> },
 ) {
   try {
-    const supabase = await createServerSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: '未授權' }, { status: 401 });
+    const session = await auth()
+    if (!session?.user?.id) return NextResponse.json({ error: '未授權' }, { status: 401 })
 
-    const { storeId } = await params;
+    const { storeId } = await params
 
     // Verify ownership
-    const db = createServiceSupabase();
-    const { data: store } = await db
-      .from('stores')
-      .select('id, user_id')
-      .eq('id', storeId)
-      .single();
+    const [store] = await db
+      .select({ id: stores.id, user_id: stores.user_id })
+      .from(stores)
+      .where(eq(stores.id, storeId))
+      .limit(1)
 
-    if (!store) return NextResponse.json({ error: '找不到店家' }, { status: 404 });
-    if (store.user_id !== user.id) return NextResponse.json({ error: '只有店長可以清空資料' }, { status: 403 });
+    if (!store) return NextResponse.json({ error: '找不到店家' }, { status: 404 })
+    if (store.user_id !== session.user.id) {
+      return NextResponse.json({ error: '只有店長可以清空資料' }, { status: 403 })
+    }
 
-    const body = await request.json();
-    const targets: string[] = body.targets || [];
-    const results: Record<string, number> = {};
+    const body = await request.json()
+    const targets: string[] = body.targets || []
+    const results: Record<string, number> = {}
 
     // Clear surveys (cascades to responses + discount_codes via FK)
     if (targets.includes('surveys')) {
-      const { data: deleted } = await db
-        .from('surveys')
-        .delete()
-        .eq('store_id', storeId)
-        .select('id');
-      results.surveys = deleted?.length || 0;
+      const deleted = await db
+        .delete(surveys)
+        .where(eq(surveys.store_id, storeId))
+        .returning({ id: surveys.id })
+      results.surveys = deleted.length
     }
 
     // Clear responses only (keep surveys)
     if (targets.includes('responses')) {
-      // Get all survey IDs for this store
-      const { data: surveys } = await db
-        .from('surveys')
-        .select('id')
-        .eq('store_id', storeId);
+      const surveyList = await db
+        .select({ id: surveys.id })
+        .from(surveys)
+        .where(eq(surveys.store_id, storeId))
 
-      if (surveys && surveys.length > 0) {
-        const surveyIds = surveys.map(s => s.id);
+      if (surveyList.length > 0) {
+        const surveyIds = surveyList.map(s => s.id)
 
         // Delete discount codes first (FK dependency)
         await db
-          .from('discount_codes')
-          .delete()
-          .in('survey_id', surveyIds);
+          .delete(discount_codes)
+          .where(inArray(discount_codes.survey_id, surveyIds))
 
         // Delete responses
-        const { data: deleted } = await db
-          .from('responses')
-          .delete()
-          .in('survey_id', surveyIds)
-          .select('id');
-        results.responses = deleted?.length || 0;
+        const deleted = await db
+          .delete(responses)
+          .where(inArray(responses.survey_id, surveyIds))
+          .returning({ id: responses.id })
+        results.responses = deleted.length
       }
     }
 
-    // Clear dishes + their photos
+    // Clear dishes
     if (targets.includes('dishes')) {
-      // Clean up storage
-      const { data: dishPhotos } = await db
-        .from('dishes')
-        .select('photo_url')
-        .eq('store_id', storeId)
-        .not('photo_url', 'is', null);
-
-      const { data: deleted } = await db
-        .from('dishes')
-        .delete()
-        .eq('store_id', storeId)
-        .select('id');
-      results.dishes = deleted?.length || 0;
-
-      // Try to clean up storage files
-      if (dishPhotos && dishPhotos.length > 0) {
-        try {
-          const paths = dishPhotos
-            .map(d => d.photo_url)
-            .filter(Boolean)
-            .map(url => {
-              const match = url!.match(/dishes\/(.+)$/);
-              return match ? `dishes/${match[1]}` : null;
-            })
-            .filter(Boolean) as string[];
-
-          if (paths.length > 0) {
-            await db.storage.from('store-assets').remove(paths);
-          }
-        } catch { /* storage cleanup is best effort */ }
-      }
+      const deleted = await db
+        .delete(dishes)
+        .where(eq(dishes.store_id, storeId))
+        .returning({ id: dishes.id })
+      results.dishes = deleted.length
     }
 
     // Clear feedback reports
     if (targets.includes('feedback')) {
-      const { data: deleted } = await db
-        .from('feedback_reports')
-        .delete()
-        .eq('store_id', storeId)
-        .select('id');
-      results.feedback = deleted?.length || 0;
+      const deleted = await db
+        .delete(feedback_reports)
+        .where(eq(feedback_reports.store_id, storeId))
+        .returning({ id: feedback_reports.id })
+      results.feedback = deleted.length
     }
 
-    return NextResponse.json({ ok: true, cleared: results });
+    return NextResponse.json({ ok: true, cleared: results })
   } catch (err) {
-    console.error('Store reset error:', err);
-    return NextResponse.json({ error: '清空失敗，請重試' }, { status: 500 });
+    console.error('Store reset error:', err)
+    return NextResponse.json({ error: '清空失敗，請重試' }, { status: 500 })
   }
 }

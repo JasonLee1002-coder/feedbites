@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { createServerSupabase } from '@/lib/supabase/server';
+import { auth } from '@/auth';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: '未授權' }, { status: 401 });
+    const session = await auth();
+    if (!session?.user?.id) return NextResponse.json({ error: '未授權' }, { status: 401 });
 
     const { description } = await request.json();
     if (!description?.trim()) {
@@ -71,9 +70,9 @@ export async function POST(request: NextRequest) {
     // Validate each variant
     const required = ['primary', 'primaryLight', 'primaryDark', 'background', 'surface', 'text', 'textLight', 'border', 'accent'];
     const validTextures = ['none', 'wood', 'paper', 'noir', 'marble', 'linen'];
-    const validated = variants.slice(0, 3).filter(v => {
-      return required.every(f => v[f] && /^#[0-9A-Fa-f]{6}$/.test(v[f]));
-    }).map(v => ({
+    const validated = variants.slice(0, 3).filter((v: Record<string, string>) => {
+      return required.every((f) => v[f] && /^#[0-9A-Fa-f]{6}$/.test(v[f]));
+    }).map((v: Record<string, string>) => ({
       ...v,
       texture: validTextures.includes(v.texture) ? v.texture : 'none',
     }));

@@ -1,9 +1,22 @@
 // src/lib/ai-advisor.ts
-import { SupabaseClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { analyzeKnowledgeGaps } from './gap-analysis';
+import type { db as DbType } from '@/lib/db';
+import {
+  ai_memories,
+  store_knowledge,
+  surveys,
+  feedback_reports,
+  dishes,
+  responses,
+  assistant_chat_history,
+  domain_knowledge,
+} from '@/lib/db/schema';
+import { eq, and, desc, gte, inArray, count } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+
+type DB = typeof DbType;
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -32,35 +45,40 @@ export interface StoreContext {
 /**
  * 初始化種子知識（第一次執行後跳過）
  */
-export async function initDomainKnowledge(db: SupabaseClient): Promise<void> {
-  const { count } = await db
-    .from('domain_knowledge')
-    .select('*', { count: 'exact', head: true })
-    .eq('project', 'feedbites');
+export async function initDomainKnowledge(db: DB): Promise<void> {
+  const [row] = await db
+    .select({ count: count() })
+    .from(domain_knowledge)
+    .where(eq(domain_knowledge.project, 'feedbites'));
 
-  if ((count ?? 0) > 0) return; // 已初始化
+  if ((row?.count ?? 0) > 0) return; // 已初始化
 
   const { seeds } = await import('./domain-knowledge-seed');
-  await db.from('domain_knowledge').insert(seeds);
+  await db.insert(domain_knowledge).values(seeds);
 }
 
 /**
  * 載入行業知識（依月份優先排序，最多 15 筆）
  */
-export async function loadDomainKnowledge(db: SupabaseClient): Promise<string[]> {
+export async function loadDomainKnowledge(db: DB): Promise<string[]> {
   const today = new Date().toISOString().slice(0, 10);
-  const { data } = await db
-    .from('domain_knowledge')
-    .select('category, subject, content')
-    .eq('project', 'feedbites')
-    .eq('is_stale', false)          // v7.0 Mode C：只用新鮮知識
-    .or(`valid_until.is.null,valid_until.gte.${today}`)
-    .order('confidence', { ascending: false })
+  const data = await db
+    .select({
+      category: domain_knowledge.category,
+      subject: domain_knowledge.subject,
+      content: domain_knowledge.content,
+    })
+    .from(domain_knowledge)
+    .where(
+      sql`${domain_knowledge.project} = 'feedbites'
+        AND ${domain_knowledge.is_stale} = false
+        AND (${domain_knowledge.valid_until} IS NULL OR ${domain_knowledge.valid_until} >= ${today})`
+    )
+    .orderBy(desc(domain_knowledge.confidence))
     .limit(15);
 
-  return (data || []).map(
-    (d: { category: string; subject: string | null; content: string }) =>
-      `[${d.category}] ${d.subject ? d.subject + '：' : ''}${d.content}`
+  return data.map(
+    (d) => `[${d.category}] ${d.subject ? d.subject + '：' : ''}${d.content}`
   );
 }
 
@@ -68,53 +86,64 @@ export async function loadDomainKnowledge(db: SupabaseClient): Promise<string[]>
 
 export async function loadStoreContext(
   storeId: string,
-  db: SupabaseClient
+  db: DB
 ): Promise<StoreContext> {
-  const [memoriesRes, knowledgeRes, surveysRes, reportsRes, dishesRes, domainKnowledge] = await Promise.all([
+  const [memoriesData, knowledgeData, surveysData, dishesData, domainKnowledgeData] = await Promise.all([
     db
-      .from('ai_memories')
-      .select('category, subject, content, confidence')
-      .eq('store_id', storeId)
-      .order('confidence', { ascending: false })
+      .select({
+        category: ai_memories.category,
+        subject: ai_memories.subject,
+        content: ai_memories.content,
+        confidence: ai_memories.confidence,
+      })
+      .from(ai_memories)
+      .where(eq(ai_memories.store_id, storeId))
+      .orderBy(desc(ai_memories.confidence))
       .limit(30),
     db
-      .from('store_knowledge')
-      .select('content')
-      .eq('store_id', storeId)
+      .select({ content: store_knowledge.content })
+      .from(store_knowledge)
+      .where(eq(store_knowledge.store_id, storeId))
       .limit(8),
     db
-      .from('surveys')
-      .select('id, questions')
-      .eq('store_id', storeId),
+      .select({ id: surveys.id, questions: surveys.questions })
+      .from(surveys)
+      .where(eq(surveys.store_id, storeId)),
     db
-      .from('feedback_reports')
-      .select('id', { count: 'exact', head: true })
-      .eq('store_id', storeId)
-      .eq('status', 'pending'),
-    db
-      .from('dishes')
-      .select('name, category, price, description')
-      .eq('store_id', storeId)
-      .eq('is_active', true)
+      .select({
+        name: dishes.name,
+        category: dishes.category,
+        price: dishes.price,
+        description: dishes.description,
+      })
+      .from(dishes)
+      .where(and(eq(dishes.store_id, storeId), eq(dishes.is_active, true)))
       .limit(30),
     loadDomainKnowledge(db),
   ]);
 
-  const memories: Memory[] = (memoriesRes.data || []).map((m) => ({
+  // Unresolved report count
+  const [reportsRow] = await db
+    .select({ count: count() })
+    .from(feedback_reports)
+    .where(and(eq(feedback_reports.store_id, storeId), eq(feedback_reports.status, 'pending')));
+
+  const memories: Memory[] = memoriesData.map((m) => ({
     category: m.category,
     subject: m.subject,
     content: m.content,
     confidence: m.confidence,
   }));
 
-  const knowledgeSnippets = (knowledgeRes.data || [])
-    .map((k: { content: unknown }) => String(k.content).slice(0, 200));
+  const knowledgeSnippets = knowledgeData.map((k) =>
+    String(k.content).slice(0, 200)
+  );
 
-  const surveyIds = (surveysRes.data || []).map((s: { id: string }) => s.id);
+  const surveyIds = surveysData.map((s) => s.id);
   const qMap = new Map(
-    (surveysRes.data || []).map((s: { id: string; questions: unknown }) => [
+    surveysData.map((s) => [
       s.id,
-      (s.questions as Array<{ id: string; label?: string; text?: string; type: string }>) || [],
+      (s.questions as unknown as Array<{ id: string; label?: string; text?: string; type: string }>) || [],
     ])
   );
 
@@ -125,28 +154,28 @@ export async function loadStoreContext(
   if (surveyIds.length > 0) {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    const [recentCountRes, recentResponsesRes] = await Promise.all([
+    const [recentCountRow, recentResponsesData] = await Promise.all([
       db
-        .from('responses')
-        .select('*', { count: 'exact', head: true })
-        .in('survey_id', surveyIds)
-        .gte('submitted_at', sevenDaysAgo),
+        .select({ count: count() })
+        .from(responses)
+        .where(and(inArray(responses.survey_id, surveyIds), gte(responses.submitted_at, new Date(sevenDaysAgo)))),
       db
-        .from('responses')
-        .select('answers, survey_id')
-        .in('survey_id', surveyIds)
-        .order('submitted_at', { ascending: false })
+        .select({ answers: responses.answers, survey_id: responses.survey_id })
+        .from(responses)
+        .where(inArray(responses.survey_id, surveyIds))
+        .orderBy(desc(responses.submitted_at))
         .limit(50),
     ]);
 
-    last7DaysCount = recentCountRes.count || 0;
+    last7DaysCount = recentCountRow[0]?.count ?? 0;
 
     const qSums: Record<string, { sum: number; cnt: number; text: string }> = {};
-    for (const r of (recentResponsesRes.data || []) as Array<{ answers: Record<string, unknown>; survey_id: string }>) {
+    for (const r of recentResponsesData) {
       const qs = qMap.get(r.survey_id) || [];
+      const answersObj = r.answers as unknown as Record<string, unknown>;
       for (const q of qs) {
         if (q.type === 'rating' || q.type === 'emoji-rating') {
-          const v = Number(r.answers?.[q.id]);
+          const v = Number(answersObj?.[q.id]);
           if (!isNaN(v) && v >= 1 && v <= 5) {
             if (!qSums[q.id]) qSums[q.id] = { sum: 0, cnt: 0, text: q.label || q.text || q.id };
             qSums[q.id].sum += v;
@@ -168,18 +197,18 @@ export async function loadStoreContext(
     if (totalCnt > 0) avgRating = Math.round((totalSum / totalCnt) * 10) / 10;
   }
 
-  const dishes = (dishesRes.data || []).map(
-    (d: { name: string; category?: string | null; price?: number | null; description?: string | null }) =>
+  const dishList = dishesData.map(
+    (d) =>
       `${d.name}${d.price ? `（$${d.price}）` : ''}${d.description ? `：${d.description.slice(0, 40)}` : ''}`
   );
 
   return {
     memories,
     knowledgeSnippets,
-    domainKnowledge,
-    dishes,
+    domainKnowledge: domainKnowledgeData,
+    dishes: dishList,
     recentTrend: { last7DaysCount, avgRating, lowScoreTopics },
-    unresolvedReportCount: reportsRes.count || 0,
+    unresolvedReportCount: reportsRow?.count ?? 0,
   };
 }
 
@@ -229,7 +258,6 @@ export function buildAdvisorPrompt(
     ? '\n## 這一輪請主動提出一個業績相關問題或建議（不要每次問，只這一輪）。'
     : '';
 
-  // 每 5 輪主動分享行業洞察
   const industryInsightInstruction = turnCount > 0 && turnCount % 5 === 0
     ? '\n## 行業洞察提醒：這一輪請從行業知識庫中挑一條與當前情境最相關的洞察，用「對了，根據...」的方式自然帶入對話。'
     : '';
@@ -266,7 +294,7 @@ export async function extractMemories(
   userMessage: string,
   aiReply: string,
   storeId: string,
-  db: SupabaseClient
+  db: DB
 ): Promise<void> {
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
@@ -293,24 +321,26 @@ export async function extractMemories(
     for (const mem of newMems) {
       if (!mem.content || mem.content.length < 5) continue;
 
-      const { data: existing } = await db
-        .from('ai_memories')
-        .select('id, confidence')
-        .eq('store_id', storeId)
-        .eq('category', mem.category)
-        .ilike('content', `%${mem.content.slice(0, 15)}%`)
+      const existing = await db
+        .select({ id: ai_memories.id, confidence: ai_memories.confidence })
+        .from(ai_memories)
+        .where(and(
+          eq(ai_memories.store_id, storeId),
+          eq(ai_memories.category, mem.category),
+          sql`${ai_memories.content} ILIKE ${'%' + mem.content.slice(0, 15) + '%'}`
+        ))
         .limit(1);
 
-      if (existing && existing.length > 0) {
+      if (existing.length > 0) {
         await db
-          .from('ai_memories')
-          .update({
-            confidence: (existing[0] as { id: string; confidence: number }).confidence + 1,
-            updated_at: new Date().toISOString(),
+          .update(ai_memories)
+          .set({
+            confidence: existing[0].confidence + 1,
+            updated_at: new Date(),
           })
-          .eq('id', (existing[0] as { id: string; confidence: number }).id);
+          .where(eq(ai_memories.id, existing[0].id));
       } else {
-        await db.from('ai_memories').insert({
+        await db.insert(ai_memories).values({
           store_id: storeId,
           category: mem.category,
           subject: mem.subject ?? null,
@@ -330,25 +360,24 @@ export async function persistChatTurn(
   storeId: string,
   userMessage: string,
   aiReply: string,
-  db: SupabaseClient
+  db: DB
 ): Promise<void> {
-  await db.from('assistant_chat_history').insert([
+  await db.insert(assistant_chat_history).values([
     { store_id: storeId, role: 'user', content: userMessage },
     { store_id: storeId, role: 'assistant', content: aiReply },
   ]);
 
-  // 保留最近 50 筆
-  const { data: old } = await db
-    .from('assistant_chat_history')
-    .select('id')
-    .eq('store_id', storeId)
-    .order('created_at', { ascending: false })
-    .range(50, 9999);
+  // 保留最近 50 筆 — fetch old rows beyond offset 50 and delete them
+  const old = await db
+    .select({ id: assistant_chat_history.id })
+    .from(assistant_chat_history)
+    .where(eq(assistant_chat_history.store_id, storeId))
+    .orderBy(desc(assistant_chat_history.created_at))
+    .offset(50);
 
-  if (old && old.length > 0) {
+  if (old.length > 0) {
     await db
-      .from('assistant_chat_history')
-      .delete()
-      .in('id', (old as Array<{ id: string }>).map((r) => r.id));
+      .delete(assistant_chat_history)
+      .where(inArray(assistant_chat_history.id, old.map((r) => r.id)));
   }
 }

@@ -4,9 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LogOut, Menu, Plus, LayoutDashboard, UtensilsCrossed, ClipboardList, Sparkles, Settings } from 'lucide-react';
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 
 interface StoreInfo {
   id: string;
@@ -36,8 +35,7 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    await signOut({ redirect: false });
     router.refresh();
     window.location.href = '/login';
   };
@@ -150,9 +148,7 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
                   : 'text-white/50 hover:text-white/80 hover:bg-white/[0.06]'
               }`}
               style={active ? { background: 'linear-gradient(135deg, #f97316, #ea580c)', boxShadow: '0 4px 14px rgba(249,115,22,0.35)' } : {}}>
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                active ? 'bg-white/20' : 'bg-white/[0.06]'
-              }`}>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${active ? 'bg-white/20' : 'bg-white/[0.06]'}`}>
                 <Icon className="w-4 h-4" />
               </div>
               <span className="text-[14px]">{item.label}</span>

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
+import { auth } from '@/auth';
+import { db } from '@/lib/db';
+import { dishes } from '@/lib/db/schema';
+import { eq, and } from 'drizzle-orm';
 import { getSelectedStore } from '@/lib/store-context';
 
 // PATCH: Update a dish
@@ -9,21 +12,18 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createServerSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: '未授權' }, { status: 401 });
+    const session = await auth();
+    if (!session?.user?.id) return NextResponse.json({ error: '未授權' }, { status: 401 });
 
-    const store = await getSelectedStore(user.id);
+    const store = await getSelectedStore(session.user.id);
     if (!store) return NextResponse.json({ error: '找不到店家' }, { status: 404 });
 
-    const adminDb = createServiceSupabase();
-
     // Verify dish belongs to this store
-    const { data: existing } = await adminDb
-      .from('dishes')
-      .select('store_id')
-      .eq('id', id)
-      .single();
+    const [existing] = await db
+      .select({ store_id: dishes.store_id })
+      .from(dishes)
+      .where(eq(dishes.id, id))
+      .limit(1);
 
     if (!existing || existing.store_id !== store.id) {
       return NextResponse.json({ error: '菜品不存在' }, { status: 404 });
@@ -31,20 +31,21 @@ export async function PATCH(
 
     const body = await request.json();
     const allowedFields = ['name', 'description', 'category', 'photo_url', 'is_active', 'price'];
-    const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    const updates: Record<string, unknown> = {};
 
     for (const key of allowedFields) {
       if (key in body) updates[key] = body[key];
     }
 
-    const { data: dish, error } = await adminDb
-      .from('dishes')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: '沒有要更新的欄位' }, { status: 400 });
+    }
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    const [dish] = await db
+      .update(dishes)
+      .set(updates as Partial<typeof dishes.$inferInsert>)
+      .where(and(eq(dishes.id, id), eq(dishes.store_id, store.id)))
+      .returning();
 
     return NextResponse.json(dish);
   } catch {
@@ -59,32 +60,26 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createServerSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: '未授權' }, { status: 401 });
+    const session = await auth();
+    if (!session?.user?.id) return NextResponse.json({ error: '未授權' }, { status: 401 });
 
-    const store = await getSelectedStore(user.id);
+    const store = await getSelectedStore(session.user.id);
     if (!store) return NextResponse.json({ error: '找不到店家' }, { status: 404 });
 
-    const adminDb = createServiceSupabase();
-
     // Verify dish belongs to this store
-    const { data: existing } = await adminDb
-      .from('dishes')
-      .select('store_id')
-      .eq('id', id)
-      .single();
+    const [existing] = await db
+      .select({ store_id: dishes.store_id })
+      .from(dishes)
+      .where(eq(dishes.id, id))
+      .limit(1);
 
     if (!existing || existing.store_id !== store.id) {
       return NextResponse.json({ error: '菜品不存在' }, { status: 404 });
     }
 
-    const { error } = await adminDb
-      .from('dishes')
-      .delete()
-      .eq('id', id);
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    await db
+      .delete(dishes)
+      .where(and(eq(dishes.id, id), eq(dishes.store_id, store.id)));
 
     return NextResponse.json({ success: true });
   } catch {

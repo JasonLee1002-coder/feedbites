@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
+import { auth } from '@/auth';
+import { db } from '@/lib/db';
+import { ai_memories, store_knowledge, domain_knowledge } from '@/lib/db/schema';
+import { eq, count } from 'drizzle-orm';
 import { getSelectedStore } from '@/lib/store-context';
 
 export async function GET() {
@@ -8,32 +11,31 @@ export async function GET() {
 
   try {
     // Step 1: Auth
-    const supabase = await createServerSupabase();
-    const { data: { user }, error: authErr } = await supabase.auth.getUser();
-    if (authErr) { steps.auth = `FAIL: ${authErr.message}`; }
-    else if (!user) { steps.auth = 'FAIL: no user'; }
-    else { steps.auth = `OK: ${user.id.slice(0, 8)}...`; }
-
-    if (!user) return NextResponse.json({ steps });
+    const session = await auth();
+    if (!session?.user?.id) {
+      steps.auth = 'FAIL: no session';
+      return NextResponse.json({ steps });
+    }
+    steps.auth = `OK: ${session.user.id.slice(0, 8)}...`;
 
     // Step 2: Store
-    const store = await getSelectedStore(user.id);
-    if (!store) { steps.store = 'FAIL: no store'; }
-    else { steps.store = `OK: ${store.store_name} (${store.id.slice(0, 8)}...)`; }
-
-    if (!store) return NextResponse.json({ steps });
+    const store = await getSelectedStore(session.user.id);
+    if (!store) {
+      steps.store = 'FAIL: no store';
+      return NextResponse.json({ steps });
+    }
+    steps.store = `OK: ${store.store_name} (${store.id.slice(0, 8)}...)`;
 
     // Step 3: DB queries
     try {
-      const db = createServiceSupabase();
-      const [mem, know, surv] = await Promise.all([
-        db.from('ai_memories').select('id', { count: 'exact', head: true }).eq('store_id', store.id),
-        db.from('store_knowledge').select('id', { count: 'exact', head: true }).eq('store_id', store.id),
-        db.from('domain_knowledge').select('id', { count: 'exact', head: true }).eq('project', 'feedbites'),
+      const [memRow, knowRow, domainRow] = await Promise.all([
+        db.select({ count: count() }).from(ai_memories).where(eq(ai_memories.store_id, store.id)),
+        db.select({ count: count() }).from(store_knowledge).where(eq(store_knowledge.store_id, store.id)),
+        db.select({ count: count() }).from(domain_knowledge).where(eq(domain_knowledge.project, 'feedbites')),
       ]);
-      steps.db_memories = mem.error ? `FAIL: ${mem.error.message}` : `OK: ${mem.count} rows`;
-      steps.db_knowledge = know.error ? `FAIL: ${know.error.message}` : `OK: ${know.count} rows`;
-      steps.db_domain = surv.error ? `FAIL: ${surv.error.message}` : `OK: ${surv.count} rows`;
+      steps.db_memories = `OK: ${memRow[0]?.count ?? 0} rows`;
+      steps.db_knowledge = `OK: ${knowRow[0]?.count ?? 0} rows`;
+      steps.db_domain = `OK: ${domainRow[0]?.count ?? 0} rows`;
     } catch (e) {
       steps.db = `FAIL: ${e instanceof Error ? e.message : String(e)}`;
     }

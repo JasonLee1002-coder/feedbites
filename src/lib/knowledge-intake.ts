@@ -2,10 +2,14 @@
 // v7.0 Mode C — 進化引擎 2：知識自動獲取
 // 台灣餐飲業知識定期更新配置
 
-import { SupabaseClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import type { db as DbType } from '@/lib/db';
+import { domain_knowledge } from '@/lib/db/schema';
+import { eq, and, isNull, lt, not } from 'drizzle-orm';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+
+type DB = typeof DbType;
 
 // ─── 知識來源配置 ──────────────────────────────────────────────────────────────
 
@@ -92,15 +96,11 @@ interface ExtractedKnowledge {
 
 /**
  * 使用 Gemini Grounding 搜尋並萃取知識。
- * 若 Tavily API 可用則優先使用；否則 fallback 到 Gemini grounding。
  */
 async function fetchAndExtractKnowledge(
   source: IntakeSource
 ): Promise<ExtractedKnowledge[]> {
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
-    // Gemini grounding 透過 tools 設定
-  });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
   const prompt = `請搜尋並摘要以下主題的最新資訊，專注於台灣餐飲業實用知識：
 
@@ -144,14 +144,10 @@ async function fetchAndExtractKnowledge(
 /**
  * 執行知識自動獲取流程。
  * 由 Vercel Cron Job 每週一呼叫。
- *
- * @param projectName - 專案名稱（預設 'feedbites'）
- * @param db - Supabase client（需 service role）
- * @param maxSources - 每次執行最多處理幾個來源（避免超時）
  */
 export async function runKnowledgeIntake(
   projectName: string,
-  db: SupabaseClient,
+  db: DB,
   maxSources = 4
 ): Promise<{ processed: number; inserted: number; errors: number }> {
   const sources = RESTAURANT_INTAKE_SOURCES
@@ -175,20 +171,14 @@ export async function runKnowledgeIntake(
         source: `intake:${source.query.slice(0, 50)}`,
         source_type: 'intake',
         confidence: item.confidence,
-        last_verified_at: new Date().toISOString(),
+        last_verified_at: new Date(),
         refresh_interval_days: 7,
         is_stale: false,
         valid_until: null,
       }));
 
-      const { error } = await db.from('domain_knowledge').insert(rows);
-
-      if (error) {
-        console.error('[knowledge-intake] insert error:', error.message);
-        errors++;
-      } else {
-        inserted += rows.length;
-      }
+      await db.insert(domain_knowledge).values(rows);
+      inserted += rows.length;
     } catch (err) {
       console.error('[knowledge-intake] source error:', err);
       errors++;
@@ -204,29 +194,25 @@ export async function runKnowledgeIntake(
  */
 export async function markStaleKnowledge(
   projectName: string,
-  db: SupabaseClient
+  db: DB
 ): Promise<number> {
-  const { data, error } = await db
-    .from('domain_knowledge')
-    .update({
+  const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const updated = await db
+    .update(domain_knowledge)
+    .set({
       is_stale: true,
       stale_reason: '超過 refresh_interval_days 未驗證',
     })
-    .eq('project', projectName)
-    .eq('is_stale', false)
-    .not('refresh_interval_days', 'is', null)
-    .lt(
-      'last_verified_at',
-      new Date(
-        Date.now() - 7 * 24 * 60 * 60 * 1000
-      ).toISOString()
+    .where(
+      and(
+        eq(domain_knowledge.project, projectName),
+        eq(domain_knowledge.is_stale, false),
+        not(isNull(domain_knowledge.refresh_interval_days)),
+        lt(domain_knowledge.last_verified_at, cutoff)
+      )
     )
-    .select('id');
+    .returning({ id: domain_knowledge.id });
 
-  if (error) {
-    console.error('[knowledge-intake] markStale error:', error.message);
-    return 0;
-  }
-
-  return (data || []).length;
+  return updated.length;
 }

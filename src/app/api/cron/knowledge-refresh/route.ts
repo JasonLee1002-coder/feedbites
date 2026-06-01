@@ -3,7 +3,7 @@
 // 由 Vercel Cron 每週一 02:00 UTC+8 觸發
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceSupabase } from '@/lib/supabase/server';
+import { db } from '@/lib/db';
 import { runKnowledgeIntake, markStaleKnowledge } from '@/lib/knowledge-intake';
 
 export const maxDuration = 300; // 5 分鐘上限（Vercel Pro 支援）
@@ -14,8 +14,6 @@ export async function GET(request: NextRequest) {
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const db = createServiceSupabase();
 
   try {
     // 1. 標記過期知識

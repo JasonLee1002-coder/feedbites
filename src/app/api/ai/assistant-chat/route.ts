@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
+import { auth } from '@/auth';
+import { db } from '@/lib/db';
 import { getSelectedStore } from '@/lib/store-context';
 import {
   loadStoreContext,
@@ -20,19 +21,16 @@ interface ChatMessage {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: '登入已過期，請重新整理頁面', _debug: '401: no session' }, { status: 401 });
+    const session = await auth();
+    if (!session?.user?.id) return NextResponse.json({ error: '登入已過期，請重新整理頁面', _debug: '401: no session' }, { status: 401 });
 
-    const store = await getSelectedStore(user.id);
-    if (!store) return NextResponse.json({ error: '找不到店家，請確認已建立店家', _debug: '404: no store for ' + user.id }, { status: 404 });
+    const store = await getSelectedStore(session.user.id);
+    if (!store) return NextResponse.json({ error: '找不到店家，請確認已建立店家', _debug: '404: no store for ' + session.user.id }, { status: 404 });
 
     const { message, history, currentPage } = await request.json();
     if (!message?.trim()) {
       return NextResponse.json({ error: '訊息不可為空', _debug: '400: empty message' }, { status: 400 });
     }
-
-    const db = createServiceSupabase();
 
     // 確保種子知識已初始化（async，不阻塞主流程）
     initDomainKnowledge(db).catch((e) => console.error('[domain] initDomainKnowledge failed:', e));
@@ -68,7 +66,6 @@ export async function POST(request: NextRequest) {
     } catch (geminiErr) {
       const msg = geminiErr instanceof Error ? geminiErr.message : String(geminiErr);
       console.error('[gemini] generateContent failed:', msg);
-      // Return a graceful fallback instead of 500
       return NextResponse.json({ reply: `抱歉，我的 AI 服務暫時有點問題（${msg.slice(0, 60)}），等等再問我吧！` });
     }
 
@@ -87,7 +84,6 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('Assistant chat error (outer):', msg);
-    // Return a user-friendly message with enough info to diagnose
     const isAuthErr = msg.includes('auth') || msg.includes('session') || msg.includes('cookie');
     const friendlyMsg = isAuthErr
       ? '登入狀態有點問題，請重新整理頁面再試'

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { createServerSupabase } from '@/lib/supabase/server';
+import { auth } from '@/auth';
 import { getSelectedStore } from '@/lib/store-context';
 
 // Allow longer execution for large menus
@@ -11,11 +11,10 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 // POST: Parse a menu image into individual dishes
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: '未授權' }, { status: 401 });
+    const session = await auth();
+    if (!session?.user?.id) return NextResponse.json({ error: '未授權' }, { status: 401 });
 
-    const store = await getSelectedStore(user.id);
+    const store = await getSelectedStore(session.user.id);
     if (!store) return NextResponse.json({ error: '找不到店家' }, { status: 404 });
 
     const formData = await request.formData();
@@ -71,7 +70,6 @@ export async function POST(request: NextRequest) {
       } catch (genErr) {
         lastError = genErr instanceof Error ? genErr.message : String(genErr);
         console.error(`Model ${modelName} failed:`, lastError);
-        // Try next model
       }
     }
 
@@ -82,17 +80,14 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Extract JSON from response — handle various AI output formats
     console.log('Raw AI response (first 500):', text.substring(0, 500));
 
-    // Strip markdown code blocks, thinking tags, and other wrappers
     let cleaned = text
       .replace(/```json\s*/g, '')
       .replace(/```\s*/g, '')
-      .replace(/<think>[\s\S]*?<\/think>/g, '')  // Gemini 2.5 thinking blocks
+      .replace(/<think>[\s\S]*?<\/think>/g, '')
       .trim();
 
-    // Find the outermost JSON object
     const jsonStart = cleaned.indexOf('{');
     const jsonEnd = cleaned.lastIndexOf('}');
 
@@ -102,8 +97,6 @@ export async function POST(request: NextRequest) {
     }
 
     let jsonStr = cleaned.substring(jsonStart, jsonEnd + 1);
-
-    // Basic cleanup
     jsonStr = jsonStr
       .replace(/\n/g, ' ')
       .replace(/\r/g, '')
@@ -111,7 +104,6 @@ export async function POST(request: NextRequest) {
       .replace(/,\s*}/g, '}')
       .replace(/,\s*]/g, ']');
 
-    // If JSON is truncated (no proper closing), try to fix it
     const openBraces = (jsonStr.match(/{/g) || []).length;
     const closeBraces = (jsonStr.match(/}/g) || []).length;
     const openBrackets = (jsonStr.match(/\[/g) || []).length;
@@ -119,34 +111,28 @@ export async function POST(request: NextRequest) {
 
     if (openBraces > closeBraces || openBrackets > closeBrackets) {
       console.log(`JSON truncated: { ${openBraces}/${closeBraces}, [ ${openBrackets}/${closeBrackets}. Attempting repair...`);
-      // Remove the last incomplete item (after last complete })
       const lastCompleteObj = jsonStr.lastIndexOf('}');
       if (lastCompleteObj > 0) {
         jsonStr = jsonStr.substring(0, lastCompleteObj + 1);
-        // Close remaining brackets
         const remainingBrackets = openBrackets - (jsonStr.match(/]/g) || []).length;
         const remainingBraces = openBraces - (jsonStr.match(/}/g) || []).length;
         for (let i = 0; i < remainingBrackets; i++) jsonStr += ']';
         for (let i = 0; i < remainingBraces; i++) jsonStr += '}';
-        // Clean trailing commas again
         jsonStr = jsonStr.replace(/,\s*]/g, ']').replace(/,\s*}/g, '}');
       }
     }
 
-    // Try parsing
     let parsed;
     try {
       parsed = JSON.parse(jsonStr);
     } catch {
-      // Second attempt: try to extract just the dishes array
       console.log('First parse failed, trying dishes array extraction...');
       const dishesMatch = jsonStr.match(/"dishes"\s*:\s*\[([\s\S]*)\]/);
       if (dishesMatch) {
         try {
-          // Wrap each {...} object individually
           const objMatches = dishesMatch[1].match(/\{[^{}]*\}/g);
           if (objMatches) {
-            const dishes = objMatches.map(obj => {
+            const dishes = objMatches.map((obj) => {
               try { return JSON.parse(obj); }
               catch { return null; }
             }).filter(Boolean);

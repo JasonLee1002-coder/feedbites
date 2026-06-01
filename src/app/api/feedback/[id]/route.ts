@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
+import { auth } from '@/auth';
+import { db } from '@/lib/db';
+import { feedback_reports, feedback_attachments, feedback_responses, stores } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { getSelectedStore } from '@/lib/store-context';
 import { isSuperAdmin } from '@/lib/admin';
 import { pushFlexMessage, buildStatusChangeMessage } from '@/lib/line/push';
@@ -11,28 +14,35 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createServerSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: '未授權' }, { status: 401 });
+    const session = await auth();
+    if (!session?.user?.id) return NextResponse.json({ error: '未授權' }, { status: 401 });
 
-    const adminDb = createServiceSupabase();
-    const { data: report, error } = await adminDb
-      .from('feedback_reports')
-      .select('*, feedback_attachments(*), feedback_responses(*)')
-      .eq('id', id)
-      .single();
+    const [report] = await db
+      .select()
+      .from(feedback_reports)
+      .where(eq(feedback_reports.id, id))
+      .limit(1);
 
-    if (error || !report) return NextResponse.json({ error: '找不到回報' }, { status: 404 });
+    if (!report) return NextResponse.json({ error: '找不到回報' }, { status: 404 });
 
     // Verify ownership or admin
-    if (!isSuperAdmin(user.email || '')) {
-      const store = await getSelectedStore(user.id);
+    if (!isSuperAdmin(session.user.email || '')) {
+      const store = await getSelectedStore(session.user.id);
       if (!store || report.store_id !== store.id) {
         return NextResponse.json({ error: '未授權' }, { status: 403 });
       }
     }
 
-    return NextResponse.json(report);
+    const [attachments, responses] = await Promise.all([
+      db.select().from(feedback_attachments).where(eq(feedback_attachments.report_id, id)),
+      db.select().from(feedback_responses).where(eq(feedback_responses.report_id, id)),
+    ]);
+
+    return NextResponse.json({
+      ...report,
+      feedback_attachments: attachments,
+      feedback_responses: responses,
+    });
   } catch {
     return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 });
   }
@@ -45,41 +55,46 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createServerSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: '未授權' }, { status: 401 });
+    const session = await auth();
+    if (!session?.user?.id) return NextResponse.json({ error: '未授權' }, { status: 401 });
 
-    if (!isSuperAdmin(user.email || '')) {
+    if (!isSuperAdmin(session.user.email || '')) {
       return NextResponse.json({ error: '需要管理員權限' }, { status: 403 });
     }
 
     const { status } = await request.json();
-    const adminDb = createServiceSupabase();
 
     // Get old status before updating
-    const { data: oldReport } = await adminDb
-      .from('feedback_reports')
-      .select('status, title, store_id, store_name')
-      .eq('id', id)
-      .single();
+    const [oldReport] = await db
+      .select({
+        status: feedback_reports.status,
+        title: feedback_reports.title,
+        store_id: feedback_reports.store_id,
+        store_name: feedback_reports.store_name,
+      })
+      .from(feedback_reports)
+      .where(eq(feedback_reports.id, id))
+      .limit(1);
 
-    const { data, error } = await adminDb
-      .from('feedback_reports')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .select()
-      .single();
+    const [data] = await db
+      .update(feedback_reports)
+      .set({ status, updated_at: new Date() })
+      .where(eq(feedback_reports.id, id))
+      .returning();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!data) return NextResponse.json({ error: '找不到回報' }, { status: 404 });
 
     // ── LINE Push: notify store owner on status change ──
     if (oldReport && oldReport.status !== status && oldReport.store_id) {
       try {
-        const { data: store } = await adminDb
-          .from('stores')
-          .select('owner_line_user_id, store_name')
-          .eq('id', oldReport.store_id)
-          .single();
+        const [store] = await db
+          .select({
+            owner_line_user_id: stores.owner_line_user_id,
+            store_name: stores.store_name,
+          })
+          .from(stores)
+          .where(eq(stores.id, oldReport.store_id))
+          .limit(1);
 
         if (store?.owner_line_user_id) {
           const flexBody = buildStatusChangeMessage({

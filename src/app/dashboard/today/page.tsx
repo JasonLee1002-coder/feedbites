@@ -1,18 +1,18 @@
-import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
+import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
+import { db } from '@/lib/db';
+import { surveys, responses } from '@/lib/db/schema';
+import { eq, inArray, gte, desc } from 'drizzle-orm';
 import { getSelectedStore } from '@/lib/store-context';
 import TodayClient from './TodayClient';
 
 export const dynamic = 'force-dynamic';
 
 export default async function TodayPage() {
-  const supabase = await createServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  const session = await auth();
+  if (!session?.user?.id) redirect('/login');
 
-  const adminDb = createServiceSupabase();
-
-  const store = await getSelectedStore(user.id);
+  const store = await getSelectedStore(session.user.id);
   if (!store) redirect('/dashboard/new-store');
 
   const storeId = store.id;
@@ -22,7 +22,6 @@ export default async function TodayPage() {
     new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }) + 'T00:00:00+08:00'
   ).toISOString();
 
-  // Date label e.g. "5月15日"
   const dateLabel = new Date().toLocaleDateString('zh-TW', {
     timeZone: 'Asia/Taipei',
     month: 'long',
@@ -30,12 +29,10 @@ export default async function TodayPage() {
   });
 
   // Fetch surveys for this store
-  const { data: surveys } = await adminDb
-    .from('surveys')
-    .select('id, title')
-    .eq('store_id', storeId);
-
-  const surveyList = surveys || [];
+  const surveyList = await db
+    .select({ id: surveys.id, title: surveys.title })
+    .from(surveys)
+    .where(eq(surveys.store_id, storeId));
 
   if (surveyList.length === 0) {
     return (
@@ -47,64 +44,58 @@ export default async function TodayPage() {
     );
   }
 
-  const surveyIds = surveyList.map((s: { id: string }) => s.id);
-  const surveyMap = new Map(surveyList.map((s: { id: string; title: string }) => [s.id, s.title]));
+  const surveyIds = surveyList.map(s => s.id);
+  const surveyMap = new Map(surveyList.map(s => [s.id, s.title]));
 
   // Fetch today's responses
-  const { data: rawResponses } = await adminDb
-    .from('responses')
-    .select('id, respondent_name, submitted_at, survey_id, answers, xp_earned')
-    .in('survey_id', surveyIds)
-    .gte('submitted_at', todayStartISO)
-    .order('submitted_at', { ascending: false });
+  const rawResponses = await db
+    .select({
+      id: responses.id,
+      respondent_name: responses.respondent_name,
+      submitted_at: responses.submitted_at,
+      survey_id: responses.survey_id,
+      answers: responses.answers,
+      xp_earned: responses.xp_earned,
+    })
+    .from(responses)
+    .where(inArray(responses.survey_id, surveyIds))
+    .orderBy(desc(responses.submitted_at));
 
-  const raw = rawResponses || [];
+  // Filter to today (gte on timestamp)
+  const todayStart = new Date(todayStartISO);
+  const raw = rawResponses.filter(r => r.submitted_at && new Date(r.submitted_at) >= todayStart);
 
-  // Compute per-response avg score and first text answer
   let totalScore = 0;
   let totalVotes = 0;
 
-  const responses = raw.map((r: {
-    id: string;
-    respondent_name: string | null;
-    submitted_at: string;
-    survey_id: string;
-    answers: Record<string, string | string[] | number> | null;
-    xp_earned: number | null;
-  }) => {
+  const mappedResponses = raw.map(r => {
+    const answers = (r.answers as Record<string, unknown>) || {};
     const ratingValues: number[] = [];
     let firstTextAnswer: string | null = null;
 
-    if (r.answers) {
-      for (const v of Object.values(r.answers)) {
-        const n = Number(v);
-        if (!isNaN(n) && n >= 1 && n <= 5) {
-          ratingValues.push(n);
-          totalScore += n;
-          totalVotes++;
-        }
-        if (
-          firstTextAnswer === null &&
-          typeof v === 'string' &&
-          v.length > 3
-        ) {
-          firstTextAnswer = v;
-        }
+    for (const v of Object.values(answers)) {
+      const n = Number(v);
+      if (!isNaN(n) && n >= 1 && n <= 5) {
+        ratingValues.push(n);
+        totalScore += n;
+        totalVotes++;
+      }
+      if (firstTextAnswer === null && typeof v === 'string' && v.length > 3) {
+        firstTextAnswer = v;
       }
     }
 
-    const avg =
-      ratingValues.length > 0
-        ? ratingValues.reduce((a, b) => a + b, 0) / ratingValues.length
-        : null;
+    const avg = ratingValues.length > 0
+      ? ratingValues.reduce((a, b) => a + b, 0) / ratingValues.length
+      : null;
 
     return {
       id: r.id,
       respondent_name: r.respondent_name,
-      submitted_at: r.submitted_at,
+      submitted_at: r.submitted_at ? new Date(r.submitted_at).toISOString() : '',
       survey_id: r.survey_id,
       survey_title: surveyMap.get(r.survey_id) || '未知問卷',
-      answers: r.answers,
+      answers: answers as Record<string, string | string[] | number>,
       xp_earned: r.xp_earned,
       avg,
       firstTextAnswer,
@@ -115,7 +106,7 @@ export default async function TodayPage() {
 
   return (
     <TodayClient
-      responses={responses}
+      responses={mappedResponses}
       dateLabel={dateLabel}
       avgScore={avgScore}
     />

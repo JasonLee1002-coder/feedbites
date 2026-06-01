@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createServiceSupabase } from '@/lib/supabase/server';
+import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
+import { stores, dishes } from '@/lib/db/schema'
+import { and, eq, asc, desc } from 'drizzle-orm'
 
 // GET: Public endpoint — fetch store info and active dishes
 export async function GET(
@@ -7,38 +9,31 @@ export async function GET(
   { params }: { params: Promise<{ storeId: string }> }
 ) {
   try {
-    const { storeId } = await params;
-    const adminDb = createServiceSupabase();
+    const { storeId } = await params
 
     // Fetch store info
-    const { data: store, error: storeError } = await adminDb
-      .from('stores')
-      .select('store_name, logo_url')
-      .eq('id', storeId)
-      .single();
+    const [store] = await db
+      .select({ store_name: stores.store_name, logo_url: stores.logo_url })
+      .from(stores)
+      .where(eq(stores.id, storeId))
+      .limit(1)
 
-    if (storeError || !store) {
-      return NextResponse.json({ error: '找不到店家' }, { status: 404 });
+    if (!store) {
+      return NextResponse.json({ error: '找不到店家' }, { status: 404 })
     }
 
     // Fetch active dishes
-    const { data: dishes, error: dishesError } = await adminDb
-      .from('dishes')
-      .select('*')
-      .eq('store_id', storeId)
-      .eq('is_active', true)
-      .order('category')
-      .order('created_at', { ascending: false });
-
-    if (dishesError) {
-      return NextResponse.json({ error: dishesError.message }, { status: 500 });
-    }
+    const dishList = await db
+      .select()
+      .from(dishes)
+      .where(and(eq(dishes.store_id, storeId), eq(dishes.is_active, true)))
+      .orderBy(asc(dishes.category), desc(dishes.created_at))
 
     return NextResponse.json({
       store,
-      dishes: dishes || [],
-    });
+      dishes: dishList,
+    })
   } catch {
-    return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 });
+    return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 })
   }
 }

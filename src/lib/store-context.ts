@@ -1,5 +1,7 @@
 import { cookies } from 'next/headers';
-import { createServiceSupabase } from '@/lib/supabase/server';
+import { db } from '@/lib/db';
+import { stores, store_members } from '@/lib/db/schema';
+import { eq, inArray } from 'drizzle-orm';
 
 const STORE_COOKIE = 'feedbites_store_id';
 
@@ -14,78 +16,74 @@ export async function getSelectedStoreId(): Promise<string | null> {
  * Falls back to first store if no cookie or cookie is stale.
  */
 export async function getSelectedStore(userId: string) {
-  const adminDb = createServiceSupabase();
   const storeId = await getSelectedStoreId();
 
   if (storeId) {
-    // Check if user owns or is a member of this store
-    const { data: store } = await adminDb
-      .from('stores')
-      .select('*')
-      .eq('id', storeId)
-      .single();
+    // Check if the store exists
+    const [store] = await db
+      .select()
+      .from(stores)
+      .where(eq(stores.id, storeId))
+      .limit(1);
 
     if (store) {
       const isOwner = store.user_id === userId;
-      if (!isOwner) {
-        const { data: membership } = await adminDb
-          .from('store_members')
-          .select('id')
-          .eq('store_id', storeId)
-          .eq('user_id', userId)
-          .single();
-        if (!membership) {
-          // Not owner or member, fall through to find a valid store
-        } else {
-          return store;
-        }
-      } else {
+      if (isOwner) {
         return store;
       }
+
+      // Check membership
+      const [membership] = await db
+        .select({ id: store_members.id })
+        .from(store_members)
+        .where(eq(store_members.store_id, storeId))
+        .limit(1);
+
+      if (membership) {
+        return store;
+      }
+      // Not owner or member, fall through to find a valid store
     }
   }
 
   // Fallback: get first owned or member store
-  const stores = await getUserStores(userId);
-  return stores[0] || null;
+  const allStores = await getUserStores(userId);
+  return allStores[0] || null;
 }
 
 /**
  * Get all stores for a user (owned + member).
  */
 export async function getUserStores(userId: string) {
-  const adminDb = createServiceSupabase();
+  // Get owned stores (all fields)
+  const ownedStores = await db
+    .select()
+    .from(stores)
+    .where(eq(stores.user_id, userId))
+    .orderBy(stores.created_at);
 
-  // Get owned stores
-  const { data: ownedStores } = await adminDb
-    .from('stores')
-    .select('id, store_name, logo_url, created_at')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: true });
+  // Get member store IDs
+  const memberships = await db
+    .select({ store_id: store_members.store_id })
+    .from(store_members)
+    .where(eq(store_members.user_id, userId));
 
-  // Get member stores
-  const { data: memberships } = await adminDb
-    .from('store_members')
-    .select('store_id')
-    .eq('user_id', userId);
-
-  const memberStoreIds = (memberships || []).map(m => m.store_id);
+  const memberStoreIds = memberships.map(m => m.store_id);
 
   let memberStores: typeof ownedStores = [];
   if (memberStoreIds.length > 0) {
-    const { data } = await adminDb
-      .from('stores')
-      .select('id, store_name, logo_url, created_at')
-      .in('id', memberStoreIds)
-      .order('created_at', { ascending: true });
-    memberStores = data;
+    memberStores = await db
+      .select()
+      .from(stores)
+      .where(inArray(stores.id, memberStoreIds))
+      .orderBy(stores.created_at);
   }
 
   // Combine and dedupe, mark role
-  const ownedIds = new Set((ownedStores || []).map(s => s.id));
+  const ownedIds = new Set(ownedStores.map(s => s.id));
   const combined = [
-    ...(ownedStores || []).map(s => ({ ...s, role: 'owner' as const })),
-    ...(memberStores || []).filter(s => !ownedIds.has(s.id)).map(s => ({ ...s, role: 'member' as const })),
+    ...ownedStores.map(s => ({ ...s, role: 'owner' as const })),
+    ...memberStores.filter(s => !ownedIds.has(s.id)).map(s => ({ ...s, role: 'member' as const })),
   ];
 
   return combined;

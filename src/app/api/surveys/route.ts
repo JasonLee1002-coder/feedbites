@@ -1,57 +1,49 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
-import { getSelectedStore } from '@/lib/store-context';
+import { auth } from '@/auth'
+import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
+import { surveys } from '@/lib/db/schema'
+import { eq, desc } from 'drizzle-orm'
+import { getSelectedStore } from '@/lib/store-context'
 
 // GET: List surveys for authenticated store owner
 export async function GET() {
   try {
-    const supabase = await createServerSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: '未授權' }, { status: 401 });
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: '未授權' }, { status: 401 })
     }
 
-    const adminDb = createServiceSupabase();
-
-    const store = await getSelectedStore(user.id);
+    const store = await getSelectedStore(session.user.id)
     if (!store) {
-      return NextResponse.json({ error: '找不到店家' }, { status: 404 });
+      return NextResponse.json({ error: '找不到店家' }, { status: 404 })
     }
 
-    // Get surveys for this store
-    const { data: surveys, error: surveysError } = await adminDb
-      .from('surveys')
-      .select('*')
-      .eq('store_id', store.id)
-      .order('created_at', { ascending: false });
+    const surveyList = await db
+      .select()
+      .from(surveys)
+      .where(eq(surveys.store_id, store.id))
+      .orderBy(desc(surveys.created_at))
 
-    if (surveysError) {
-      return NextResponse.json({ error: surveysError.message }, { status: 500 });
-    }
-
-    return NextResponse.json(surveys);
+    return NextResponse.json(surveyList)
   } catch {
-    return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 });
+    return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 })
   }
 }
 
 // POST: Create new survey
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: '未授權' }, { status: 401 });
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: '未授權' }, { status: 401 })
     }
 
-    const adminDb = createServiceSupabase();
-
-    const store = await getSelectedStore(user.id);
+    const store = await getSelectedStore(session.user.id)
     if (!store) {
-      return NextResponse.json({ error: '找不到店家' }, { status: 404 });
+      return NextResponse.json({ error: '找不到店家' }, { status: 404 })
     }
 
-    const body = await request.json();
+    const body = await request.json()
     const {
       title,
       template_id,
@@ -63,15 +55,15 @@ export async function POST(request: NextRequest) {
       discount_enabled = true,
       discount_mode = 'basic',
       discount_tiers = null,
-    } = body;
+    } = body
 
     if (!title || !questions || !Array.isArray(questions)) {
-      return NextResponse.json({ error: '缺少必要欄位' }, { status: 400 });
+      return NextResponse.json({ error: '缺少必要欄位' }, { status: 400 })
     }
 
-    const { data: survey, error: createError } = await adminDb
-      .from('surveys')
-      .insert({
+    const [survey] = await db
+      .insert(surveys)
+      .values({
         store_id: store.id,
         title,
         template_id: template_id || 'fine-dining',
@@ -85,15 +77,10 @@ export async function POST(request: NextRequest) {
         discount_mode,
         discount_tiers,
       })
-      .select()
-      .single();
+      .returning()
 
-    if (createError) {
-      return NextResponse.json({ error: createError.message }, { status: 500 });
-    }
-
-    return NextResponse.json(survey, { status: 201 });
+    return NextResponse.json(survey, { status: 201 })
   } catch {
-    return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 });
+    return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 })
   }
 }

@@ -1,83 +1,83 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
-import { getSelectedStore } from '@/lib/store-context';
+import { auth } from '@/auth'
+import { NextRequest, NextResponse } from 'next/server'
+import { GoogleGenerativeAI } from '@google/generative-ai'
+import { db } from '@/lib/db'
+import { store_knowledge, dishes, surveys, responses } from '@/lib/db/schema'
+import { and, eq, desc } from 'drizzle-orm'
+import { getSelectedStore } from '@/lib/store-context'
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
 // GET: Retrieve store knowledge
 export async function GET() {
   try {
-    const supabase = await createServerSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: '未授權' }, { status: 401 });
+    const session = await auth()
+    if (!session?.user?.id) return NextResponse.json({ error: '未授權' }, { status: 401 })
 
-    const store = await getSelectedStore(user.id);
-    if (!store) return NextResponse.json({ error: '找不到店家' }, { status: 404 });
+    const store = await getSelectedStore(session.user.id)
+    if (!store) return NextResponse.json({ error: '找不到店家' }, { status: 404 })
 
-    const adminDb = createServiceSupabase();
-    const { data: knowledge } = await adminDb
-      .from('store_knowledge')
-      .select('*')
-      .eq('store_id', store.id)
-      .order('updated_at', { ascending: false });
+    const knowledge = await db
+      .select()
+      .from(store_knowledge)
+      .where(eq(store_knowledge.store_id, store.id))
+      .orderBy(desc(store_knowledge.updated_at))
 
-    return NextResponse.json(knowledge || []);
+    return NextResponse.json(knowledge)
   } catch {
-    return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 });
+    return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 })
   }
 }
 
 // POST: Add knowledge or trigger AI learning
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: '未授權' }, { status: 401 });
+    const session = await auth()
+    if (!session?.user?.id) return NextResponse.json({ error: '未授權' }, { status: 401 })
 
-    const store = await getSelectedStore(user.id);
-    if (!store) return NextResponse.json({ error: '找不到店家' }, { status: 404 });
+    const store = await getSelectedStore(session.user.id)
+    if (!store) return NextResponse.json({ error: '找不到店家' }, { status: 404 })
 
-    const adminDb = createServiceSupabase();
-    const { action, category, content } = await request.json();
+    const { action, category, content } = await request.json()
 
     // Manual knowledge input from store owner
     if (action === 'add') {
-      const { error } = await adminDb.from('store_knowledge').insert({
+      await db.insert(store_knowledge).values({
         store_id: store.id,
         category: category || 'philosophy',
         content,
         source: 'owner_input',
-      });
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-      return NextResponse.json({ success: true });
+      })
+      return NextResponse.json({ success: true })
     }
 
     // AI auto-learn: analyze store's dishes, responses, and metadata
     if (action === 'learn') {
-      // Gather store data
-      const [{ data: dishes }, { data: surveys }, { data: existingKnowledge }] = await Promise.all([
-        adminDb.from('dishes').select('name, description, category').eq('store_id', store.id),
-        adminDb.from('surveys').select('id, title, questions').eq('store_id', store.id),
-        adminDb.from('store_knowledge').select('content, category').eq('store_id', store.id),
-      ]);
+      const [dishList, surveyList, existingKnowledge] = await Promise.all([
+        db.select({ name: dishes.name, description: dishes.description, category: dishes.category })
+          .from(dishes).where(eq(dishes.store_id, store.id)),
+        db.select({ id: surveys.id, title: surveys.title, questions: surveys.questions })
+          .from(surveys).where(eq(surveys.store_id, store.id)),
+        db.select({ content: store_knowledge.content, category: store_knowledge.category })
+          .from(store_knowledge).where(eq(store_knowledge.store_id, store.id)),
+      ])
 
       // Get recent responses for insights
-      const surveyIds = (surveys || []).map(s => s.id);
-      let recentFeedback: string[] = [];
+      const surveyIds = surveyList.map(s => s.id)
+      let recentFeedback: string[] = []
       if (surveyIds.length > 0) {
-        const { data: responses } = await adminDb
-          .from('responses')
-          .select('answers')
-          .in('survey_id', surveyIds)
-          .order('submitted_at', { ascending: false })
-          .limit(30);
+        const { inArray } = await import('drizzle-orm')
+        const recentResponses = await db
+          .select({ answers: responses.answers })
+          .from(responses)
+          .where(inArray(responses.survey_id, surveyIds))
+          .orderBy(desc(responses.submitted_at))
+          .limit(30)
 
-        // Extract text answers
-        for (const r of (responses || [])) {
-          for (const [, v] of Object.entries(r.answers || {})) {
+        for (const r of recentResponses) {
+          for (const [, v] of Object.entries(r.answers as Record<string, unknown> || {})) {
             if (typeof v === 'string' && v.length > 10) {
-              recentFeedback.push(v);
+              recentFeedback.push(v)
             }
           }
         }
@@ -90,9 +90,9 @@ export async function POST(request: NextRequest) {
         district: store.district,
         price_range: store.price_range,
         target_audience: store.target_audience,
-      };
+      }
 
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
       const result = await model.generateContent([
         {
@@ -101,11 +101,11 @@ export async function POST(request: NextRequest) {
 店家資訊：
 ${JSON.stringify(storeInfo, null, 2)}
 
-菜單（${(dishes || []).length} 道菜）：
-${(dishes || []).map(d => `- ${d.name}（${d.category}）: ${d.description || '無描述'}`).join('\n')}
+菜單（${dishList.length} 道菜）：
+${dishList.map(d => `- ${d.name}（${d.category}）: ${d.description || '無描述'}`).join('\n')}
 
 已有知識：
-${(existingKnowledge || []).map(k => `[${k.category}] ${k.content}`).join('\n') || '尚無'}
+${existingKnowledge.map(k => `[${k.category}] ${k.content}`).join('\n') || '尚無'}
 
 最近客人回饋（${recentFeedback.length} 則）：
 ${recentFeedback.slice(0, 15).join('\n') || '尚無'}
@@ -122,70 +122,75 @@ ${recentFeedback.slice(0, 15).join('\n') || '尚無'}
 
 只回覆 JSON。如果某個分類資料不足就跳過。基於實際數據分析，不要編造。`,
         },
-      ]);
+      ])
 
-      const text = result.response.text();
-      const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+      const text = result.response.text()
+      const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '')
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
 
       if (!jsonMatch) {
-        return NextResponse.json({ error: '分析失敗' }, { status: 422 });
+        return NextResponse.json({ error: '分析失敗' }, { status: 422 })
       }
 
-      const parsed = JSON.parse(jsonMatch[0]);
-      const insights = parsed.insights || [];
+      const parsed = JSON.parse(jsonMatch[0])
+      const insights = parsed.insights || []
 
       // Upsert knowledge — update existing categories, insert new ones
       for (const insight of insights) {
-        const { data: existing } = await adminDb
-          .from('store_knowledge')
-          .select('id')
-          .eq('store_id', store.id)
-          .eq('category', insight.category)
-          .eq('source', 'ai_generated')
-          .single();
+        const [existing] = await db
+          .select({ id: store_knowledge.id })
+          .from(store_knowledge)
+          .where(
+            and(
+              eq(store_knowledge.store_id, store.id),
+              eq(store_knowledge.category, insight.category),
+              eq(store_knowledge.source, 'ai_generated'),
+            ),
+          )
+          .limit(1)
 
         if (existing) {
-          await adminDb
-            .from('store_knowledge')
-            .update({ content: insight.content, updated_at: new Date().toISOString() })
-            .eq('id', existing.id);
+          await db
+            .update(store_knowledge)
+            .set({ content: insight.content, updated_at: new Date() })
+            .where(eq(store_knowledge.id, existing.id))
         } else {
-          await adminDb.from('store_knowledge').insert({
+          await db.insert(store_knowledge).values({
             store_id: store.id,
             category: insight.category,
             content: insight.content,
             source: 'ai_generated',
-          });
+          })
         }
       }
 
-      return NextResponse.json({ success: true, learned: insights.length });
+      return NextResponse.json({ success: true, learned: insights.length })
     }
 
-    return NextResponse.json({ error: '無效的 action' }, { status: 400 });
+    return NextResponse.json({ error: '無效的 action' }, { status: 400 })
   } catch (err) {
-    console.error('Knowledge error:', err);
-    return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 });
+    console.error('Knowledge error:', err)
+    return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 })
   }
 }
 
 // DELETE: Remove a knowledge item
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await createServerSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: '未授權' }, { status: 401 });
+    const session = await auth()
+    if (!session?.user?.id) return NextResponse.json({ error: '未授權' }, { status: 401 })
 
-    const store = await getSelectedStore(user.id);
-    if (!store) return NextResponse.json({ error: '找不到店家' }, { status: 404 });
+    const store = await getSelectedStore(session.user.id)
+    if (!store) return NextResponse.json({ error: '找不到店家' }, { status: 404 })
 
-    const { id } = await request.json();
-    const adminDb = createServiceSupabase();
+    const { id } = await request.json()
 
-    await adminDb.from('store_knowledge').delete().eq('id', id).eq('store_id', store.id);
-    return NextResponse.json({ success: true });
+    await db
+      .delete(store_knowledge)
+      .where(and(eq(store_knowledge.id, id), eq(store_knowledge.store_id, store.id)))
+
+    return NextResponse.json({ success: true })
   } catch {
-    return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 });
+    return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 })
   }
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { createServerSupabase } from '@/lib/supabase/server';
+import { auth } from '@/auth';
 import { getSelectedStore } from '@/lib/store-context';
 
 export const maxDuration = 60;
@@ -11,11 +11,10 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 // Frontend converts PDF to images before uploading
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: '未授權' }, { status: 401 });
+    const session = await auth();
+    if (!session?.user?.id) return NextResponse.json({ error: '未授權' }, { status: 401 });
 
-    const store = await getSelectedStore(user.id);
+    const store = await getSelectedStore(session.user.id);
     if (!store) return NextResponse.json({ error: '找不到店家' }, { status: 404 });
 
     const formData = await request.formData();
@@ -50,7 +49,7 @@ export async function POST(request: NextRequest) {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const parts = [
-      ...images.map(img => ({ inlineData: img })),
+      ...images.map((img) => ({ inlineData: img })),
       {
         text: `你是問卷分析 AI。請分析這些問卷圖片（可能有多頁），將所有問題轉換成 FeedBites 格式。
 
@@ -73,7 +72,7 @@ export async function POST(request: NextRequest) {
       } catch (retryErr) {
         console.error(`Survey parse attempt ${attempt + 1} failed:`, retryErr instanceof Error ? retryErr.message : retryErr);
         if (attempt === 2) throw retryErr;
-        await new Promise(r => setTimeout(r, 1000 * (attempt + 1))); // 1s, 2s delay
+        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
       }
     }
 

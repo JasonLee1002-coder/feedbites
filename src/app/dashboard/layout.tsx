@@ -1,4 +1,4 @@
-import { createServerSupabase } from '@/lib/supabase/server';
+import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import Sidebar from '@/components/dashboard/Sidebar';
 import MobileNav from '@/components/dashboard/MobileNav';
@@ -12,13 +12,14 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  const session = await auth();
+  if (!session?.user?.id) redirect('/login');
+
+  const userId = session.user.id;
 
   const [store, allStores] = await Promise.all([
-    getSelectedStore(user.id),
-    getUserStores(user.id),
+    getSelectedStore(userId),
+    getUserStores(userId),
   ]);
 
   // No store yet — render without sidebar (for new-store page)

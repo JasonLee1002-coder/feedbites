@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { createServerSupabase } from '@/lib/supabase/server';
+import { auth } from '@/auth';
 
 export const maxDuration = 30;
 
@@ -9,15 +9,15 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 // POST: Analyze a store address/name and suggest metadata
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: '未授權' }, { status: 401 });
+    const session = await auth();
+    if (!session?.user?.id) return NextResponse.json({ error: '未授權' }, { status: 401 });
 
     const { address, storeName } = await request.json();
     if (!address) return NextResponse.json({ error: '請輸入地址或店名' }, { status: 400 });
 
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       tools: [{ googleSearch: {} } as any],
     });
 

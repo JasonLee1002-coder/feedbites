@@ -1,6 +1,9 @@
 export const dynamic = "force-dynamic";
+import { auth } from '@/auth';
 import { redirect, notFound } from 'next/navigation';
-import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
+import { db } from '@/lib/db';
+import { surveys } from '@/lib/db/schema';
+import { and, eq } from 'drizzle-orm';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import QrPrintClient from './QrPrintClient';
@@ -13,21 +16,17 @@ interface PageProps {
 export default async function QrCodePage({ params }: PageProps) {
   const { id } = await params;
 
-  const supabase = await createServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  const session = await auth();
+  if (!session?.user?.id) redirect('/login');
 
-  const adminDb = createServiceSupabase();
-
-  const store = await getSelectedStore(user.id);
+  const store = await getSelectedStore(session.user.id);
   if (!store) redirect('/dashboard/new-store');
 
-  const { data: survey } = await adminDb
-    .from('surveys')
-    .select('id, title, store_id')
-    .eq('id', id)
-    .eq('store_id', store.id)
-    .single();
+  const [survey] = await db
+    .select({ id: surveys.id, title: surveys.title, store_id: surveys.store_id })
+    .from(surveys)
+    .where(and(eq(surveys.id, id), eq(surveys.store_id, store.id)))
+    .limit(1);
 
   if (!survey) notFound();
 

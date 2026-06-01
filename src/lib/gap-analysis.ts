@@ -2,10 +2,13 @@
 // v7.0 Mode C — 進化引擎 1：知識空白分析
 // fire-and-forget：不阻塞主要 AI 回應
 
-import { SupabaseClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import type { db as DbType } from '@/lib/db';
+import { knowledge_gaps } from '@/lib/db/schema';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+
+type DB = typeof DbType;
 
 interface KnowledgeGap {
   gap_topic: string;
@@ -22,7 +25,7 @@ export async function analyzeKnowledgeGaps(
   aiResponse: string,
   domain: string,
   project: string,
-  db: SupabaseClient
+  db: DB
 ): Promise<void> {
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
@@ -68,7 +71,7 @@ AI 副店長回答：${aiResponse}
       }));
 
     if (rows.length > 0) {
-      await db.from('knowledge_gaps').insert(rows);
+      await db.insert(knowledge_gaps).values(rows);
     }
   } catch {
     // 空白分析失敗不影響主流程

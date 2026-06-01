@@ -1,61 +1,57 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
+import { auth } from '@/auth';
+import { db } from '@/lib/db';
+import { dishes, surveys, responses } from '@/lib/db/schema';
+import { eq, and, inArray, desc } from 'drizzle-orm';
 import { getSelectedStore } from '@/lib/store-context';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const supabase = await createServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: '未授權' }, { status: 401 });
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: '未授權' }, { status: 401 });
 
-  const store = await getSelectedStore(user.id);
+  const store = await getSelectedStore(session.user.id);
   if (!store) return NextResponse.json({ error: '找不到店家' }, { status: 404 });
 
-  const adminDb = createServiceSupabase();
-
-  const { data: dish } = await adminDb
-    .from('dishes')
-    .select('name')
-    .eq('id', id)
-    .eq('store_id', store.id)
-    .single();
+  const [dish] = await db
+    .select({ name: dishes.name })
+    .from(dishes)
+    .where(and(eq(dishes.id, id), eq(dishes.store_id, store.id)))
+    .limit(1);
 
   if (!dish) return NextResponse.json({ mentions: 0, avgRating: null, comments: [] });
 
-  const { data: surveys } = await adminDb
-    .from('surveys')
-    .select('id')
-    .eq('store_id', store.id);
+  const surveyRows = await db
+    .select({ id: surveys.id })
+    .from(surveys)
+    .where(eq(surveys.store_id, store.id));
 
-  const surveyIds = surveys?.map((s: { id: string }) => s.id) ?? [];
+  const surveyIds = surveyRows.map((s) => s.id);
   if (surveyIds.length === 0) return NextResponse.json({ mentions: 0, avgRating: null, comments: [] });
 
-  const { data: responses } = await adminDb
-    .from('responses')
-    .select('answers')
-    .in('survey_id', surveyIds)
-    .order('submitted_at', { ascending: false })
+  const responseRows = await db
+    .select({ answers: responses.answers })
+    .from(responses)
+    .where(inArray(responses.survey_id, surveyIds))
+    .orderBy(desc(responses.submitted_at))
     .limit(200);
 
   const dishName = dish.name;
   const comments: string[] = [];
   const ratings: number[] = [];
 
-  for (const r of responses ?? []) {
+  for (const r of responseRows) {
     if (!r.answers) continue;
-    let hasDishMention = false;
-    for (const [, v] of Object.entries(r.answers as Record<string, unknown>)) {
+    const answersObj = r.answers as unknown as Record<string, unknown>;
+    for (const [, v] of Object.entries(answersObj)) {
       if (typeof v === 'string' && v.includes(dishName)) {
         comments.push(v);
-        hasDishMention = true;
       }
       const n = Number(v);
       if (!isNaN(n) && n >= 1 && n <= 5) ratings.push(n);
     }
-    // suppress unused warning
-    void hasDishMention;
   }
 
   const avgRating = ratings.length > 0

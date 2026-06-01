@@ -1,57 +1,59 @@
-import { createServiceSupabase } from '@/lib/supabase/server';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server'
+import { hash } from 'bcryptjs'
+import { db } from '@/lib/db'
+import { users, store_invites, store_members } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 
-export async function POST(request: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const { email, password } = await request.json();
+    const { email, password } = await req.json()
 
     if (!email || !password) {
-      return NextResponse.json({ error: '請填寫所有欄位' }, { status: 400 });
+      return NextResponse.json({ error: '請填寫所有欄位' }, { status: 400 })
     }
 
-    const adminDb = createServiceSupabase();
+    const normalizedEmail = email.trim().toLowerCase()
 
-    // Register user via admin API (auto-confirms email, no verification needed)
-    const { data: authData, error: authError } = await adminDb.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-    });
+    const existing = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, normalizedEmail))
+      .limit(1)
 
-    if (authError) {
-      if (authError.message.includes('already registered') || authError.message.includes('already been registered')) {
-        return NextResponse.json({ error: '此 Email 已註冊' }, { status: 400 });
-      }
-      return NextResponse.json({ error: authError.message }, { status: 400 });
+    if (existing.length > 0) {
+      return NextResponse.json({ error: '此 Email 已註冊' }, { status: 409 })
     }
 
-    // Process pending invites for this email (no store created at registration)
-    if (authData.user) {
-      const normalizedEmail = email.trim().toLowerCase();
-      const { data: pendingInvites } = await adminDb
-        .from('store_invites')
-        .select('id, store_id, invited_by')
-        .eq('email', normalizedEmail);
+    const password_hash = await hash(password, 10)
+    const [newUser] = await db
+      .insert(users)
+      .values({ email: normalizedEmail, password_hash })
+      .returning({ id: users.id })
 
-      if (pendingInvites && pendingInvites.length > 0) {
-        for (const invite of pendingInvites) {
-          await adminDb.from('store_members').upsert({
-            store_id: invite.store_id,
-            user_id: authData.user.id,
-            invited_by: invite.invited_by,
-          }, { onConflict: 'store_id,user_id' });
-        }
-        // Clean up processed invites
-        await adminDb
-          .from('store_invites')
-          .delete()
-          .eq('email', normalizedEmail);
-      }
+    // Process pending invites for this email
+    const pendingInvites = await db
+      .select()
+      .from(store_invites)
+      .where(eq(store_invites.email, normalizedEmail))
+
+    for (const invite of pendingInvites) {
+      await db
+        .insert(store_members)
+        .values({
+          store_id: invite.store_id,
+          user_id: newUser.id,
+          invited_by: invite.invited_by,
+        })
+        .onConflictDoNothing()
+
+      await db
+        .delete(store_invites)
+        .where(eq(store_invites.id, invite.id))
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true })
   } catch (err) {
-    console.error('Register error:', err);
-    return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 });
+    console.error('Register error:', err)
+    return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 })
   }
 }

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { createServiceSupabase } from '@/lib/supabase/server';
+import { db } from '@/lib/db';
+import { feedback_conversations, feedback_messages } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -18,28 +20,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '缺少必要參數' }, { status: 400 });
     }
 
-    const db = createServiceSupabase();
     let convId = conversationId;
 
     // 建立新對話（首次訊息）
     if (!convId) {
-      const { data: conv, error } = await db
-        .from('feedback_conversations')
-        .insert({
+      const [conv] = await db
+        .insert(feedback_conversations)
+        .values({
           store_id: storeId,
           session_id: sessionId || crypto.randomUUID(),
           source: source || 'chat',
           metadata: metadata || {},
         })
-        .select()
-        .single();
+        .returning();
 
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (!conv) return NextResponse.json({ error: '建立對話失敗' }, { status: 500 });
       convId = conv.id;
     }
 
     // 儲存客戶訊息
-    await db.from('feedback_messages').insert({
+    await db.insert(feedback_messages).values({
       conversation_id: convId,
       role: 'customer',
       content: message.trim(),
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     // 表單模式：直接儲存，不產生 AI 回應
     if (metadata?.formMode) {
-      analyzeSentimentAsync(db, convId, message, []);
+      analyzeSentimentAsync(convId, message, []);
       return NextResponse.json({ conversationId: convId, reply: '感謝你的回報！' });
     }
 
@@ -96,14 +96,14 @@ export async function POST(request: NextRequest) {
     const genieReply = result.response.text().trim();
 
     // 儲存精靈回應
-    await db.from('feedback_messages').insert({
+    await db.insert(feedback_messages).values({
       conversation_id: convId,
       role: 'genie',
       content: genieReply,
     });
 
     // 即時情緒分析（輕量，不阻塞）
-    analyzeSentimentAsync(db, convId, message, chatHistory);
+    analyzeSentimentAsync(convId, message, chatHistory);
 
     return NextResponse.json({
       conversationId: convId,
@@ -117,7 +117,6 @@ export async function POST(request: NextRequest) {
 
 // 非同步情緒分析 — 不阻塞回應
 async function analyzeSentimentAsync(
-  db: ReturnType<typeof createServiceSupabase>,
   conversationId: string,
   latestMessage: string,
   history: ChatMessage[]
@@ -142,12 +141,15 @@ async function analyzeSentimentAsync(
     const match = text.match(/\{[\s\S]*\}/);
     if (match) {
       const analysis = JSON.parse(match[0]);
-      await db.from('feedback_conversations').update({
-        sentiment_score: analysis.sentiment,
-        topics: analysis.topics,
-        severity: analysis.severity,
-        updated_at: new Date().toISOString(),
-      }).eq('id', conversationId);
+      await db
+        .update(feedback_conversations)
+        .set({
+          sentiment_score: analysis.sentiment,
+          topics: analysis.topics,
+          severity: analysis.severity,
+          updated_at: new Date(),
+        })
+        .where(eq(feedback_conversations.id, conversationId));
     }
   } catch {
     // 分析失敗不影響主流程

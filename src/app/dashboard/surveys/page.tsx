@@ -1,7 +1,10 @@
 export const dynamic = "force-dynamic";
 import Link from 'next/link';
+import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
-import { createServerSupabase, createServiceSupabase } from '@/lib/supabase/server';
+import { db } from '@/lib/db';
+import { surveys, responses } from '@/lib/db/schema';
+import { eq, inArray, desc } from 'drizzle-orm';
 import { templates } from '@/lib/templates';
 import { Plus } from 'lucide-react';
 import SurveyDeleteButton from './SurveyDeleteButton';
@@ -13,41 +16,44 @@ const ratingEmoji = (v: number) =>
   v >= 4.5 ? '😍' : v >= 3.5 ? '😊' : v >= 2.5 ? '😐' : v >= 1.5 ? '😕' : '😢';
 
 export default async function SurveysPage() {
-  const supabase = await createServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  const session = await auth();
+  if (!session?.user?.id) redirect('/login');
 
-  const adminDb = createServiceSupabase();
-
-  const store = await getSelectedStore(user.id);
+  const store = await getSelectedStore(session.user.id);
   if (!store) redirect('/dashboard/new-store');
 
-  const { data: surveys } = await adminDb
-    .from('surveys')
-    .select('*')
-    .eq('store_id', store.id)
-    .order('created_at', { ascending: false });
+  const surveyList = await db
+    .select()
+    .from(surveys)
+    .where(eq(surveys.store_id, store.id))
+    .orderBy(desc(surveys.created_at));
 
-  const surveyIds = (surveys || []).map(s => s.id);
+  const surveyIds = surveyList.map(s => s.id);
 
-  // Fetch recent responses with answers
+  // Fetch recent responses
   let allResponses: Array<{
     id: string;
     survey_id: string;
     respondent_name: string | null;
-    submitted_at: string;
-    answers: Record<string, string | string[]>;
-    xp_earned?: number | null;
+    submitted_at: Date | null;
+    answers: unknown;
+    xp_earned: number | null;
   }> = [];
 
   if (surveyIds.length > 0) {
-    const { data } = await adminDb
-      .from('responses')
-      .select('id, survey_id, respondent_name, submitted_at, answers, xp_earned')
-      .in('survey_id', surveyIds)
-      .order('submitted_at', { ascending: false })
+    allResponses = await db
+      .select({
+        id: responses.id,
+        survey_id: responses.survey_id,
+        respondent_name: responses.respondent_name,
+        submitted_at: responses.submitted_at,
+        answers: responses.answers,
+        xp_earned: responses.xp_earned,
+      })
+      .from(responses)
+      .where(inArray(responses.survey_id, surveyIds))
+      .orderBy(desc(responses.submitted_at))
       .limit(50);
-    allResponses = data || [];
   }
 
   // Group responses by survey
@@ -56,8 +62,6 @@ export default async function SurveysPage() {
     if (!responsesBySurvey[r.survey_id]) responsesBySurvey[r.survey_id] = [];
     responsesBySurvey[r.survey_id].push(r);
   }
-
-  const surveyList = surveys || [];
 
   return (
     <div className="p-5 lg:p-8 max-w-3xl mx-auto">
@@ -96,8 +100,8 @@ export default async function SurveysPage() {
           {surveyList.map((survey) => {
             const template = templates[survey.template_id as TemplateId];
             const accentColor = template?.colors.primary || '#f97316';
-            const responses = responsesBySurvey[survey.id] || [];
-            const recentResponses = responses.slice(0, 3);
+            const surveyResponses = responsesBySurvey[survey.id] || [];
+            const recentResponses = surveyResponses.slice(0, 3);
             const questions = (survey.questions || []) as Question[];
             const ratingQIds = questions.filter(q => q.type === 'rating' || q.type === 'emoji-rating').map(q => q.id);
 
@@ -118,9 +122,9 @@ export default async function SurveysPage() {
                         <h3 className="text-base font-bold text-slate-900 truncate leading-tight">{survey.title}</h3>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-xs text-slate-400 font-medium">
-                            {responses.length > 0 ? `${responses.length} 則回覆` : '尚無回覆'}
+                            {surveyResponses.length > 0 ? `${surveyResponses.length} 則回覆` : '尚無回覆'}
                           </span>
-                          {responses.length > 0 && (
+                          {surveyResponses.length > 0 && (
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full border border-emerald-200">
                               ● 收集中
                             </span>
@@ -148,16 +152,18 @@ export default async function SurveysPage() {
                 ) : (
                   <div>
                     {recentResponses.map((r) => {
+                      const answers = r.answers as Record<string, unknown>;
                       const ratingValues = ratingQIds
-                        .map(qId => Number(r.answers?.[qId]))
+                        .map(qId => Number(answers?.[qId]))
                         .filter(v => !isNaN(v) && v > 0);
                       const avg = ratingValues.length > 0
                         ? ratingValues.reduce((a, b) => a + b, 0) / ratingValues.length
                         : null;
-                      const textAnswer = Object.values(r.answers || {}).find(
+                      const textAnswer = Object.values(answers || {}).find(
                         v => typeof v === 'string' && v.length > 3 && isNaN(Number(v))
                       ) as string | undefined;
-                      const diff = Date.now() - new Date(r.submitted_at).getTime();
+                      const submittedAt = r.submitted_at ? new Date(r.submitted_at).getTime() : Date.now();
+                      const diff = Date.now() - submittedAt;
                       const mins = Math.floor(diff / 60000);
                       const timeAgo = mins < 60 ? `${mins} 分前`
                         : mins < 1440 ? `${Math.floor(mins / 60)} 小時前`
@@ -196,10 +202,10 @@ export default async function SurveysPage() {
                         </div>
                       );
                     })}
-                    {responses.length > 3 && (
+                    {surveyResponses.length > 3 && (
                       <Link href={`/dashboard/surveys/${survey.id}`}
                         className="flex items-center justify-center gap-1.5 py-3 text-xs font-bold text-slate-500 hover:text-orange-600 hover:bg-orange-50 transition-colors border-t border-slate-100">
-                        查看全部 {responses.length} 則回覆 →
+                        查看全部 {surveyResponses.length} 則回覆 →
                       </Link>
                     )}
                   </div>
