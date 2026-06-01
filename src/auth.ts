@@ -1,13 +1,16 @@
 // src/auth.ts
 // NextAuth v5 (Auth.js) — Credentials provider backed by users table in omnicore-postgres
+// Node.js runtime only — do NOT import this in middleware (use auth.config.ts instead)
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import { compare } from 'bcryptjs'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
+import { authConfig } from './auth.config'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   providers: [
     Credentials({
       credentials: {
@@ -32,22 +35,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  session: { strategy: 'jwt' },
-  pages: {
-    signIn: '/login',
-  },
-  callbacks: {
-    jwt({ token, user }) {
-      if (user) {
-        token.id = user.id
-      }
-      return token
-    },
-    session({ session, token }) {
-      if (token.id) {
-        session.user.id = token.id as string
-      }
-      return session
-    },
-  },
 })
