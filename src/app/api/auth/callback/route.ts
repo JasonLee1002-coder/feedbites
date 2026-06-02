@@ -8,7 +8,7 @@ import { cookies } from 'next/headers'
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) {
-    return NextResponse.redirect(new URL('/login', req.url))
+    return NextResponse.redirect(new URL('/feedbites/login', req.url))
   }
 
   const userId = session.user.id
@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
   const hasAnyStore = ownedStores.length > 0 || memberStores.length > 0
 
   if (!hasAnyStore) {
-    return NextResponse.redirect(new URL('/dashboard/new-store', req.url))
+    return NextResponse.redirect(new URL('/feedbites/dashboard/new-store', req.url))
   }
 
   // Auto-select first store if no cookie set

@@ -8,10 +8,10 @@ import { and, eq } from 'drizzle-orm'
 export async function GET(request: NextRequest) {
   try {
     const storeId = request.nextUrl.searchParams.get('id')
-    if (!storeId) return NextResponse.redirect(new URL('/dashboard', request.url))
+    if (!storeId) return NextResponse.redirect(new URL('/feedbites/dashboard', request.url))
 
     const session = await auth()
-    if (!session?.user?.id) return NextResponse.redirect(new URL('/login', request.url))
+    if (!session?.user?.id) return NextResponse.redirect(new URL('/feedbites/login', request.url))
 
     const userId = session.user.id
 
@@ -29,11 +29,11 @@ export async function GET(request: NextRequest) {
         .where(and(eq(store_members.store_id, storeId), eq(store_members.user_id, userId)))
         .limit(1)
 
-      if (!membership) return NextResponse.redirect(new URL('/dashboard', request.url))
+      if (!membership) return NextResponse.redirect(new URL('/feedbites/dashboard', request.url))
     }
 
     const returnTo = request.nextUrl.searchParams.get('returnTo')
-    const dashboardUrl = returnTo && returnTo.startsWith('/dashboard') ? returnTo : `/dashboard?s=${Date.now()}`
+    const dashboardUrl = returnTo && returnTo.startsWith('/feedbites/dashboard') ? returnTo : `/feedbites/dashboard?s=${Date.now()}`
     const isProduction = process.env.NODE_ENV === 'production'
     const cookieValue = `feedbites_store_id=${storeId}; Path=/; Max-Age=31536000; SameSite=Lax${isProduction ? '; Secure' : ''}; HttpOnly`
 
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    return NextResponse.redirect(new URL('/feedbites/dashboard', request.url))
   }
 }
 
