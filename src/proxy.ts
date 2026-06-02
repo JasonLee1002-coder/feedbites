@@ -15,11 +15,11 @@ export const proxy = auth(function(req) {
   if (isPublic) return NextResponse.next()
 
   if (nextUrl.pathname.startsWith('/dashboard') && !isLoggedIn) {
-    return NextResponse.redirect(new URL('/login', nextUrl))
+    return NextResponse.redirect(new URL('/feedbites/login', req.url))
   }
 
   if ((nextUrl.pathname === '/login' || nextUrl.pathname === '/register') && isLoggedIn) {
-    return NextResponse.redirect(new URL('/dashboard', nextUrl))
+    return NextResponse.redirect(new URL('/feedbites/dashboard', req.url))
   }
 
   return NextResponse.next()
