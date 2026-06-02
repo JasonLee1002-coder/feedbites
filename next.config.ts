@@ -16,6 +16,10 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'poc.mcstation.ai',
       },
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+      },
     ],
   },
 };

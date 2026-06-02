@@ -109,7 +109,7 @@ function LoginForm() {
     <div className="w-full max-w-md">
       {showWebViewWarning && <WebViewWarning onDismiss={() => setWebViewDismissed(true)} />}
       <div className="text-center mb-8">
-        <Link href="/feedbites" className="inline-block">
+        <Link href="/" className="inline-block">
           <h1 className="text-3xl font-bold text-[#3A3A3A] font-serif">
             Feed<span className="text-[#C5A55A]">Bites</span>
           </h1>
@@ -157,7 +157,7 @@ function LoginForm() {
       </div>
 
       <Link
-        href="/feedbites"
+        href="/"
         className="block text-center text-xs text-[#B0AAA0] mt-4 hover:text-[#C5A55A] transition-colors"
       >
         ← 回到首頁
