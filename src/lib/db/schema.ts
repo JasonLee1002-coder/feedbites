@@ -24,7 +24,7 @@ const now = () => sql`NOW()`
 export const users = pgTable('users', {
   id:           uuid('id').primaryKey().default(sql`gen_random_uuid()`),
   email:        text('email').unique().notNull(),
-  password_hash: text('password_hash').notNull(),
+  password_hash: text('password_hash'),
   created_at:   timestamp('created_at', { withTimezone: true }).notNull().default(sql`NOW()`),
   updated_at:   timestamp('updated_at', { withTimezone: true }).notNull().default(sql`NOW()`),
 })

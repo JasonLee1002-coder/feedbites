@@ -1,9 +1,6 @@
-// src/auth.ts
-// NextAuth v5 (Auth.js) — Credentials provider backed by users table in omnicore-postgres
-// Node.js runtime only — do NOT import this in middleware (use auth.config.ts instead)
+// src/auth.ts — Gmail-only login (no password), upsert on first login
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
-import { compare } from 'bcryptjs'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
@@ -14,23 +11,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
       credentials: {
-        email:    { label: 'Email',    type: 'email'    },
-        password: { label: 'Password', type: 'password' },
+        email: { label: 'Gmail', type: 'email' },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null
+        const email = (credentials?.email as string | undefined)?.toLowerCase().trim()
+        if (!email || !email.includes('@')) return null
 
+        // Upsert — create user on first login, no password needed
         const [user] = await db
-          .select()
-          .from(users)
-          .where(eq(users.email, credentials.email as string))
-          .limit(1)
+          .insert(users)
+          .values({ email })
+          .onConflictDoUpdate({
+            target: users.email,
+            set: { updated_at: new Date() },
+          })
+          .returning({ id: users.id, email: users.email })
 
         if (!user) return null
-
-        const valid = await compare(credentials.password as string, user.password_hash)
-        if (!valid) return null
-
         return { id: user.id, email: user.email }
       },
     }),
