@@ -79,7 +79,7 @@ export default function FeedbackPage() {
 
   async function fetchReports() {
     try {
-      const res = await fetch('/api/feedback');
+      const res = await fetch('/feedbites/api/feedback');
       if (res.ok) setReports(await res.json());
     } catch { /* ignore */ } finally {
       setLoading(false);
@@ -91,7 +91,7 @@ export default function FeedbackPage() {
     if (!text) return;
     setReplying(prev => ({ ...prev, [reportId]: true }));
     try {
-      const res = await fetch(`/api/feedback/${reportId}/respond`, {
+      const res = await fetch(`/feedbites/api/feedback/${reportId}/respond`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text }),
@@ -110,7 +110,7 @@ export default function FeedbackPage() {
     if (!rating) return;
     setRatingSubmitting(prev => ({ ...prev, [reportId]: true }));
     try {
-      const res = await fetch(`/api/feedback/${reportId}/rate`, {
+      const res = await fetch(`/feedbites/api/feedback/${reportId}/rate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rating, comment: ratingComment[reportId] || '' }),
@@ -133,7 +133,7 @@ export default function FeedbackPage() {
     if (selectedForDelete.size === 0) return;
     setDeleting(true);
     try {
-      const res = await fetch('/api/feedback/delete', {
+      const res = await fetch('/feedbites/api/feedback/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: Array.from(selectedForDelete) }),
@@ -151,7 +151,7 @@ export default function FeedbackPage() {
   async function handleDeleteSingle(id: string) {
     if (!window.confirm('確定要刪除這則回報嗎？')) return;
     try {
-      const res = await fetch('/api/feedback/delete', {
+      const res = await fetch('/feedbites/api/feedback/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: [id] }),
@@ -204,7 +204,7 @@ export default function FeedbackPage() {
 
     try {
       const catInfo = CATEGORIES.find(c => c.id === category);
-      const res = await fetch('/api/feedback', {
+      const res = await fetch('/feedbites/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -222,7 +222,7 @@ export default function FeedbackPage() {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('report_id', report.id);
-        await fetch('/api/feedback/upload', { method: 'POST', body: formData });
+        await fetch('/feedbites/api/feedback/upload', { method: 'POST', body: formData });
       }
 
       setSubmitted(true);

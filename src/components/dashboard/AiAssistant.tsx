@@ -79,7 +79,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
 
   // Fetch live stats
   useEffect(() => {
-    fetch('/api/ai/assistant-stats')
+    fetch('/feedbites/api/ai/assistant-stats')
       .then(r => r.ok ? r.json() : {})
       .then(data => setLiveStats(data))
       .catch(() => {});
@@ -88,7 +88,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
   // Load chat history when panel opens for the first time
   useEffect(() => {
     if (!isOpen || historyLoaded) return;
-    fetch('/api/ai/assistant-history')
+    fetch('/feedbites/api/ai/assistant-history')
       .then((r) => r.ok ? r.json() : { history: [] })
       .then(({ history }: { history: Array<{ role: string; content: string }> }) => {
         if (history.length > 0) {
@@ -183,7 +183,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
     setChatHistory(newHistory);
 
     try {
-      const res = await fetch('/api/ai/assistant-chat', {
+      const res = await fetch('/feedbites/api/ai/assistant-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

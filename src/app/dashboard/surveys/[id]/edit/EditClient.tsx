@@ -245,7 +245,7 @@ export default function EditClient({
     setAiError('');
     setAiVariants([]);
     try {
-      const res = await fetch('/api/ai/generate-template', {
+      const res = await fetch('/feedbites/api/ai/generate-template', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ description: combined }),
@@ -301,7 +301,7 @@ export default function EditClient({
     setSaving(true);
     setSaved(false);
     try {
-      const res = await fetch(`/api/surveys/${surveyId}`, {
+      const res = await fetch(`/feedbites/api/surveys/${surveyId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

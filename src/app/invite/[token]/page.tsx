@@ -18,7 +18,7 @@ export default function InvitePage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`/api/stores/join?token=${token}`);
+        const res = await fetch(`/feedbites/api/stores/join?token=${token}`);
         const data = await res.json();
         if (data.error) {
           setError(data.error);
@@ -45,7 +45,7 @@ export default function InvitePage() {
   async function handleAutoJoin() {
     setJoining(true);
     try {
-      const res = await fetch('/api/stores/join', {
+      const res = await fetch('/feedbites/api/stores/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token }),

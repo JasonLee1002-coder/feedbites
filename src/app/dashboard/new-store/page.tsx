@@ -21,7 +21,7 @@ export default function NewStorePage() {
     setError('');
 
     try {
-      const res = await fetch('/api/auth/setup-store', {
+      const res = await fetch('/feedbites/api/auth/setup-store', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ storeName: storeName.trim() }),

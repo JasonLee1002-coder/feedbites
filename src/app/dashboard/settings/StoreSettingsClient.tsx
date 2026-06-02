@@ -75,7 +75,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
     setLineSaving(true);
     setLineSaved(false);
     try {
-      const res = await fetch('/api/stores/update', {
+      const res = await fetch('/feedbites/api/stores/update', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ owner_line_user_id: lineUserId.trim() || null }),
@@ -94,7 +94,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
     setLineTestSending(true);
     setLineTestResult('');
     try {
-      const res = await fetch('/api/line/test-push', {
+      const res = await fetch('/feedbites/api/line/test-push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ line_user_id: lineUserId.trim() }),
@@ -132,7 +132,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
     setAreaInsight(''); // Clear old insight
     setAreaInsight('');
     try {
-      const res = await fetch('/api/ai/analyze-location', {
+      const res = await fetch('/feedbites/api/ai/analyze-location', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address: storeAddress.trim(), storeName }),
@@ -157,7 +157,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
   async function handleMetaSave() {
     setMetaSaving(true);
     try {
-      const res = await fetch('/api/stores/update', {
+      const res = await fetch('/feedbites/api/stores/update', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(meta),
@@ -194,7 +194,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
   async function fetchMembers() {
     setMembersLoading(true);
     try {
-      const res = await fetch('/api/stores/members');
+      const res = await fetch('/feedbites/api/stores/members');
       if (res.ok) {
         const data = await res.json();
         setMembersData(data);
@@ -214,7 +214,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
     setMemberMsg('');
 
     try {
-      const res = await fetch('/api/stores/members', {
+      const res = await fetch('/feedbites/api/stores/members', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: inviteEmail.trim() }),
@@ -240,7 +240,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
     if (!confirm(`確定要移除 ${email}？`)) return;
     setMemberError('');
     try {
-      const res = await fetch('/api/stores/members', {
+      const res = await fetch('/feedbites/api/stores/members', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ memberId }),
@@ -258,7 +258,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
   async function handleCancelInvite(inviteId: string) {
     setMemberError('');
     try {
-      const res = await fetch('/api/stores/members', {
+      const res = await fetch('/feedbites/api/stores/members', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ inviteId }),
@@ -277,7 +277,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
     if (!confirm('確定要退出這家店？退出後將無法管理此店家。')) return;
     setMemberError('');
     try {
-      const res = await fetch('/api/stores/members', {
+      const res = await fetch('/feedbites/api/stores/members', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ selfLeave: true }),
@@ -308,7 +308,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
       const formData = new FormData();
       formData.append('logo', file);
 
-      const res = await fetch('/api/stores/upload-logo', {
+      const res = await fetch('/feedbites/api/stores/upload-logo', {
         method: 'POST',
         body: formData,
       });
@@ -334,7 +334,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
 
     try {
       // Save frame + store name + metadata all at once
-      const res = await fetch('/api/stores/update', {
+      const res = await fetch('/feedbites/api/stores/update', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -408,7 +408,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
                   if (!confirm('確定要刪除店長照片嗎？')) return;
                   setAvatarDeleting(true);
                   try {
-                    const res = await fetch('/api/stores/upload-avatar', { method: 'DELETE' });
+                    const res = await fetch('/feedbites/api/stores/upload-avatar', { method: 'DELETE' });
                     if (res.ok) setAvatarUrl(null);
                   } catch { /* ignore */ } finally {
                     setAvatarDeleting(false);
@@ -437,7 +437,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
                 try {
                   const formData = new FormData();
                   formData.append('avatar', file);
-                  const res = await fetch('/api/stores/upload-avatar', { method: 'POST', body: formData });
+                  const res = await fetch('/feedbites/api/stores/upload-avatar', { method: 'POST', body: formData });
                   if (res.ok) {
                     const data = await res.json();
                     setAvatarUrl(data.avatar_url);
@@ -462,7 +462,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
               onChange={e => setEditStoreName(e.target.value)}
               onBlur={async () => {
                 if (editStoreName.trim() && editStoreName.trim() !== storeName) {
-                  await fetch('/api/stores/update', {
+                  await fetch('/feedbites/api/stores/update', {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ store_name: editStoreName.trim() }),
@@ -950,7 +950,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
               }
               setInviteLinkLoading(true);
               try {
-                const res = await fetch('/api/stores/invite-link');
+                const res = await fetch('/feedbites/api/stores/invite-link');
                 const data = await res.json();
                 if (data.token) {
                   const link = `${window.location.origin}/invite/${data.token}`;
@@ -1138,7 +1138,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
                 const input = prompt(`確定要刪除「${storeName}」？\n\n請輸入店名「${storeName}」確認刪除：`);
                 if (input !== storeName) return;
                 try {
-                  const res = await fetch('/api/stores/delete', {
+                  const res = await fetch('/feedbites/api/stores/delete', {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ storeId }),
@@ -1172,7 +1172,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
               if (!confirm('確定要刪除帳號嗎？所有你擁有的店家和資料都會被永久刪除，此操作無法復原。')) return;
               if (!confirm('最後確認：真的要刪除帳號嗎？')) return;
               try {
-                const res = await fetch('/api/auth/delete-account', {
+                const res = await fetch('/feedbites/api/auth/delete-account', {
                   method: 'DELETE',
                 });
                 if (!res.ok) {
@@ -1232,7 +1232,7 @@ function ResetDataSection({ storeId }: { storeId: string }) {
     setClearing(true);
     setResult(null);
     try {
-      const res = await fetch(`/api/stores/${storeId}/reset`, {
+      const res = await fetch(`/feedbites/api/stores/${storeId}/reset`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targets: Array.from(selected) }),

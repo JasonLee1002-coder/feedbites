@@ -18,7 +18,7 @@ export default function SurveyToggle({ surveyId, initialActive }: SurveyTogglePr
     const newVal = !active;
     setActive(newVal);
     try {
-      const res = await fetch(`/api/surveys/${surveyId}`, {
+      const res = await fetch(`/feedbites/api/surveys/${surveyId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: newVal }),

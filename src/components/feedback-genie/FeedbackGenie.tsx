@@ -37,7 +37,7 @@ export default function FeedbackGenie({
     if (!text.trim() || sending) return;
     setSending(true);
     try {
-      const res = await fetch('/api/ai/feedback-chat', {
+      const res = await fetch('/feedbites/api/ai/feedback-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

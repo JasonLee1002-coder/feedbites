@@ -109,7 +109,7 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
     if (!phoneNumber) setStep('submitting');
 
     try {
-      const res = await fetch(`/api/surveys/${survey.id}/responses`, {
+      const res = await fetch(`/feedbites/api/surveys/${survey.id}/responses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -163,7 +163,7 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
     setPhoneError('');
     // Update phone on existing response via PATCH
     if (responseId) {
-      fetch(`/api/surveys/${survey.id}/responses`, {
+      fetch(`/feedbites/api/surveys/${survey.id}/responses`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -309,7 +309,7 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
         onPhoneSubmit={(phoneNumber) => {
           // Update phone on existing response via PATCH
           if (responseId) {
-            fetch(`/api/surveys/${survey.id}/responses`, {
+            fetch(`/feedbites/api/surveys/${survey.id}/responses`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({

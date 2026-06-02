@@ -21,7 +21,7 @@ export default function SurveyDetailClient({ surveyId, isActive: initialActive, 
     setToggling(true);
 
     try {
-      const res = await fetch(`/api/surveys/${surveyId}`, {
+      const res = await fetch(`/feedbites/api/surveys/${surveyId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: !isActive }),
@@ -43,7 +43,7 @@ export default function SurveyDetailClient({ surveyId, isActive: initialActive, 
     setCloning(true);
 
     try {
-      const res = await fetch(`/api/surveys/${surveyId}/clone`, {
+      const res = await fetch(`/feedbites/api/surveys/${surveyId}/clone`, {
         method: 'POST',
       });
 

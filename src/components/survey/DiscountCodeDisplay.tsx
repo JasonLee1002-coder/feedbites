@@ -201,7 +201,7 @@ function PhoneCollect({
             }
             // Save email via API too
             if (email && responseId) {
-              fetch(`/api/surveys/${surveyId}/responses`, {
+              fetch(`/feedbites/api/surveys/${surveyId}/responses`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

@@ -321,7 +321,7 @@ export default function NewSurveyPage() {
     if (storeDishes.length > 0) return storeDishes;
     setLoadingDishes(true);
     try {
-      const res = await fetch('/api/dishes');
+      const res = await fetch('/feedbites/api/dishes');
       if (res.ok) {
         const data = await res.json();
         setStoreDishes(data);
@@ -401,7 +401,7 @@ export default function NewSurveyPage() {
         formData.append('image0', file);
       }
 
-      const res = await fetch('/api/ai/parse-survey', {
+      const res = await fetch('/feedbites/api/ai/parse-survey', {
         method: 'POST',
         body: formData,
       });
@@ -606,7 +606,7 @@ export default function NewSurveyPage() {
         discount_tiers: discountMode === 'advanced' ? discountTiers : null,
       };
 
-      const res = await fetch('/api/surveys', {
+      const res = await fetch('/feedbites/api/surveys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

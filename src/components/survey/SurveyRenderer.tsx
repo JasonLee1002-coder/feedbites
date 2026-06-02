@@ -219,7 +219,7 @@ export default function SurveyRenderer({
           formData.append('questionLabel', q?.label || '');
           formData.append('surveyTitle', surveyTitle || '');
 
-          const res = await fetch('/api/ai/voice-feedback', {
+          const res = await fetch('/feedbites/api/ai/voice-feedback', {
             method: 'POST',
             body: formData,
           });

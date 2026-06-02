@@ -12,7 +12,7 @@ export default function DishRatingBadge({ dishId }: { dishId: string }) {
   const [stats, setStats] = useState<DishStats | null>(null);
 
   useEffect(() => {
-    fetch(`/api/dishes/${dishId}/stats`)
+    fetch(`/feedbites/api/dishes/${dishId}/stats`)
       .then(r => r.ok ? r.json() : null)
       .then(d => d && setStats(d))
       .catch(() => {});

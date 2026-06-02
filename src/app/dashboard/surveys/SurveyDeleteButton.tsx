@@ -13,7 +13,7 @@ export default function SurveyDeleteButton({ surveyId, surveyTitle }: { surveyId
 
     setDeleting(true);
     try {
-      const res = await fetch(`/api/surveys/${surveyId}`, { method: 'DELETE' });
+      const res = await fetch(`/feedbites/api/surveys/${surveyId}`, { method: 'DELETE' });
       if (res.ok) {
         router.refresh();
       }

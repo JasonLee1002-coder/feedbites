@@ -76,7 +76,7 @@ export default function AdminFeedbackPage() {
       const params = new URLSearchParams();
       if (filterStatus) params.set('status', filterStatus);
       if (filterCategory) params.set('category', filterCategory);
-      const res = await fetch(`/api/admin/feedback?${params}`);
+      const res = await fetch(`/feedbites/api/admin/feedback?${params}`);
       if (!res.ok) {
         if (res.status === 403) { setError('需要管理員權限'); return; }
         throw new Error();
@@ -95,7 +95,7 @@ export default function AdminFeedbackPage() {
     setDetail(null);
     setReplyText('');
     try {
-      const res = await fetch(`/api/feedback/${id}`);
+      const res = await fetch(`/feedbites/api/feedback/${id}`);
       if (res.ok) setDetail(await res.json());
     } catch { /* ignore */ } finally {
       setDetailLoading(false);
@@ -106,7 +106,7 @@ export default function AdminFeedbackPage() {
     if (!replyText.trim() || !selectedId) return;
     setReplying(true);
     try {
-      const res = await fetch(`/api/feedback/${selectedId}/respond`, {
+      const res = await fetch(`/feedbites/api/feedback/${selectedId}/respond`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: replyText.trim() }),
@@ -125,7 +125,7 @@ export default function AdminFeedbackPage() {
     if (!selectedId) return;
     setUpdatingStatus(true);
     try {
-      await fetch(`/api/feedback/${selectedId}`, {
+      await fetch(`/feedbites/api/feedback/${selectedId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),

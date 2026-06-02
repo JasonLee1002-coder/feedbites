@@ -48,7 +48,7 @@ export default function VoiceRecorder({ dishName, onResult, mode = 'describe' }:
           formData.append('mode', mode);
           if (dishName) formData.append('dishName', dishName);
 
-          const res = await fetch('/api/ai/transcribe', {
+          const res = await fetch('/feedbites/api/ai/transcribe', {
             method: 'POST',
             body: formData,
           });
