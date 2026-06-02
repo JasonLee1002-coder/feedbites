@@ -28,8 +28,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default async function PublicMenuPage({ params }: Props) {
   const { storeId } = await params;
+
+  if (!UUID_RE.test(storeId)) notFound();
 
   // Fetch store info
   const [store] = await db

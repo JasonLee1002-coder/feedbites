@@ -35,8 +35,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default async function PublicSurveyPage({ params }: Props) {
   const { surveyId } = await params;
+
+  if (!UUID_RE.test(surveyId)) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-[#FAF7F2]">
+        <div className="text-6xl mb-6">🍽️</div>
+        <h1 className="text-2xl font-bold text-[#4A4545] mb-3" style={{ fontFamily: "'Noto Serif TC', serif" }}>問卷不存在或已結束</h1>
+        <p className="text-sm text-[#8A8585] text-center">連結有誤，請向店家確認。</p>
+      </div>
+    );
+  }
 
   // Fetch survey with store info via join
   const [surveyRow] = await db
