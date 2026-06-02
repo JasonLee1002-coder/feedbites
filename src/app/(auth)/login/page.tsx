@@ -96,7 +96,7 @@ function LoginForm() {
       if (data.error) {
         setMessage(data.error);
       } else {
-        router.push('/feedbites/dashboard');
+        router.push('/dashboard');
       }
     } catch {
       setMessage('發生錯誤，請稍後再試');
