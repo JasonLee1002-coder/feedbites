@@ -104,7 +104,7 @@ export default function SurveyDetailClient({ surveyId, isActive: initialActive, 
 
       {/* Preview as Customer */}
       <a
-        href={`/s/${surveyId}?preview=1`}
+        href={`/feedbites/s/${surveyId}?preview=1`}
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-emerald-500 border border-emerald-400 rounded-full hover:bg-emerald-600 transition-colors"
