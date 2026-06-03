@@ -90,7 +90,21 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
   const [submitError, setSubmitError] = useState('');
 
   const template = getTemplate(survey.template_id as TemplateId);
-  const colors: ThemeColors = survey.custom_colors || template.colors;
+  const baseColors: ThemeColors = survey.custom_colors || template.colors;
+
+  // Bright warm override for public survey — high contrast for restaurant environment + elderly users
+  const colors: ThemeColors = {
+    ...baseColors,
+    background: '#FFF8EF',
+    surface: '#FFFFFF',
+    text: '#1C0A00',
+    textLight: '#7A4520',
+    border: '#E0C8A8',
+    primary: baseColors.primary,
+    primaryLight: baseColors.primaryLight || baseColors.primary,
+    accent: baseColors.accent || baseColors.primary,
+  };
+
   const storeName = survey.stores?.store_name || '';
   const logoUrl = survey.stores?.logo_url || null;
   const frameId = survey.stores?.frame_id || null;

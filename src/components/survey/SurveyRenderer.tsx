@@ -770,7 +770,7 @@ export default function SurveyRenderer({
             {emoji}
           </motion.span>
           <span
-            className="text-[11px] font-bold relative z-10 leading-tight text-center px-1"
+            className="text-sm font-bold relative z-10 leading-tight text-center px-1"
             style={{ color: isSelected ? color : colors.textLight }}
           >
             {opt}
@@ -963,6 +963,14 @@ export default function SurveyRenderer({
           0% { box-shadow: inset 0 0 30px #FFD70060, 0 0 20px #FFD70040; }
           100% { box-shadow: inset 0 0 0px transparent, 0 0 0px transparent; }
         }
+        @keyframes title-glow {
+          0%, 100% { text-shadow: 0 0 8px currentColor, 0 0 16px currentColor; opacity: 1; }
+          50% { text-shadow: 0 0 20px currentColor, 0 0 36px currentColor, 0 0 6px #FFD70080; opacity: 0.9; }
+        }
+        @keyframes section-pulse {
+          0%, 100% { box-shadow: 0 0 0 0 transparent; }
+          50% { box-shadow: 0 0 18px 4px var(--glow-color, #C87800)40; }
+        }
       `}</style>
 
       {/* ───── Golden border flash on combo 5+ ───── */}
@@ -1137,7 +1145,37 @@ export default function SurveyRenderer({
         );
       })()}
 
-      {/* Progress is now communicated via companion, no sticky bar */}
+      {/* ───── Sticky progress bar ───── */}
+      <div
+        className="sticky top-0 z-30 px-4 py-3 shadow-sm"
+        style={{ background: colors.surface, borderBottom: `1px solid ${colors.border}` }}
+      >
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-sm font-bold" style={{ color: colors.text }}>
+            📋 步驟 {currentSection + 1} / {sections.length}
+          </span>
+          <span className="text-sm font-bold" style={{ color: colors.primary }}>
+            {progress}% 完成
+          </span>
+        </div>
+        <div className="w-full h-3 rounded-full overflow-hidden" style={{ background: colors.border }}>
+          <motion.div
+            className="h-full rounded-full"
+            style={{
+              background: `linear-gradient(90deg, ${colors.primary}, ${colors.primaryLight || colors.primary})`,
+            }}
+            initial={{ width: '0%' }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+          />
+        </div>
+        <div className="flex justify-between mt-1">
+          <span className="text-xs" style={{ color: colors.textLight }}>開始</span>
+          <span className="text-xs font-bold" style={{ color: progress >= 100 ? colors.primary : colors.textLight }}>
+            {progress >= 100 ? '🎉 全部完成！' : '完成'}
+          </span>
+        </div>
+      </div>
 
       {/* ───── Section navigation tabs ───── */}
       <div className="flex gap-1 px-4 pt-3 pb-4 overflow-x-auto">
@@ -1205,7 +1243,7 @@ export default function SurveyRenderer({
                   >
                     {q.dishPhotoUrl && (
                       <motion.div
-                        className="w-full h-32 rounded-xl overflow-hidden mb-3"
+                        className="w-full h-44 rounded-2xl overflow-hidden mb-4 shadow-lg"
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: index * 0.1 }}
@@ -1215,13 +1253,17 @@ export default function SurveyRenderer({
                       </motion.div>
                     )}
                     <h2
-                      className="text-lg font-bold tracking-wide"
-                      style={{ color: colors.primary, fontFamily: "'Noto Serif TC', serif" }}
+                      className="text-2xl font-black tracking-wide"
+                      style={{
+                        color: colors.primary,
+                        fontFamily: "'Noto Serif TC', serif",
+                        animation: 'title-glow 2.5s ease-in-out infinite',
+                      }}
                     >
                       {q.title || q.label}
                     </h2>
                     {q.description && (
-                      <p className="text-xs mt-1" style={{ color: colors.textLight }}>
+                      <p className="text-sm mt-1.5 font-medium" style={{ color: colors.textLight }}>
                         {q.description}
                       </p>
                     )}
@@ -1253,12 +1295,31 @@ export default function SurveyRenderer({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1, ...springSmooth }}
                   >
-                    <div className="px-5 py-3" style={{ background: `${colors.primary}12` }}>
-                      <h3 className="text-sm font-bold" style={{ color: colors.primary }}>
+                    {/* Dish photo */}
+                    {q.dishPhotoUrl && (
+                      <motion.div
+                        className="w-full h-48 overflow-hidden"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: index * 0.1 }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={q.dishPhotoUrl} alt={q.dishName || q.title || ''} className="w-full h-full object-cover" />
+                      </motion.div>
+                    )}
+                    <div className="px-5 py-4" style={{ background: `${colors.primary}15` }}>
+                      <h3
+                        className="text-xl font-black"
+                        style={{
+                          color: colors.primary,
+                          fontFamily: "'Noto Serif TC', serif",
+                          animation: 'title-glow 2.5s ease-in-out infinite',
+                        }}
+                      >
                         {q.dishName || q.title || q.label}
                       </h3>
                       {q.description && (
-                        <p className="text-xs mt-0.5" style={{ color: colors.textLight }}>
+                        <p className="text-sm mt-1 font-medium" style={{ color: colors.textLight }}>
                           {q.description}
                         </p>
                       )}
@@ -1274,7 +1335,7 @@ export default function SurveyRenderer({
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.1 + subIdx * 0.05, ...springSmooth }}
                           >
-                            <label className="block text-sm font-medium mb-1" style={{ color: colors.text }}>
+                            <label className="block text-base font-bold mb-2" style={{ color: colors.text }}>
                               {subQ.title || subQ.label}
                               {subQ.required && (
                                 <span className="ml-1" style={{ color: '#E05050' }}>
@@ -1352,7 +1413,7 @@ export default function SurveyRenderer({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1, ...springSmooth }}
                 >
-                  <label className="block text-sm font-medium mb-1" style={{ color: colors.text }}>
+                  <label className="block text-lg font-bold mb-2" style={{ color: colors.text }}>
                     {q.title || q.label}
                     {q.required && (
                       <span className="ml-1" style={{ color: '#E05050' }}>
@@ -1361,7 +1422,7 @@ export default function SurveyRenderer({
                     )}
                   </label>
                   {q.description && (
-                    <p className="text-xs mb-3" style={{ color: colors.textLight }}>
+                    <p className="text-sm mb-3 font-medium" style={{ color: colors.textLight }}>
                       {q.description}
                     </p>
                   )}
