@@ -66,7 +66,7 @@ export default function InvitePage() {
 
   function handleLoginRedirect() {
     // Redirect to login, with invite token as query param so callback can process it
-    window.location.href = `/login?invite=${token}`;
+    window.location.href = `/feedbites/login?invite=${token}`;
   }
 
   if (loading) {
