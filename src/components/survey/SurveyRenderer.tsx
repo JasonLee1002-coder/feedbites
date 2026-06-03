@@ -673,22 +673,39 @@ export default function SurveyRenderer({
   /* ───── helper: render option button (card-style with animated emojis) ───── */
   // Map satisfaction words to emojis + colors
   const satisfactionEmoji: Record<string, { emoji: string; color: string }> = {
+    // ── 滿意度 ──
     '非常滿意': { emoji: '🤩', color: '#FFD700' },
     '滿意': { emoji: '😊', color: '#66BB6A' },
     '普通': { emoji: '😐', color: '#90A4AE' },
+    '還算滿意': { emoji: '🙂', color: '#81C784' },
     '不太滿意': { emoji: '😕', color: '#FFB74D' },
     '不滿意': { emoji: '😞', color: '#FF8A65' },
+    '非常不滿意': { emoji: '😫', color: '#FF6B6B' },
+    '很不滿意': { emoji: '😫', color: '#FF6B6B' },
     '很差': { emoji: '😫', color: '#FF6B6B' },
+    // ── 評價 ──
     '非常好': { emoji: '🤩', color: '#FFD700' },
     '好': { emoji: '😊', color: '#66BB6A' },
     '還好': { emoji: '😐', color: '#90A4AE' },
     '不好': { emoji: '😕', color: '#FFB74D' },
+    '差': { emoji: '😞', color: '#FF8A65' },
+    // ── 推薦意願 ──
     '非常願意': { emoji: '😍', color: '#FF69B4' },
     '願意': { emoji: '😊', color: '#66BB6A' },
     '不願意': { emoji: '😕', color: '#FFB74D' },
+    '非常不願意': { emoji: '😫', color: '#FF6B6B' },
+    // ── 份量 ──
     '太多（適合分享）': { emoji: '😅', color: '#FFB74D' },
     '剛好': { emoji: '👌', color: '#66BB6A' },
     '稍微偏少': { emoji: '🤏', color: '#90A4AE' },
+    '太少': { emoji: '😢', color: '#FF8A65' },
+    // ── 是/否 類 ──
+    '是': { emoji: '👍', color: '#66BB6A' },
+    '否': { emoji: '👎', color: '#FF8A65' },
+    '有': { emoji: '✅', color: '#66BB6A' },
+    '沒有': { emoji: '❌', color: '#FF8A65' },
+    '會': { emoji: '😊', color: '#66BB6A' },
+    '不會': { emoji: '😕', color: '#FFB74D' },
   };
 
   // Check if ALL options in a question have emoji mappings → use card layout

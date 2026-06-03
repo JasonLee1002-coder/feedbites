@@ -61,7 +61,7 @@ export default function SurveyDetailClient({ surveyId, isActive: initialActive, 
   const handleExport = () => {
     // Download as Excel file
     const link = document.createElement('a');
-    link.href = `/api/surveys/${surveyId}/export?format=xlsx`;
+    link.href = `/feedbites/api/surveys/${surveyId}/export?format=xlsx`;
     link.click();
   };
 

@@ -153,6 +153,8 @@ export default function EditClient({
   const [hoveredTemplateId, setHoveredTemplateId] = useState<TemplateId | null>(null);
 
   // AI template modal state
+  const [templateAppliedName, setTemplateAppliedName] = useState<string | null>(null);
+
   const [showAiModal, setShowAiModal] = useState(false);
   const [aiDescription, setAiDescription] = useState('');
   const [aiSelectedPresets, setAiSelectedPresets] = useState<string[]>([]);
@@ -459,7 +461,14 @@ export default function EditClient({
                     onMouseLeave={() => setHoveredTemplateId(null)}
                   >
                     <button
-                      onClick={() => { setSelectedTemplate(tmpl.id as TemplateId); setCustomColors(null); setSelectedAiTemplateName(null); setShowTemplatePicker(false); }}
+                      onClick={() => {
+                        setSelectedTemplate(tmpl.id as TemplateId);
+                        setCustomColors(null);
+                        setSelectedAiTemplateName(null);
+                        setShowTemplatePicker(false);
+                        setTemplateAppliedName(tmpl.name);
+                        setTimeout(() => setTemplateAppliedName(null), 3000);
+                      }}
                       className={`w-full text-left rounded-xl border-2 p-3 transition-all ${
                         isSelected ? 'border-[#C5A55A] shadow-md' : 'border-[#E8E2D8] hover:border-[#C5A55A]/50'
                       }`}
@@ -584,6 +593,14 @@ export default function EditClient({
           </div>
         )}
       </div>
+
+      {/* Template applied success toast */}
+      {templateAppliedName && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2.5 px-5 py-3 bg-[#1a1a2e] text-white rounded-2xl shadow-2xl text-sm font-semibold">
+          <span className="text-emerald-400 text-base">✅</span>
+          <span>「{templateAppliedName}」已套用！記得儲存變更</span>
+        </div>
+      )}
 
       {/* AI applied success toast */}
       {aiAppliedName && (
