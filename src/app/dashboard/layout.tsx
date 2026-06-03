@@ -61,10 +61,7 @@ export default async function DashboardLayout({
         </div>
       </main>
       <MobileNav />
-      <AiAssistant
-        storeName={store.store_name}
-        avatarUrl={store.owner_avatar_url}
-      />
+      {/* AiAssistant temporarily disabled */}
     </div>
   );
 }
