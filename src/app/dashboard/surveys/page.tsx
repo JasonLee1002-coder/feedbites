@@ -213,7 +213,7 @@ export default async function SurveysPage() {
 
                 {/* Action bar */}
                 <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center gap-1.5 flex-wrap">
-                  <a href={`/s/${survey.id}?preview=1`} target="_blank" rel="noopener noreferrer"
+                  <a href={`/feedbites/s/${survey.id}?preview=1`} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-emerald-500 rounded-lg hover:bg-emerald-600 active:scale-[0.97] transition-all shadow-sm">
                     👁️ 體驗
                   </a>
