@@ -286,7 +286,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
         const data = await res.json();
         throw new Error(data.error);
       }
-      window.location.href = '/dashboard';
+      window.location.href = '/feedbites/dashboard';
     } catch (err) {
       setMemberError(err instanceof Error ? err.message : '退出失敗');
     }
@@ -1148,7 +1148,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
                     alert(data.error || '刪除失敗');
                     return;
                   }
-                  window.location.href = '/dashboard';
+                  window.location.href = '/feedbites/dashboard';
                 } catch {
                   alert('刪除失敗');
                 }
@@ -1180,7 +1180,7 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
                   alert(data.error || '刪除失敗');
                   return;
                 }
-                window.location.href = '/';
+                window.location.href = '/feedbites/';
               } catch {
                 alert('刪除失敗');
               }

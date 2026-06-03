@@ -37,7 +37,7 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
   const handleLogout = async () => {
     await signOut({ redirect: false });
     router.refresh();
-    window.location.href = '/login';
+    window.location.href = '/feedbites/login';
   };
 
   const handleSwitchStore = (newStoreId: string, name: string) => {
@@ -63,7 +63,7 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
     `;
     document.body.appendChild(overlay);
     setTimeout(() => {
-      window.location.href = `/api/stores/select?id=${newStoreId}&returnTo=${encodeURIComponent(pathname)}`;
+      window.location.href = `/feedbites/api/stores/select?id=${newStoreId}&returnTo=${encodeURIComponent(pathname)}`;
     }, 1500);
   };
 

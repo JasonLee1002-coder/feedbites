@@ -32,7 +32,7 @@ export default function NewStorePage() {
         setError(data.error);
       } else {
         // The setup-store API auto-selects the new store via cookie
-        window.location.href = '/dashboard';
+        window.location.href = '/feedbites/dashboard';
       }
     } catch {
       setError('發生錯誤，請稍後再試');
