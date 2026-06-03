@@ -164,7 +164,7 @@ export function buildStatusChangeMessage(params: {
           action: {
             type: 'uri',
             label: isResolved ? '查看並評分' : '查看回報歷史',
-            uri: 'https://feedbites-seven.vercel.app/dashboard/feedback',
+            uri: 'https://poc.mcstation.ai/feedbites/dashboard/feedback',
           },
           style: 'primary',
           color: isResolved ? '#10B981' : '#3B82F6',
@@ -245,7 +245,7 @@ export function buildFeedbackResolvedMessage(params: {
           action: {
             type: 'uri',
             label: '查看回報歷史',
-            uri: 'https://feedbites-seven.vercel.app/dashboard/feedback',
+            uri: 'https://poc.mcstation.ai/feedbites/dashboard/feedback',
           },
           style: 'primary',
           color: '#C5A55A',

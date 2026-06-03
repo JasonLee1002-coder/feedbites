@@ -11,12 +11,12 @@ export const metadata: Metadata = {
   title: 'FeedBites — 免費餐廳問卷系統｜掃碼填問卷，自動送折扣碼',
   description: '餐廳問卷不該長得像 Google 表單。FeedBites 提供 5 種高質感模板、QR Code 掃碼、XP 遊戲化體驗、自動折扣碼。免費註冊，5 分鐘上線。',
   alternates: {
-    canonical: 'https://feedbites-seven.vercel.app',
+    canonical: 'https://poc.mcstation.ai/feedbites',
   },
   openGraph: {
     title: 'FeedBites — 免費餐廳問卷系統｜Bite. Rate. Save.',
     description: '高質感餐飲問卷，填完自動送折扣碼。5 種模板、QR Code 列印、即時數據分析。永久免費。',
-    url: 'https://feedbites-seven.vercel.app',
+    url: 'https://poc.mcstation.ai/feedbites',
   },
 };
 

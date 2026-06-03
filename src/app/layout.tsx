@@ -18,7 +18,7 @@ const notoSerif = Noto_Serif_TC({
   weight: ['400', '600', '700'],
 });
 
-const siteUrl = 'https://feedbites-seven.vercel.app';
+const siteUrl = 'https://poc.mcstation.ai/feedbites';
 
 export const metadata: Metadata = {
   title: {

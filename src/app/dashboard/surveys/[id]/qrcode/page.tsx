@@ -30,7 +30,7 @@ export default async function QrCodePage({ params }: PageProps) {
 
   if (!survey) notFound();
 
-  const publicUrl = `https://feedbites-seven.vercel.app/s/${survey.id}`;
+  const publicUrl = `https://poc.mcstation.ai/feedbites/s/${survey.id}`;
 
   return (
     <div className="p-4 lg:p-8 max-w-6xl mx-auto">

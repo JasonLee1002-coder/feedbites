@@ -58,7 +58,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
 
   const template = templates[survey.template_id as TemplateId];
   const questions: Question[] = (survey.questions as Question[]) || [];
-  const publicUrl = `https://feedbites-seven.vercel.app/s/${survey.id}`;
+  const publicUrl = `https://poc.mcstation.ai/feedbites/s/${survey.id}`;
 
   const discountCodeRows = await db
     .select({ is_used: discount_codes.is_used, created_at: discount_codes.created_at, expires_at: discount_codes.expires_at })

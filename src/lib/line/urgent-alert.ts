@@ -65,7 +65,7 @@ export async function checkAndPushUrgentAlert({
             action: {
               type: 'uri',
               label: '立刻查看回饋',
-              uri: 'https://feedbites-seven.vercel.app/dashboard/surveys',
+              uri: 'https://poc.mcstation.ai/feedbites/dashboard/surveys',
             },
             style: 'primary',
             color: '#DC2626',

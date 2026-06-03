@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 
-const baseUrl = 'https://feedbites-seven.vercel.app';
+const baseUrl = 'https://poc.mcstation.ai/feedbites';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [

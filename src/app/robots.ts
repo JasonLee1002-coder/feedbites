@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: ['/api/', '/dashboard/'],
     },
-    sitemap: 'https://feedbites-seven.vercel.app/sitemap.xml',
+    sitemap: 'https://poc.mcstation.ai/feedbites/sitemap.xml',
   };
 }
