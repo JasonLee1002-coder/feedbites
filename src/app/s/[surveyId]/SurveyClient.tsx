@@ -180,7 +180,7 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
       setStep('discount');
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : '提交失敗，請稍後再試');
-      setStep('survey'); // Go back to survey on error
+      // Stay on 'submitting' step so user sees error + retry — do NOT reset to 'survey'
     } finally {
       setIsSubmitting(false);
     }
@@ -288,23 +288,31 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
         style={{ background: colors.background, fontFamily: "'Noto Sans TC', sans-serif", ...getTextureStyle(colors.texture) }}
       >
         <div className="text-center" style={{ animation: 'slideUp 0.5s ease forwards' }}>
-          <div className="text-5xl mb-4">🎊</div>
-          <h2
-            className="text-xl font-bold mb-2"
-            style={{ fontFamily: "'Noto Serif TC', serif", color: colors.text }}
-          >
-            正在提交...
-          </h2>
-          <p className="text-sm" style={{ color: colors.textLight }}>
-            請稍候
-          </p>
-          {submitError && (
-            <div
-              className="p-3 rounded-xl mt-4 text-center text-sm"
-              style={{ background: '#D4605A15', color: '#D4605A' }}
-            >
-              {submitError}
-            </div>
+          {submitError ? (
+            <>
+              <div className="text-5xl mb-4">😔</div>
+              <h2 className="text-xl font-bold mb-2" style={{ fontFamily: "'Noto Serif TC', serif", color: colors.text }}>
+                提交遇到問題
+              </h2>
+              <div className="p-3 rounded-xl mt-2 mb-4 text-sm" style={{ background: '#D4605A15', color: '#D4605A' }}>
+                {submitError}
+              </div>
+              <button
+                onClick={() => { setSubmitError(''); submitResponse(answers, xpEarned); }}
+                className="px-6 py-2.5 rounded-full text-sm font-semibold text-white"
+                style={{ background: colors.primary }}
+              >
+                重新提交
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="text-5xl mb-4">🎊</div>
+              <h2 className="text-xl font-bold mb-2" style={{ fontFamily: "'Noto Serif TC', serif", color: colors.text }}>
+                正在提交...
+              </h2>
+              <p className="text-sm" style={{ color: colors.textLight }}>請稍候</p>
+            </>
           )}
         </div>
         <style jsx>{`
