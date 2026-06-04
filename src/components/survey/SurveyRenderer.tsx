@@ -1294,9 +1294,8 @@ export default function SurveyRenderer({
                     <h2
                       className="text-2xl font-black tracking-wide"
                       style={{
-                        color: colors.primary,
+                        color: colors.text,
                         fontFamily: "'Noto Serif TC', serif",
-                        animation: 'title-glow 2.5s ease-in-out infinite',
                       }}
                     >
                       {q.title || q.label}
