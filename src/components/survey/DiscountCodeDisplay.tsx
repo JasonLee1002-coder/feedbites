@@ -255,6 +255,7 @@ export default function DiscountCodeDisplay({
   const [copied, setCopied] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [wonPrize, setWonPrize] = useState<{ label: string; emoji: string } | null>(null);
+  const [showCloseHint, setShowCloseHint] = useState(false);
   const confettiFired = useRef(false);
 
   const expiryDate = new Date(expiresAt).toLocaleDateString('zh-TW');
@@ -310,6 +311,12 @@ export default function DiscountCodeDisplay({
     navigator.clipboard.writeText(code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  function handleFinish() {
+    window.close();
+    // window.close() only works for script-opened tabs; show hint after short delay
+    setTimeout(() => setShowCloseHint(true), 400);
   }
 
   async function handleShare() {
@@ -659,6 +666,32 @@ export default function DiscountCodeDisplay({
           <span>📤</span>
           {shareCopied ? '已複製連結！' : '分享給朋友'}
         </button>
+      </motion.div>
+
+      {/* ---- Finish / Close Button ---- */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.4, duration: 0.5 }}
+        className="w-full max-w-sm mt-3"
+      >
+        <button
+          onClick={handleFinish}
+          className="w-full py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
+          style={{ background: colors.primary, color: '#fff' }}
+        >
+          ✅ 完成，關閉此頁
+        </button>
+        {showCloseHint && (
+          <motion.p
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center text-xs mt-2"
+            style={{ color: colors.textLight }}
+          >
+            請直接按手機的返回鍵或關閉此分頁 👋
+          </motion.p>
+        )}
       </motion.div>
 
       {/* ---- Come Back Message ---- */}
