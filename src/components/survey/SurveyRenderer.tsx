@@ -457,6 +457,27 @@ export default function SurveyRenderer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [earnedBadges]);
 
+  /* ───── Auto-advance: if all required questions in section answered + any has autoAdvance ───── */
+  useEffect(() => {
+    const sectionQs = sections[currentSection]?.questions || [];
+    const hasAutoAdvance = sectionQs.some(
+      q => q.autoAdvance && (q.type === 'emoji-rating' || q.type === 'radio' || q.type === 'nps')
+    );
+    if (!hasAutoAdvance || isLastSection) return;
+
+    const required = sectionQs.filter(q => q.required && q.type !== 'section-header');
+    if (required.length === 0) return;
+
+    const allDone = required.every(q => answers[q.id] !== undefined && answers[q.id] !== '');
+    if (!allDone) return;
+
+    const timer = setTimeout(() => {
+      goNext();
+    }, 650);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [answers, currentSection]);
+
   /* ───── Auto-scroll helper ───── */
   const scrollToNextQuestion = useCallback((currentId: string) => {
     const currentQuestions = sections[currentSection]?.questions || [];
