@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MoreHorizontal, X, ChevronRight, MessageSquare } from 'lucide-react';
+
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
 const mainNavItems = [
   { href: '/dashboard',          label: '首頁',   icon: '/icons/home.png' },
@@ -48,7 +49,8 @@ export default function MobileNav() {
                   transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                   className={`relative w-8 h-8 rounded-xl flex items-center justify-center ${isActive ? 'bg-[#FF8C00]/10' : ''}`}
                 >
-                  <Image src={item.icon} alt={item.label} width={28} height={28} className="object-contain" />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`${BASE}${item.icon}`} alt={item.label} width={28} height={28} className="object-contain" />
                   {isActive && (
                     <motion.div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-[#FF8C00] rounded-full" />
                   )}
@@ -128,7 +130,8 @@ export default function MobileNav() {
                   >
                     <div className="w-10 h-10 rounded-xl bg-[#FF8C00]/10 flex items-center justify-center flex-shrink-0">
                       {item.useImage && item.icon ? (
-                        <Image src={item.icon} alt={item.label} width={24} height={24} className="object-contain" />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={`${BASE}${item.icon}`} alt={item.label} width={24} height={24} className="object-contain" />
                       ) : (
                         <MessageSquare size={20} className="text-[#FF8C00]" />
                       )}
