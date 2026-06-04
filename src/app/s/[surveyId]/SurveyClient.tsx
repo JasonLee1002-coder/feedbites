@@ -122,6 +122,23 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
     setSubmitError('');
     if (!phoneNumber) setStep('submitting');
 
+    // ── Preview mode: skip real API, show fake result ──
+    if (isPreview) {
+      await new Promise(r => setTimeout(r, 800)); // simulate loading
+      if (survey.discount_enabled) {
+        setDiscountResult({
+          code: 'TEST-0000',
+          expires_at: new Date(Date.now() + 30 * 86400000).toISOString(),
+          discount_value: survey.discount_value || '測試折扣',
+          tier_name: undefined,
+          tier_emoji: undefined,
+        });
+      }
+      setIsSubmitting(false);
+      setStep('discount');
+      return;
+    }
+
     try {
       const res = await fetch(`/feedbites/api/surveys/${survey.id}/responses`, {
         method: 'POST',
