@@ -130,7 +130,7 @@ export default function MobileNav() {
                   >
                     <div className="w-10 h-10 rounded-xl bg-[#FF8C00]/10 flex items-center justify-center flex-shrink-0">
                       {item.useImage && item.icon ? (
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img src={`${BASE}${item.icon}`} alt={item.label} width={24} height={24} className="object-contain" />
                       ) : (
                         <MessageSquare size={20} className="text-[#FF8C00]" />

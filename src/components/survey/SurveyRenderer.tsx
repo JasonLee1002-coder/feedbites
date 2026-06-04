@@ -43,6 +43,7 @@ const XP_MAP: Record<string, number> = {
   rating: 15,
   'rating-with-reason': 15,
   'emoji-rating': 15,
+  nps: 20,
   text: 20,
   textarea: 20,
   number: 15,
@@ -1573,6 +1574,56 @@ export default function SurveyRenderer({
                       })}
                     </div>
                   )}
+
+                  {/* NPS — 0-10 scale with Promoter/Passive/Detractor zones */}
+                  {q.type === 'nps' && (() => {
+                    const selected = answers[q.id] ? Number(answers[q.id]) : null;
+                    const getZone = (v: number) => v >= 9 ? 'promoter' : v >= 7 ? 'passive' : 'detractor';
+                    const getColor = (v: number) => v >= 9 ? '#4CAF50' : v >= 7 ? '#FFA726' : '#EF5350';
+                    const zoneLabel = selected !== null ? (selected >= 9 ? '推薦者 😍' : selected >= 7 ? '中立 😐' : '批評者 😔') : null;
+                    return (
+                      <div>
+                        <div className="flex justify-between gap-1 mb-3">
+                          {Array.from({ length: 11 }, (_, i) => {
+                            const isSelected = selected === i;
+                            const color = getColor(i);
+                            return (
+                              <motion.button
+                                key={i}
+                                onClick={() => setAnswer(q.id, String(i), 'nps')}
+                                whileTap={{ scale: 0.85 }}
+                                animate={isSelected ? { scale: 1.18, y: -4 } : { scale: 1, y: 0 }}
+                                transition={springBounce}
+                                className="flex-1 py-3 rounded-xl text-sm font-bold transition-colors"
+                                style={{
+                                  background: isSelected ? color : colors.surface,
+                                  border: `2px solid ${isSelected ? color : colors.border}`,
+                                  color: isSelected ? '#fff' : colors.textLight,
+                                  boxShadow: isSelected ? `0 4px 14px ${color}50` : 'none',
+                                }}
+                              >
+                                {i}
+                              </motion.button>
+                            );
+                          })}
+                        </div>
+                        <div className="flex justify-between text-[10px] px-0.5 mb-2" style={{ color: colors.textLight }}>
+                          <span>0 不可能</span>
+                          <span>10 非常願意</span>
+                        </div>
+                        {zoneLabel && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="text-center text-sm font-bold py-1.5 rounded-xl"
+                            style={{ background: `${getColor(selected!)}18`, color: getColor(selected!) }}
+                          >
+                            {zoneLabel}
+                          </motion.div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* Text — chat-bubble style */}
                   {q.type === 'text' && (

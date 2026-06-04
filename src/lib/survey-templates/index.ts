@@ -2,60 +2,45 @@ import type { SurveyTemplate } from '@/types/survey';
 
 export const surveyTemplates: SurveyTemplate[] = [
   // ═══════════════════════════════════════════════════════════════
-  // 1. 連鎖餐飲完整版（王品風格）
+  // 1. ⭐ 快速口碑版（推薦首選）— 高完成率黃金標準
   // ═══════════════════════════════════════════════════════════════
   {
-    id: 'chain-full',
-    name: '連鎖餐飲完整版',
-    description: '對標王品集團，完整消費體驗調查：來客分析 + 餐點逐項評分 + 服務環境 + 回訪意願 + 人口統計',
-    category: '連鎖品牌',
+    id: 'quick-3min',
+    name: '⭐ 快速口碑版（推薦）',
+    description: '5 題 90 秒填完，NPS 口碑指數 + 餐點/服務/整體評分。完成率最高，適合任何餐廳日常使用',
+    category: '通用',
     questions: [
-      { id: 'sec_welcome', type: 'section-header', title: '消費體驗調查', description: '您的建議是我們前進的動力，感謝您花幾分鐘填寫！', required: false, section: '歡迎' },
-      { id: 'first_visit', type: 'radio', label: '您是第一次來本店消費嗎？', required: true, options: ['是', '不是'], section: '來客分析' },
-      { id: 'how_know', type: 'checkbox', label: '您如何得知本店？', required: false, options: ['網路搜尋', '親友介紹', '社群媒體', '路過發現', '美食平台', '廣告傳單', '其他'], section: '來客分析' },
-      { id: 'purpose', type: 'radio', label: '您今天用餐的目的？', required: true, options: ['日常用餐', '聚餐', '慶祝（紀念日/節慶）', '慶生', '約會', '洽談公事', '其他'], section: '來客分析' },
-      { id: 'companion', type: 'radio', label: '您今天跟誰一起用餐？', required: true, options: ['朋友', '家人', '同事', '自己一人', '情人/伴侶', '客戶/商務'], section: '來客分析' },
-
-      { id: 'sec_food', type: 'section-header', title: '餐點滿意度', description: '請根據今天的用餐經驗，給星越多代表滿意度越高', required: false, section: '餐點評分' },
-      { id: 'food_main', type: 'rating', label: '主餐', required: true, min: 1, max: 5, section: '餐點評分' },
-      { id: 'food_side', type: 'rating', label: '配菜/小食', required: false, min: 1, max: 5, section: '餐點評分' },
-      { id: 'food_soup', type: 'rating', label: '湯品', required: false, min: 1, max: 5, section: '餐點評分' },
-      { id: 'food_dessert', type: 'rating', label: '甜點', required: false, min: 1, max: 5, section: '餐點評分' },
-      { id: 'food_drink', type: 'rating', label: '飲料', required: false, min: 1, max: 5, section: '餐點評分' },
-
-      { id: 'sec_service', type: 'section-header', title: '服務與環境', required: false, section: '服務環境' },
-      { id: 'service', type: 'rating', label: '服務態度', required: true, min: 1, max: 5, section: '服務環境' },
-      { id: 'speed', type: 'rating', label: '出餐速度', required: true, min: 1, max: 5, section: '服務環境' },
-      { id: 'clean', type: 'rating', label: '環境整潔', required: true, min: 1, max: 5, section: '服務環境' },
-      { id: 'overall', type: 'rating', label: '整體評價', required: true, min: 1, max: 5, section: '服務環境' },
-
-      { id: 'sec_loyalty', type: 'section-header', title: '回饋與建議', required: false, section: '回饋' },
-      { id: 'attraction', type: 'checkbox', label: '本店最吸引您的是什麼？（可複選）', required: false, options: ['餐點好吃', '服務好', '價格合理', '環境氛圍', '交通方便', '其他'], section: '回饋' },
-      { id: 'revisit', type: 'radio', label: '您是否願意再次來消費？', required: true, options: ['一定會', '可能會', '不確定', '不太會'], section: '回饋' },
-      { id: 'recommend_friend', type: 'radio', label: '您會推薦親友來嗎？', required: true, options: ['一定會', '可能會', '不太會'], section: '回饋' },
-      { id: 'feedback', type: 'textarea', label: '您對本店的鼓勵與建議', required: false, placeholder: '任何想告訴我們的話...', section: '回饋' },
-
-      { id: 'sec_demo', type: 'section-header', title: '基本資料', description: '僅供統計分析，不會公開', required: false, section: '人口統計' },
-      { id: 'gender', type: 'radio', label: '性別', required: false, options: ['男', '女', '不便透露'], section: '人口統計' },
-      { id: 'age', type: 'radio', label: '年齡', required: false, options: ['19歲以下', '20-29歲', '30-39歲', '40-49歲', '50-59歲', '60歲以上'], section: '人口統計' },
+      { id: 'food', type: 'emoji-rating', label: '餐點好吃嗎？', required: true, min: 1, max: 5, section: '快速評分', autoAdvance: true },
+      { id: 'service', type: 'emoji-rating', label: '服務滿意嗎？', required: true, min: 1, max: 5, section: '快速評分', autoAdvance: true },
+      { id: 'overall', type: 'emoji-rating', label: '整體體驗如何？', required: true, min: 1, max: 5, section: '快速評分', autoAdvance: true },
+      { id: 'best_dish', type: 'text', label: '今天最喜歡哪道菜？', required: false, placeholder: '菜名（選填）', section: '推薦' },
+      { id: 'nps', type: 'nps', label: '您有多願意把我們推薦給親友？', required: true, min: 0, max: 10, section: '口碑指數' },
+      { id: 'feedback', type: 'textarea', label: '還有什麼想說的？', required: false, placeholder: '任何建議都好...', section: '推薦' },
     ],
   },
 
   // ═══════════════════════════════════════════════════════════════
-  // 2. 快速三分鐘
+  // 2. 連鎖餐飲精華版（王品風格精簡）
   // ═══════════════════════════════════════════════════════════════
   {
-    id: 'quick-3min',
-    name: '快速三分鐘',
-    description: '極簡 6 題，3 分鐘填完，追求最高回覆率。適合任何餐廳',
-    category: '通用',
+    id: 'chain-full',
+    name: '連鎖餐飲精華版',
+    description: '對標王品集團標準，10 題精華版：來客分析 + 餐點/服務評分 + NPS 口碑指數 + 開放建議。完成時間約 3 分鐘',
+    category: '連鎖品牌',
     questions: [
-      { id: 'food', type: 'emoji-rating', label: '餐點好吃嗎？', required: true, min: 1, max: 5, section: '快速評分' },
-      { id: 'service', type: 'emoji-rating', label: '服務滿意嗎？', required: true, min: 1, max: 5, section: '快速評分' },
-      { id: 'overall', type: 'emoji-rating', label: '整體體驗如何？', required: true, min: 1, max: 5, section: '快速評分' },
-      { id: 'best_dish', type: 'text', label: '今天最喜歡哪道菜？', required: false, placeholder: '菜名', section: '推薦' },
-      { id: 'recommend', type: 'radio', label: '會推薦朋友來嗎？', required: true, options: ['一定會！', '應該會', '再看看'], section: '推薦' },
-      { id: 'feedback', type: 'textarea', label: '還有什麼想說的？', required: false, placeholder: '任何建議都好...', section: '推薦' },
+      { id: 'sec_welcome', type: 'section-header', title: '消費體驗調查', description: '您的建議是我們前進的動力，感謝您花 3 分鐘填寫！', required: false, section: '歡迎' },
+      { id: 'first_visit', type: 'radio', label: '您是第一次來本店消費嗎？', required: true, options: ['是', '不是'], section: '來客分析', autoAdvance: true },
+      { id: 'purpose', type: 'radio', label: '今天用餐目的？', required: false, options: ['日常用餐', '朋友/家人聚餐', '慶祝（生日/紀念日）', '約會', '商務洽談', '其他'], section: '來客分析', autoAdvance: true },
+
+      { id: 'sec_food', type: 'section-header', title: '餐點與服務', description: '選星越多代表越滿意', required: false, section: '體驗評分' },
+      { id: 'food_overall', type: 'emoji-rating', label: '餐點整體品質', required: true, min: 1, max: 5, section: '體驗評分', autoAdvance: true },
+      { id: 'service', type: 'emoji-rating', label: '服務態度', required: true, min: 1, max: 5, section: '體驗評分', autoAdvance: true },
+      { id: 'speed', type: 'emoji-rating', label: '出餐速度', required: true, min: 1, max: 5, section: '體驗評分', autoAdvance: true },
+      { id: 'value', type: 'emoji-rating', label: '價格 CP 值', required: true, min: 1, max: 5, section: '體驗評分', autoAdvance: true },
+
+      { id: 'best_dish', type: 'text', label: '今天最讓你印象深刻的一道菜？', required: false, placeholder: '菜名（選填）', section: '推薦' },
+      { id: 'nps', type: 'nps', label: '您有多願意把我們推薦給親友？', required: true, min: 0, max: 10, section: '口碑指數' },
+      { id: 'feedback', type: 'textarea', label: '您對本店的鼓勵與建議', required: false, placeholder: '任何想告訴我們的話...', section: '建議' },
     ],
   },
 
@@ -65,25 +50,24 @@ export const surveyTemplates: SurveyTemplate[] = [
   {
     id: 'cafe-survey',
     name: '咖啡廳問卷',
-    description: '咖啡品質 + 環境氛圍 + WiFi/插座 + 甜點輕食。適合獨立咖啡廳、連鎖咖啡',
+    description: '咖啡品質 + 環境氛圍 + WiFi/插座 + NPS 口碑。適合獨立咖啡廳、連鎖咖啡',
     category: '咖啡廳',
     questions: [
-      { id: 'visit_freq', type: 'radio', label: '您多久來一次？', required: true, options: ['第一次', '偶爾', '每週固定', '幾乎每天'], section: '基本' },
-      { id: 'purpose', type: 'radio', label: '今天來的主要目的？', required: false, options: ['喝咖啡', '工作/讀書', '跟朋友聚', '吃甜點', '純休息'], section: '基本' },
+      { id: 'visit_freq', type: 'radio', label: '您多久來一次？', required: true, options: ['第一次', '偶爾', '每週固定', '幾乎每天'], section: '基本', autoAdvance: true },
+      { id: 'purpose', type: 'radio', label: '今天來的主要目的？', required: false, options: ['喝咖啡', '工作/讀書', '跟朋友聚', '吃甜點', '純休息'], section: '基本', autoAdvance: true },
 
       { id: 'sec_coffee', type: 'section-header', title: '咖啡評價', required: false, section: '咖啡' },
-      { id: 'coffee_taste', type: 'emoji-rating', label: '咖啡風味', required: true, min: 1, max: 5, section: '咖啡' },
-      { id: 'coffee_temp', type: 'radio', label: '溫度適中嗎？', required: false, options: ['太燙', '剛好', '偏涼'], section: '咖啡' },
-      { id: 'latte_art', type: 'emoji-rating', label: '拉花/視覺', required: false, min: 1, max: 5, section: '咖啡' },
+      { id: 'coffee_taste', type: 'emoji-rating', label: '咖啡風味', required: true, min: 1, max: 5, section: '咖啡', autoAdvance: true },
+      { id: 'coffee_temp', type: 'radio', label: '溫度適中嗎？', required: false, options: ['太燙', '剛好', '偏涼'], section: '咖啡', autoAdvance: true },
+      { id: 'latte_art', type: 'emoji-rating', label: '拉花/視覺', required: false, min: 1, max: 5, section: '咖啡', autoAdvance: true },
 
       { id: 'sec_env', type: 'section-header', title: '環境體驗', required: false, section: '環境' },
-      { id: 'atmosphere', type: 'emoji-rating', label: '整體氛圍', required: true, min: 1, max: 5, section: '環境' },
-      { id: 'music', type: 'emoji-rating', label: '音樂選曲', required: false, min: 1, max: 5, section: '環境' },
-      { id: 'seat_comfort', type: 'emoji-rating', label: '座位舒適度', required: false, min: 1, max: 5, section: '環境' },
-      { id: 'wifi_power', type: 'radio', label: 'WiFi/插座方便嗎？', required: false, options: ['很棒', '還行', '需要改善', '沒用到'], section: '環境' },
-      { id: 'dessert', type: 'emoji-rating', label: '甜點/輕食', required: false, min: 1, max: 5, section: '環境' },
+      { id: 'atmosphere', type: 'emoji-rating', label: '整體氛圍', required: true, min: 1, max: 5, section: '環境', autoAdvance: true },
+      { id: 'music', type: 'emoji-rating', label: '音樂選曲', required: false, min: 1, max: 5, section: '環境', autoAdvance: true },
+      { id: 'seat_comfort', type: 'emoji-rating', label: '座位舒適度', required: false, min: 1, max: 5, section: '環境', autoAdvance: true },
+      { id: 'wifi_power', type: 'radio', label: 'WiFi/插座方便嗎？', required: false, options: ['很棒', '還行', '需要改善', '沒用到'], section: '環境', autoAdvance: true },
 
-      { id: 'comeback', type: 'radio', label: '會再來嗎？', required: true, options: ['一定會', '可能會', '不太會'], section: '回饋' },
+      { id: 'nps', type: 'nps', label: '您有多願意把這裡推薦給朋友？', required: true, min: 0, max: 10, section: '口碑' },
       { id: 'feedback', type: 'textarea', label: '想對我們說的話', required: false, placeholder: '任何建議...', section: '回饋' },
     ],
   },
@@ -265,19 +249,17 @@ export const surveyTemplates: SurveyTemplate[] = [
   {
     id: 'daily-satisfaction',
     name: '日常用餐滿意度',
-    description: '日常營業使用，快速收集用餐整體滿意度',
+    description: '日常營業使用，快速收集用餐整體滿意度 + NPS 口碑指數',
     category: '日常營運',
     questions: [
-      { id: 'name', type: 'text', label: '姓名', required: false, placeholder: '可不填，匿名亦可', section: '基本資料' },
-      { id: 'visit_freq', type: 'radio', label: '來店頻率', required: false, options: ['第一次', '偶爾', '每月1-2次', '每週常客'], section: '基本資料' },
-      { id: 'food_quality', type: 'emoji-rating', label: '餐點品質', required: true, min: 1, max: 5, section: '用餐評價' },
-      { id: 'service', type: 'emoji-rating', label: '服務態度', required: true, min: 1, max: 5, section: '用餐評價' },
-      { id: 'environment', type: 'emoji-rating', label: '用餐環境', required: true, min: 1, max: 5, section: '用餐評價' },
-      { id: 'speed', type: 'emoji-rating', label: '出餐速度', required: true, min: 1, max: 5, section: '用餐評價' },
-      { id: 'value', type: 'emoji-rating', label: '性價比', required: true, min: 1, max: 5, section: '用餐評價' },
-      { id: 'overall', type: 'emoji-rating', label: '整體滿意度', required: true, min: 1, max: 5, section: '用餐評價' },
-      { id: 'favorite_dish', type: 'text', label: '今天最喜歡的菜', required: false, placeholder: '請輸入菜名', section: '其他' },
-      { id: 'recommend', type: 'radio', label: '會推薦朋友來嗎？', required: true, options: ['一定會', '可能會', '不太會'], section: '其他' },
+      { id: 'visit_freq', type: 'radio', label: '來店頻率', required: false, options: ['第一次', '偶爾', '每月1-2次', '每週常客'], section: '基本資料', autoAdvance: true },
+      { id: 'food_quality', type: 'emoji-rating', label: '餐點品質', required: true, min: 1, max: 5, section: '用餐評價', autoAdvance: true },
+      { id: 'service', type: 'emoji-rating', label: '服務態度', required: true, min: 1, max: 5, section: '用餐評價', autoAdvance: true },
+      { id: 'environment', type: 'emoji-rating', label: '用餐環境', required: true, min: 1, max: 5, section: '用餐評價', autoAdvance: true },
+      { id: 'speed', type: 'emoji-rating', label: '出餐速度', required: true, min: 1, max: 5, section: '用餐評價', autoAdvance: true },
+      { id: 'value', type: 'emoji-rating', label: '性價比', required: true, min: 1, max: 5, section: '用餐評價', autoAdvance: true },
+      { id: 'favorite_dish', type: 'text', label: '今天最喜歡的菜', required: false, placeholder: '請輸入菜名', section: '推薦' },
+      { id: 'nps', type: 'nps', label: '您有多願意把我們推薦給親友？', required: true, min: 0, max: 10, section: '口碑指數' },
       { id: 'feedback', type: 'textarea', label: '其他建議', required: false, placeholder: '任何想告訴我們的話...', section: '其他' },
     ],
   },
