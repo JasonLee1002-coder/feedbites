@@ -97,10 +97,15 @@ function LoginForm() {
       if (data.error) {
         setMessage(data.error);
       } else {
-        const callbackUrl = inviteToken
-          ? `/api/auth/callback?invite=${inviteToken}`
-          : '/api/auth/callback';
-        router.push(callbackUrl);
+        // If there's a pending invite token, join the store before going to dashboard
+        if (inviteToken) {
+          await fetch('/feedbites/api/stores/join', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: inviteToken }),
+          }).catch(() => {}); // best-effort, don't block navigation
+        }
+        router.push('/dashboard');
       }
     } catch {
       setMessage('發生錯誤，請稍後再試');
