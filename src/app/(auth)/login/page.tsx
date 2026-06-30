@@ -98,8 +98,8 @@ function LoginForm() {
         setMessage(data.error);
       } else {
         const callbackUrl = inviteToken
-          ? `/feedbites/api/auth/callback?invite=${inviteToken}`
-          : '/feedbites/api/auth/callback';
+          ? `/api/auth/callback?invite=${inviteToken}`
+          : '/api/auth/callback';
         router.push(callbackUrl);
       }
     } catch {
