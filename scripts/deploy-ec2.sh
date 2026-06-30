@@ -12,7 +12,7 @@ APP_DIR="/home/jason/feedbites"
 PORT=3200
 CONTAINER="feedbites"
 IMAGE="feedbites:latest"
-DOCKER_NETWORK="omnicore-net"
+DOCKER_NETWORK="omnicore"
 
 echo "▶ [1/6] 產生 AUTH_SECRET 和 CRON_SECRET..."
 AUTH_SECRET=$(openssl rand -hex 32)

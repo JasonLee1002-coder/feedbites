@@ -79,6 +79,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const authError = searchParams.get('error');
+  const inviteToken = searchParams.get('invite');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -96,7 +97,10 @@ function LoginForm() {
       if (data.error) {
         setMessage(data.error);
       } else {
-        router.push('/dashboard');
+        const callbackUrl = inviteToken
+          ? `/feedbites/api/auth/callback?invite=${inviteToken}`
+          : '/feedbites/api/auth/callback';
+        router.push(callbackUrl);
       }
     } catch {
       setMessage('發生錯誤，請稍後再試');
