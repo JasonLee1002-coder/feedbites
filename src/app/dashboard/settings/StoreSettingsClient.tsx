@@ -953,7 +953,8 @@ export default function StoreSettingsClient({ storeId, storeName, logoUrl: initi
                 const res = await fetch('/feedbites/api/stores/invite-link');
                 const data = await res.json();
                 if (data.token) {
-                  const link = `${window.location.origin}/invite/${data.token}`;
+                  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+                  const link = `${window.location.origin}${basePath}/invite/${data.token}`;
                   setInviteLink(link);
                   setInviteMsg(`嗨！邀請你一起管理「${storeName}」的 FeedBites 問卷系統 🍽️\n\n點下面連結，登入就能加入：\n${link}\n\n加入後可以一起查看顧客回覆、管理問卷！`);
                   setShowInvite(true);
