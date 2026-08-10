@@ -9,6 +9,7 @@ import { templates } from '@/lib/templates';
 import { ArrowLeft, TrendingUp, TrendingDown, Flame, Zap, Crown, Target, BarChart3, MessageCircle, Printer, Users } from 'lucide-react';
 import type { TemplateId, Question, SurveyResponse, DiscountTier } from '@/types/survey';
 import SurveyDetailClient from './SurveyDetailClient';
+import RedeemCodeBox from './RedeemCodeBox';
 import { getSelectedStore } from '@/lib/store-context';
 
 interface PageProps {
@@ -432,6 +433,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
                     <div className="flex items-center justify-between mb-2"><span className="text-xs text-[#8A8585]">核銷率</span><span className="text-sm font-bold text-[#C5A55A]">{codeUsageRate}%</span></div>
                     <div className="w-full h-2.5 bg-[#F3F0E8] rounded-full overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-[#C5A55A] to-[#FFD700]" style={{ width: `${codeUsageRate}%` }} /></div>
                     <div className="flex justify-between mt-1.5"><span className="text-[10px] text-[#8A8585]">已發 {totalCodes} 張</span><span className="text-[10px] text-emerald-600 font-medium">已核銷（店長標記）{usedCodes} 張</span></div>
+                    <RedeemCodeBox />
                   </div>
                 )}
               </>
