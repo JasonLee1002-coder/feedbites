@@ -71,7 +71,7 @@ export async function POST(
     }
 
     const body = await request.json()
-    const { answers, respondent_name, phone, xp_earned, skip_discount } = body
+    const { answers, respondent_name, phone, xp_earned, skip_discount, device_key } = body
 
     if (!answers || typeof answers !== 'object') {
       return NextResponse.json({ error: '缺少回答內容' }, { status: 400 })
@@ -86,6 +86,7 @@ export async function POST(
         respondent_name: respondent_name || null,
         phone: phone || null,
         xp_earned: typeof xp_earned === 'number' ? xp_earned : null,
+        device_key: typeof device_key === 'string' && device_key.length <= 64 ? device_key : null,
       })
       .returning()
 

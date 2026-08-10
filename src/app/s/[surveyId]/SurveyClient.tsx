@@ -29,6 +29,22 @@ function markAsSubmitted(surveyId: string, code?: string) {
   } catch { /* ignore */ }
 }
 
+// 裝置識別碼：僅供 AI 分析去重，不用於阻擋重複填寫。
+// 隨機 UUID，不含任何個人資訊。清除 localStorage 後會視為新裝置（已知限制，可接受）。
+function getDeviceKey(): string {
+  const KEY = 'feedbites_device_key';
+  try {
+    let v = localStorage.getItem(KEY);
+    if (!v) {
+      v = crypto.randomUUID();
+      localStorage.setItem(KEY, v);
+    }
+    return v;
+  } catch {
+    return '';
+  }
+}
+
 function getPreviousCode(surveyId: string): string | null {
   try {
     const data = localStorage.getItem(getSubmissionKey(surveyId));
@@ -148,6 +164,7 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
           phone: phoneNumber || undefined,
           xp_earned: xpScore,
           skip_discount: false,
+          device_key: getDeviceKey(),
         }),
       });
 
