@@ -20,6 +20,16 @@
 2. **正式站在 EC2**（`https://poc.mcstation.ai/feedbites`），不是 Vercel，但 repo 裡還留著 Vercel 綁定。Task 8 處理。
 3. **`.env.local` 目前缺 `DATABASE_URL` 與 `AUTH_SECRET`** — 本機直接跑會連不上資料庫。Task 0 必須先解決，否則後面所有驗證步驟都是空的。
 
+4. **正式站的 schema 來源是 `scripts/feedbites-pg-schema.sql`，不是 `supabase/migrations/`。**
+   前者是「Supabase 語法移除後」的 EC2 版本（檔頭寫明 `Generated from Supabase migrations 001–019`，
+   `auth.users`、RLS、policies 全部拿掉，改用自建 `users` 表 + NextAuth）。
+   **任何 schema 變更只改 `supabase/migrations/` 是不會進到正式站的。** 兩邊都要改。
+
+5. **`users.password_hash` 在正式站是 `TEXT NOT NULL`**（`scripts/feedbites-pg-schema.sql:18`），
+   但 Drizzle 的 `schema.ts:24` 宣告成可空（`text('password_hash')` 無 `.notNull()`）。
+   兩邊不一致 —— 對**新** email 執行 `insert(users).values({ email })` 會在正式站違反 NOT NULL。
+   既有使用者因為走 `onConflictDoUpdate` 的 UPDATE 分支所以沒事。Task 9 必須處理。
+
 ### 測試策略（為什麼不是全部 TDD）
 
 專案原本**沒有任何測試框架**（`package.json` 只有 build/lint，`playwright` 是 library 不是 test runner）。本計畫的做法：
@@ -50,11 +60,7 @@
 - Create: `tests/api/.gitkeep`
 - Modify: `package.json`
 
-- [ ] **Step 1: 取得 DATABASE_URL 與 AUTH_SECRET**
-
-正式站的 `DATABASE_URL` 在 EC2 的 `.env.prod`。本機開發**不要**直接連正式資料庫做寫入測試。
-
-先確認目前 `.env.local` 缺什麼：
+- [ ] **Step 1: 確認目前缺什麼**
 
 ```bash
 cd C:/Users/JasonLee/claude_code_projects/Feedbites
@@ -64,28 +70,55 @@ grep -c "^AUTH_SECRET=" .env.local || echo "AUTH_SECRET 不存在"
 
 Expected: 兩行都印出「不存在」。
 
-產生一組 AUTH_SECRET：
+- [ ] **Step 2: 起一個本機測試資料庫**
+
+**不要**把本機開發指向正式站資料庫 —— Task 3、5、7 的測試會寫入資料。
+
+用 Docker 起一個與正式站相同 schema 的本機 Postgres：
+
+```bash
+docker run -d --name feedbites-testdb \
+  -e POSTGRES_PASSWORD=localdev \
+  -e POSTGRES_DB=feedbites \
+  -p 5433:5432 \
+  postgres:16
+```
+
+> 用 5433 避免與本機既有 Postgres 衝突。
+
+等容器就緒後套用正式站 schema：
+
+```bash
+docker cp scripts/feedbites-pg-schema.sql feedbites-testdb:/tmp/schema.sql
+docker exec feedbites-testdb psql -U postgres -d feedbites -f /tmp/schema.sql
+```
+
+Expected: 一連串 `CREATE TABLE` / `CREATE INDEX`，無 ERROR。
+
+> 用 `scripts/feedbites-pg-schema.sql` 而**不是** `supabase/migrations/*.sql`：
+> 後者含 `auth.users`、`auth.uid()` 等 Supabase 專屬語法，套到一般 Postgres 會失敗，
+> 而且正式站本來就是用前者。這樣本機環境才與正式站一致。
+
+- [ ] **Step 3: 補進 .env.local**
+
+產生 AUTH_SECRET：
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
 
-- [ ] **Step 2: 補進 .env.local**
-
-把以下三行加到 `.env.local`（`DATABASE_URL` 用**測試用資料庫**，取得方式見下方註記）：
+把以下四行加到 `.env.local`：
 
 ```
-DATABASE_URL=postgres://<user>:<pass>@<host>:5432/<db>
+DATABASE_URL=postgres://postgres:localdev@localhost:5433/feedbites
 AUTH_SECRET=<上一步產生的值>
 AUTH_URL=http://localhost:3000/feedbites/api/auth
 ALLOWED_LOGIN_EMAILS=leechishen@gmail.com
 ```
 
-> **測試資料庫來源**：優先用 Supabase 上的既有專案（`~/.credentials/global.env` 內 Supabase 連線字串），或在本機起一個 postgres container。**不要**把本機開發指向正式站資料庫 —— Task 3、4 的測試會寫入資料。
->
-> `.env.local` 已在 `.gitignore` 內，確認一次：`git check-ignore -v .env.local`
+確認不會被 commit：`git check-ignore -v .env.local`
 
-- [ ] **Step 3: 驗證資料庫連得上**
+- [ ] **Step 4: 驗證資料庫連得上**
 
 ```bash
 node -e "require('dotenv').config({path:'.env.local'});const p=require('postgres');const s=p(process.env.DATABASE_URL);s\`select 1 as ok\`.then(r=>{console.log('DB OK',r);process.exit(0)}).catch(e=>{console.error('DB FAIL',e.message);process.exit(1)})"
@@ -93,7 +126,7 @@ node -e "require('dotenv').config({path:'.env.local'});const p=require('postgres
 
 Expected: 印出 `DB OK [ { ok: 1 } ]`。若失敗，**停下來解決**，不要進行後續 Task。
 
-- [ ] **Step 4: 安裝測試框架**
+- [ ] **Step 5: 安裝測試框架**
 
 ```bash
 npm install -D @playwright/test
@@ -101,7 +134,7 @@ npm install -D @playwright/test
 
 Expected: `@playwright/test` 出現在 `package.json` 的 devDependencies。
 
-- [ ] **Step 5: 建立 playwright.config.ts**
+- [ ] **Step 6: 建立 playwright.config.ts**
 
 ```typescript
 import { defineConfig } from '@playwright/test'
@@ -118,7 +151,7 @@ export default defineConfig({
 })
 ```
 
-- [ ] **Step 6: 加測試 script**
+- [ ] **Step 7: 加測試 script**
 
 在 `package.json` 的 `scripts` 內加入三行（放在 `"lint": "eslint"` 之後）：
 
@@ -129,14 +162,14 @@ export default defineConfig({
     "test:api": "playwright test tests/api"
 ```
 
-- [ ] **Step 7: 建立測試目錄**
+- [ ] **Step 8: 建立測試目錄**
 
 ```bash
 mkdir -p tests/unit tests/api
 touch tests/unit/.gitkeep tests/api/.gitkeep
 ```
 
-- [ ] **Step 8: 驗證測試框架可運行**
+- [ ] **Step 9: 驗證測試框架可運行**
 
 ```bash
 npm run test
@@ -144,7 +177,7 @@ npm run test
 
 Expected: `No tests found`（不是錯誤訊息）。這表示 runner 正常。
 
-- [ ] **Step 9: 更新 .env.example**
+- [ ] **Step 10: 更新 .env.example**
 
 `.env.example` 目前只有兩個 Supabase 變數，嚴重過時。改為完整清單（**不含任何真實值**）：
 
@@ -181,7 +214,7 @@ EMAIL_FROM=noreply@example.com
 CRON_SECRET=your-cron-secret
 ```
 
-- [ ] **Step 10: 確認 .env.local 沒有被 git 追蹤**
+- [ ] **Step 11: 確認 .env.local 沒有被 git 追蹤**
 
 ```bash
 git status --short
@@ -189,7 +222,7 @@ git status --short
 
 Expected: 輸出中**不得**出現 `.env.local`。若出現，立刻停止並修正 `.gitignore`。
 
-- [ ] **Step 11: Commit**
+- [ ] **Step 12: Commit**
 
 ```bash
 git add playwright.config.ts package.json package-lock.json .env.example tests/
@@ -700,11 +733,16 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 **Files:**
 - Create: `supabase/migrations/020_response_device_key.sql`
+- Modify: `scripts/feedbites-pg-schema.sql`（**正式站實際使用的 schema，漏改這個等於沒改**）
 - Modify: `src/lib/db/schema.ts:79-88`
 - Modify: `src/app/s/[surveyId]/SurveyClient.tsx`
 - Modify: `src/app/api/surveys/[id]/responses/route.ts`
 
 規格第 6 項。**重要：這不是用來擋重複填寫的。** 重複填寫是刻意允許的行銷策略，發券行為完全不變。
+
+> ### 兩份 schema 都要改
+> `supabase/migrations/` 是舊的 Supabase 版本；`scripts/feedbites-pg-schema.sql` 才是 EC2 正式站用的。
+> 只改前者的話，正式站不會有 `device_key` 欄位，Step 5 的寫入會直接失敗。
 
 - [ ] **Step 1: 建立 migration**
 
@@ -726,15 +764,60 @@ ALTER TABLE responses ADD COLUMN IF NOT EXISTS device_key TEXT;
 CREATE INDEX IF NOT EXISTS idx_responses_device_key ON responses(device_key);
 ```
 
-- [ ] **Step 2: 套用 migration 到測試資料庫**
+- [ ] **Step 2: 同步更新正式站 schema**
 
-```bash
-node -e "require('dotenv').config({path:'.env.local'});const fs=require('fs');const p=require('postgres');const s=p(process.env.DATABASE_URL);const sql=fs.readFileSync('supabase/migrations/020_response_device_key.sql','utf8');s.unsafe(sql).then(()=>{console.log('migration OK');process.exit(0)}).catch(e=>{console.error('FAIL',e.message);process.exit(1)})"
+`scripts/feedbites-pg-schema.sql` 的 `responses` 表定義，在 `xp_earned` 之後加入 `device_key`：
+
+```sql
+CREATE TABLE IF NOT EXISTS responses (
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  survey_id       UUID        REFERENCES surveys(id) ON DELETE CASCADE NOT NULL,
+  answers         JSONB       NOT NULL DEFAULT '{}'::jsonb,
+  respondent_name TEXT,
+  phone           TEXT,
+  email           TEXT,
+  xp_earned       INTEGER,
+  device_key      TEXT,
+  submitted_at    TIMESTAMPTZ DEFAULT NOW()
+);
 ```
 
-Expected: `migration OK`
+並在該表的 index 區塊補一行：
 
-- [ ] **Step 3: 更新 Drizzle schema**
+```sql
+CREATE INDEX IF NOT EXISTS idx_responses_device_key ON responses(device_key);
+```
+
+> `CREATE TABLE IF NOT EXISTS` 對**既有**資料庫不會生效 —— 正式站已經有 responses 表了。
+> 因此還要在檔案**最末尾**加一段給既有資料庫用的 ALTER：
+>
+> ```sql
+> -- ── 020: device_key（對既有資料庫補欄位）──
+> ALTER TABLE responses ADD COLUMN IF NOT EXISTS device_key TEXT;
+> CREATE INDEX IF NOT EXISTS idx_responses_device_key ON responses(device_key);
+> ```
+>
+> 這樣不論是全新建置或既有資料庫，跑同一份檔案都會得到 device_key 欄位。
+
+- [ ] **Step 3: 套用到本機測試資料庫**
+
+```bash
+docker exec feedbites-testdb psql -U postgres -d feedbites \
+  -c "ALTER TABLE responses ADD COLUMN IF NOT EXISTS device_key TEXT;" \
+  -c "CREATE INDEX IF NOT EXISTS idx_responses_device_key ON responses(device_key);"
+```
+
+Expected: `ALTER TABLE` 與 `CREATE INDEX`，無 ERROR。
+
+驗證欄位存在：
+
+```bash
+docker exec feedbites-testdb psql -U postgres -d feedbites -c "\d responses"
+```
+
+Expected: 輸出中看得到 `device_key | text`。
+
+- [ ] **Step 4: 更新 Drizzle schema**
 
 `src/lib/db/schema.ts` 的 `responses` 定義（第 79-88 行），在 `xp_earned` 之後加一行：
 
@@ -752,7 +835,7 @@ export const responses = pgTable('responses', {
 })
 ```
 
-- [ ] **Step 4: 前端產生並送出 device_key**
+- [ ] **Step 5: 前端產生並送出 device_key**
 
 `src/app/s/[surveyId]/SurveyClient.tsx`，在 `markAsSubmitted` 函式（第 23-30 行）之後加入：
 
@@ -786,7 +869,7 @@ function getDeviceKey(): string {
         }),
 ```
 
-- [ ] **Step 5: 後端接收並寫入**
+- [ ] **Step 6: 後端接收並寫入**
 
 `src/app/api/surveys/[id]/responses/route.ts` 第 71 行的解構加入 `device_key`：
 
@@ -802,7 +885,7 @@ function getDeviceKey(): string {
 
 > 長度上限 64 是防呆：欄位只該收 UUID（36 字元），不接受任意長字串。
 
-- [ ] **Step 6: 驗證寫入**
+- [ ] **Step 7: 驗證寫入**
 
 啟動 dev server，用瀏覽器填一次問卷，然後：
 
@@ -816,15 +899,15 @@ Expected: 最新一筆的 `device_key` 有 UUID 值。
 
 Expected: 兩筆的 `device_key` **相同**，且兩筆都存在（沒有被擋掉）。
 
-- [ ] **Step 7: Typecheck**
+- [ ] **Step 8: Typecheck**
 
 Run: `npx tsc --noEmit`
 Expected: 無錯誤
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add supabase/migrations/020_response_device_key.sql src/lib/db/schema.ts src/app/s/\[surveyId\]/SurveyClient.tsx src/app/api/surveys/\[id\]/responses/route.ts
+git add supabase/migrations/020_response_device_key.sql scripts/feedbites-pg-schema.sql src/lib/db/schema.ts src/app/s/\[surveyId\]/SurveyClient.tsx src/app/api/surveys/\[id\]/responses/route.ts
 git commit -m "feat: record device_key on responses for AI de-duplication
 
 Repeat submissions stay intentionally unblocked (marketing decision), but
@@ -1455,6 +1538,16 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 >
 > 把有 store 的那個 email 填進 `ALLOWED_LOGIN_EMAILS`，並確認店長就是用該 Gmail 登入。
 
+> ### 第二個地雷：`users.password_hash` 是 NOT NULL
+>
+> 正式站 schema（`scripts/feedbites-pg-schema.sql:18`）是 `password_hash TEXT NOT NULL`，
+> 但 Drizzle 的 `schema.ts:24` 宣告成可空。因此 `insert(users).values({ email })`：
+>
+> - 對**既有** email → 走 `onConflictDoUpdate` 的 UPDATE 分支，沒事（現況就是這樣運作）
+> - 對**新** email → INSERT 觸發 NOT NULL violation，**登入直接 500**
+>
+> 白名單裡只要有第二個人（例如店長之外的員工），第一次登入就會炸。Step 3 必須處理。
+
 - [ ] **Step 1: 建立 Google OAuth 憑證**
 
 在 Google Cloud Console 建立 OAuth 2.0 用戶端 ID（類型：網頁應用程式），Authorized redirect URIs 填入**兩個**：
@@ -1532,7 +1625,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = user.email.toLowerCase().trim()
         const [row] = await db
           .insert(users)
-          .values({ email })
+          // password_hash 在正式站是 NOT NULL，但 Google 登入沒有密碼。
+          // 寫入空字串當佔位符 —— 它不再被任何驗證路徑讀取（Credentials provider 已移除），
+          // 且空字串不可能通過任何 bcrypt 比對。
+          .values({ email, password_hash: '' })
           .onConflictDoUpdate({
             target: users.email,
             set: { updated_at: new Date() },
@@ -1546,6 +1642,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
 })
 ```
+
+> **不要**把 `schema.ts` 的 `password_hash` 改成 `.notNull()` —— 那會讓既有讀取路徑
+> 型別變嚴格而連鎖修改。這裡只要保證寫入時一定有值即可。
 
 - [ ] **Step 4: 刪除無驗證的登入路徑**
 
@@ -1592,6 +1691,25 @@ Expected: 成功進入 `/feedbites/dashboard`，且**看得到既有的店家資
 
 > 若進去後看不到店：表示 email 對應錯了。回到本 Task 開頭的查證步驟。
 
+- [ ] **Step 6b: 驗證「白名單內的新帳號」也能登入（password_hash 修正的驗證）**
+
+這一步專門驗證上面那個地雷有修好。在 `.env.local` 的 `ALLOWED_LOGIN_EMAILS` 加入第二個
+你有權限的 Gmail（該 email **不得**存在於 `users` 表），重啟 dev server 後用它登入。
+
+Expected: 成功登入（會是一個沒有店的新帳號），**不得**出現 500 或
+`null value in column "password_hash" violates not-null constraint`。
+
+驗證資料庫：
+
+```bash
+docker exec feedbites-testdb psql -U postgres -d feedbites \
+  -c "select email, password_hash = '' as blank_hash from users order by created_at desc limit 3;"
+```
+
+Expected: 新帳號那筆 `blank_hash = t`。
+
+驗證完把該 email 從白名單移除。
+
 - [ ] **Step 7: 驗證白名單外帳號被拒**
 
 用另一個 Google 帳號登入。
@@ -1624,7 +1742,7 @@ npx tsc --noEmit && npm run build
 
 Expected: 皆成功。build 特別重要 —— auth 設定錯誤常常只在 build 時才顯現。
 
-- [ ] **Step 11: Commit**
+- [ ] **Step 12: Commit**
 
 ```bash
 git add src/auth.ts src/auth.config.ts "src/app/(auth)/login/page.tsx"
