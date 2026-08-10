@@ -145,11 +145,17 @@ export default defineConfig({
   workers: 1,
   reporter: 'list',
   use: {
-    // 注意：basePath 是 /feedbites，baseURL 必須包含它
-    baseURL: process.env.TEST_BASE_URL || 'http://localhost:3000/feedbites',
+    // baseURL 不含 basePath —— 測試路徑一律自己帶 /feedbites 前綴。
+    // 以 '/' 開頭的路徑依 WHATWG URL 規範會覆蓋 base 的整個 path，
+    // 把 basePath 放進 baseURL 會被靜默丟棄。
+    baseURL: process.env.TEST_BASE_URL || 'http://localhost:3000',
   },
 })
 ```
+
+> **地雷（2026-08-11 實測踩到）**：`new URL('/api/x', 'http://h/feedbites')` 得到
+> `http://h/api/x` —— basePath 被吃掉，請求會打到 Next 的 404 頁而不是 API。
+> 所以 API 測試裡的路徑一律寫成 `/feedbites/api/...`，與前端 `SurveyClient.tsx:143` 的寫法一致。
 
 - [ ] **Step 7: 加測試 script**
 
@@ -465,7 +471,7 @@ const SURVEY_B = process.env.TEST_SURVEY_B_ID
 test.skip(!SURVEY_A || !SURVEY_B, '需設定 TEST_SURVEY_A_ID 與 TEST_SURVEY_B_ID')
 
 async function submitTo(request: import('@playwright/test').APIRequestContext, surveyId: string) {
-  const res = await request.post(`/api/surveys/${surveyId}/responses`, {
+  const res = await request.post(`/feedbites/api/surveys/${surveyId}/responses`, {
     data: { answers: { q1: 'test' }, xp_earned: 10, skip_discount: true },
   })
   expect(res.status()).toBe(201)
@@ -477,7 +483,7 @@ test('PATCH 拒絕跨問卷的 response_id', async ({ request }) => {
   const responseIdA = await submitTo(request, SURVEY_A!)
 
   // 用 A 的 response_id 打 B 的端點
-  const res = await request.patch(`/api/surveys/${SURVEY_B}/responses`, {
+  const res = await request.patch(`/feedbites/api/surveys/${SURVEY_B}/responses`, {
     data: { response_id: responseIdA, phone: '0912345678' },
   })
 
@@ -487,7 +493,7 @@ test('PATCH 拒絕跨問卷的 response_id', async ({ request }) => {
 test('PATCH 在時間窗內允許補填電話', async ({ request }) => {
   const responseId = await submitTo(request, SURVEY_A!)
 
-  const res = await request.patch(`/api/surveys/${SURVEY_A}/responses`, {
+  const res = await request.patch(`/feedbites/api/surveys/${SURVEY_A}/responses`, {
     data: { response_id: responseId, phone: '0912345678' },
   })
 
@@ -495,7 +501,7 @@ test('PATCH 在時間窗內允許補填電話', async ({ request }) => {
 })
 
 test('PATCH 對不存在的 response_id 回 404', async ({ request }) => {
-  const res = await request.patch(`/api/surveys/${SURVEY_A}/responses`, {
+  const res = await request.patch(`/feedbites/api/surveys/${SURVEY_A}/responses`, {
     data: { response_id: '00000000-0000-0000-0000-000000000001', phone: '0912345678' },
   })
 
@@ -1547,6 +1553,25 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 > - 對**新** email → INSERT 觸發 NOT NULL violation，**登入直接 500**
 >
 > 白名單裡只要有第二個人（例如店長之外的員工），第一次登入就會炸。Step 3 必須處理。
+
+> ### 第三個地雷：schema 內建預設管理員帳號
+>
+> `scripts/feedbites-pg-schema.sql:365-371` 會 seed 一個帳號：
+>
+> ```
+> -- Seed: admin user (password: feedbites2026)
+> INSERT INTO users (email, password_hash)
+> VALUES ('jason@mcstation.ai', '$2b$10$K7L...')
+> ON CONFLICT (email) DO NOTHING;
+> ```
+>
+> 密碼明文寫在註解、hash 進了 git。目前因為登入根本不驗密碼所以「沒差」，
+> 本 Task 移除密碼登入後它會徹底失效（Google OAuth 不看 password_hash）。
+>
+> **但要確認兩件事：**
+> 1. 正式站的店是掛在 `jason@mcstation.ai` 還是別的 email 底下 —— 用本 Task 開頭的查詢確認，
+>    白名單必須包含「實際擁有店的那個 email」。
+> 2. 若 `jason@mcstation.ai` 不是實際使用者，**不要**把它放進白名單。
 
 - [ ] **Step 1: 建立 Google OAuth 憑證**
 
