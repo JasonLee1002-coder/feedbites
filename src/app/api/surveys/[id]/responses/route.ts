@@ -44,7 +44,8 @@ export async function GET(
       .orderBy(desc(responses.submitted_at))
 
     return NextResponse.json(responseList)
-  } catch {
+  } catch (err) {
+    logger.error('response.list.failed', {}, err)
     return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 })
   }
 }
@@ -54,6 +55,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const request_id = newRequestId()
   try {
     const { id } = await params
 
@@ -111,7 +113,9 @@ export async function POST(
             }
           }
           await checkAndPushUrgentAlert({ lineUserId: storeLineId, storeName, recentTexts })
-        } catch {}
+        } catch (err) {
+          logger.error('line.urgent_alert.failed', { request_id, survey_id: id }, err)
+        }
       })()
     }
 
@@ -167,8 +171,9 @@ export async function POST(
     }
 
     return NextResponse.json({ response, discount_code: null }, { status: 201 })
-  } catch {
-    return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 })
+  } catch (err) {
+    logger.error('response.submit.failed', { request_id }, err)
+    return NextResponse.json({ error: '伺服器錯誤', request_id }, { status: 500 })
   }
 }
 
