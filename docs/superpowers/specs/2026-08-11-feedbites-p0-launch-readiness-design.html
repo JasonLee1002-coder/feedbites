@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FeedBites P0 啟用前置修復 — 設計規格</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1d212a; --line:#2a2f3a;
+    --text:#e6e8ec; --muted:#9aa3b2; --accent:#FF8C00; --accent2:#ffb454;
+    --danger:#ff6b6b; --ok:#4ade80; --warn:#fbbf24;
+    --mono:'Consolas','Menlo','Courier New',monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:'Segoe UI','Noto Sans TC','PingFang TC',system-ui,sans-serif;
+    line-height:1.75;padding:48px 24px 96px}
+  .wrap{max-width:960px;margin:0 auto}
+  header{border-bottom:2px solid var(--accent);padding-bottom:24px;margin-bottom:40px}
+  h1{font-size:2rem;margin:0 0 12px;letter-spacing:-.02em}
+  h1 span{color:var(--accent)}
+  .meta{color:var(--muted);font-size:.9rem}
+  .meta b{color:var(--text);font-weight:600}
+  h2{font-size:1.35rem;margin:48px 0 16px;padding-left:12px;border-left:4px solid var(--accent)}
+  h3{font-size:1.05rem;margin:28px 0 10px;color:var(--accent2)}
+  p{margin:12px 0}
+  code{font-family:var(--mono);background:var(--panel2);padding:2px 6px;
+    border-radius:4px;font-size:.88em;color:var(--accent2)}
+  pre{background:var(--panel2);border:1px solid var(--line);border-radius:8px;
+    padding:16px;overflow-x:auto;font-family:var(--mono);font-size:.85rem;line-height:1.6}
+  pre code{background:none;padding:0;color:var(--text)}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.92rem;display:block;overflow-x:auto}
+  th,td{border:1px solid var(--line);padding:10px 12px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--accent2);font-weight:600;white-space:nowrap}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:20px 24px;margin:20px 0}
+  .card.danger{border-left:4px solid var(--danger)}
+  .card.ok{border-left:4px solid var(--ok)}
+  .card.warn{border-left:4px solid var(--warn)}
+  .tag{display:inline-block;font-size:.72rem;padding:2px 9px;border-radius:99px;
+    font-weight:700;letter-spacing:.03em;vertical-align:middle;margin-left:8px}
+  .t-must{background:#3b1616;color:#ff9b9b;border:1px solid #6b2020}
+  .t-cheap{background:#1c3320;color:#8ee6a5;border:1px solid #2e5c39}
+  .t-design{background:#33290f;color:#f5c86b;border:1px solid #6b5420}
+  ul,ol{padding-left:22px;margin:12px 0}
+  li{margin:7px 0}
+  .evidence{background:#14171d;border:1px dashed var(--line);border-radius:6px;
+    padding:10px 14px;margin:10px 0;font-size:.87rem;color:var(--muted)}
+  .evidence b{color:var(--danger);font-weight:600}
+  .accept{background:#12180f;border:1px solid #2e4020;border-radius:6px;padding:12px 16px;margin:12px 0}
+  .accept b{color:var(--ok)}
+  .no-list li{color:var(--muted)}
+  footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);
+    color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>FeedBites <span>P0 啟用前置修復</span> — 設計規格</h1>
+  <div class="meta">
+    <b>日期</b> 2026-08-11　·　<b>撰寫</b> AI CPO　·　<b>階段</b> P0（欣殿萬飲正式啟用前）<br>
+    <b>依據</b> Claude + Codex 雙模型對抗稽核（2026-08-10），所有引用行號已由 Claude 逐一開檔核實
+  </div>
+</header>
+
+<h2>一、背景與決策脈絡</h2>
+
+<p>FeedBites 準備正式啟用給第一家真實餐廳客戶「欣殿萬飲」（高雄駁二）。老闆確認的目標優先序為
+<b>A. 店長每天真的會打開看</b>、<b>B. 收到夠多真實回饋以產出第一份 AI 分析</b>、<b>D. 跑通流程挖出系統問題</b>；
+明確排除 C（招商展示包裝）。</p>
+
+<p>雙模型稽核找出四項嚴重問題。老闆隨後提供兩個現實前提，大幅改變風險計算：</p>
+
+<div class="card">
+  <p><b>前提一：目前只有一間店。</b>→ 跨租戶資料外洩的實際風險趨近於零（沒有第二家店的資料可被跨）。</p>
+  <p><b>前提二：優惠碼被複製不擔心，視為行銷。</b>→ 讓客人有佔便宜心態、主動宣傳來店，是刻意的商業策略。</p>
+</div>
+
+<div class="card danger">
+  <p><b>這兩個前提沒有涵蓋的部分（本規格的核心理由）：</b></p>
+  <p>後台存放的是<b>欣殿萬飲客人的姓名、電話、email</b>。那是店家客人的個資，不是我們的資料 ——
+  外洩時受害的是店家，責任會回到系統提供方。「只有一間店」與「優惠碼當行銷」都不豁免個資風險。
+  因此本階段只保留與<b>個資保護、資料完整性、可觀測性</b>相關的修復，其餘全部移除。</p>
+</div>
+
+<h2>二、範圍</h2>
+
+<h3>要做（六項）</h3>
+<table>
+  <tr><th>#</th><th>項目</th><th>性質</th><th>估時</th></tr>
+  <tr><td>1</td><td>店長後台登入改為 Google OAuth + email 白名單</td><td>個資保護</td><td>半天</td></tr>
+  <tr><td>2</td><td>公開 PATCH 加 survey 綁定與時間窗</td><td>個資保護 / 濫用防護</td><td>0.5 小時</td></tr>
+  <tr><td>3</td><td>錯誤日誌與 request ID</td><td>可觀測性（目標 D 的前提）</td><td>2 小時</td></tr>
+  <tr><td>4</td><td><code>getSelectedStore</code> 補 <code>user_id</code> 條件</td><td>順手修（防未來）</td><td>5 分鐘</td></tr>
+  <tr><td>5</td><td>優惠券「店員手動標記已使用」</td><td>設計調整（護目標 A）</td><td>2 小時</td></tr>
+  <tr><td>6</td><td>提交記錄裝置識別碼，AI 分析時去重</td><td>設計調整（護目標 B）</td><td>2 小時</td></tr>
+  <tr><td>7</td><td>確認並處置 Vercel／EC2 雙部署</td><td>資料完整性</td><td>15 分鐘</td></tr>
+</table>
+<p class="meta">※ 第 7 項為撰寫規格時追加（老闆原核可為六項）。理由：驗收條件需要「正式站只有一套」這個前提，
+且若兩套部署連同一個資料庫，會產生極難追查的資料異常。成本 15 分鐘，故納入。</p>
+
+<h3>明確不做</h3>
+<ul class="no-list">
+  <li>嚴格優惠券核銷 API（原子性 claim、防重複使用、防偽造）—— 老闆決定當作行銷成本</li>
+  <li>伺服器端抽獎（目前中獎結果只存在前端）—— 同上</li>
+  <li><code>xp_earned</code> 伺服器端驗證（客人可自選獎勵等級）—— 同上</li>
+  <li>成員角色權限分級（owner / manager / staff）—— 只有一間店，延後</li>
+  <li>RLS 與 Drizzle/NextAuth 架構重構 —— 延後，改以應用層授權為單一防線</li>
+  <li>擋掉重複填寫 —— 刻意不擋，重複填寫是行銷策略的一部分</li>
+</ul>
+
+<h2>三、工作項細節</h2>
+
+<h3>1. 登入改為 Google OAuth + email 白名單 <span class="tag t-must">必做</span></h3>
+
+<div class="evidence">
+  <b>問題證據</b>　<code>src/auth.ts:16-31</code>　<code>authorize()</code> 僅檢查字串是否含 <code>@</code>，
+  隨即 upsert 使用者並發出 session。無密碼、無驗證碼、無 OAuth。
+  <code>src/app/api/auth/register/route.ts:27</code> 有儲存密碼 hash，但登入流程完全不檢查。<br>
+  <b>實際後果</b>　知道店長 email 的人即可登入後台，讀取全部客人聯絡資料、匯出 CSV、
+  或呼叫 <code>/api/stores/[storeId]/reset</code> 清空資料。
+</div>
+
+<p><b>方案</b></p>
+<ul>
+  <li>在 <code>src/auth.config.ts</code> 的 <code>providers</code> 加入 NextAuth Google provider（Edge 相容，可放在此檔）。</li>
+  <li>新增 <code>signIn</code> callback：比對登入 email 是否在白名單內，不在則拒絕登入。</li>
+  <li>白名單以環境變數 <code>ALLOWED_LOGIN_EMAILS</code> 提供，逗號分隔，比對前一律轉小寫並去除空白。</li>
+  <li><b>移除</b> <code>src/auth.ts</code> 中的 Credentials provider 與 <code>src/app/api/auth/login/route.ts</code> 的無驗證登入路徑。</li>
+  <li>保留既有 <code>users</code> 表的 upsert 行為（首次 Google 登入時建立使用者），但僅在通過白名單後執行。</li>
+</ul>
+
+<p><b>環境變數</b>（新增，值存入 <code>~/.credentials/global.env</code>，本檔與程式碼不得出現明文）</p>
+<pre><code>AUTH_GOOGLE_ID=...
+AUTH_GOOGLE_SECRET=...
+ALLOWED_LOGIN_EMAILS=leechishen@gmail.com,&lt;店長 Gmail&gt;</code></pre>
+
+<div class="accept">
+  <b>驗收條件</b>
+  <ol>
+    <li>白名單內的 Google 帳號可成功登入並進入 <code>/feedbites/dashboard</code>。</li>
+    <li>白名單外的 Google 帳號登入後被拒絕，導回登入頁並顯示明確訊息（非 500）。</li>
+    <li>舊的 email-only 登入路徑已不存在：直接 POST <code>/api/auth/login</code> 回傳 404 或 405。</li>
+    <li>未登入時存取 <code>/dashboard</code> 仍為 307 導向 <code>/login</code>。</li>
+  </ol>
+</div>
+
+<h3>2. 公開 PATCH 加約束 <span class="tag t-must">必做</span></h3>
+
+<div class="evidence">
+  <b>問題證據</b>　<code>src/app/api/surveys/[id]/responses/route.ts:174-199</code>
+  公開 PATCH 僅需 <code>response_id</code> 即可更新 <code>phone</code> / <code>email</code>，
+  <code>where</code> 條件未綁定網址上的 survey id，亦無擁有權憑證。<br>
+  同檔 <code>:202-209</code>　一旦帶入 email，系統會查出<b>該筆 response 對應的優惠碼並寄出</b>，
+  形成「將他人優惠碼寄至攻擊者信箱」的路徑，同時消耗共用的 Resend 額度（可被當作寄信跳板，
+  Resend 帳號一旦被封鎖將影響所有專案）。
+</div>
+
+<p><b>方案</b>（不實作完整 claim token，取最小成本的兩道約束）</p>
+<ul>
+  <li><b>綁定 survey</b>：<code>where</code> 條件改為同時比對 <code>responses.id = response_id</code> 與
+      <code>responses.survey_id = id</code>（<code>id</code> 取自 URL params）。</li>
+  <li><b>時間窗</b>：僅允許 <code>submitted_at</code> 在 <b>30 分鐘</b> 內的 response 被修改；逾時回傳 403。
+      理由：此 API 的正當用途是「客人填完後補留電話 / email」，該行為必定發生在填答後短時間內。</li>
+  <li>更新結果為 0 筆時回傳 404，不得靜默成功。</li>
+</ul>
+
+<div class="accept">
+  <b>驗收條件</b>
+  <ol>
+    <li>用 A 問卷的 <code>response_id</code> 對 B 問卷的 PATCH 端點發送請求 → 404，且資料未被修改。</li>
+    <li>對 30 分鐘前建立的 response 發送 PATCH → 403，且不觸發任何寄信。</li>
+    <li>正常流程（填完問卷後立即補填手機）仍可成功。</li>
+  </ol>
+</div>
+
+<h3>3. 錯誤日誌與 request ID <span class="tag t-must">必做</span></h3>
+
+<div class="evidence">
+  <b>問題證據</b>　<code>responses/route.ts:169</code> 的 catch 區塊完全不記錄例外，僅回傳「伺服器錯誤」；
+  同檔 <code>:46</code> GET 亦吞錯；<code>:113</code> LINE 推播為 <code>catch {}</code> 全靜默。
+  <code>package.json</code> 無任何錯誤追蹤依賴，亦無測試 script。<br>
+  <b>實際後果</b>　目標 D（挖出系統問題）在沒有日誌的前提下無法達成；店長回報「怪怪的」時無從查起。
+</div>
+
+<p><b>方案</b>（P0 只做最小可用，不引入 Sentry 等外部服務）</p>
+<ul>
+  <li>新增 <code>src/lib/logger.ts</code>：輸出單行 JSON 至 stdout（EC2 由 Docker/journald 收集即可）。
+      欄位固定為 <code>ts</code>、<code>level</code>、<code>event</code>、<code>request_id</code>、
+      <code>store_id</code>、<code>survey_id</code>、<code>response_id</code>、<code>msg</code>。</li>
+  <li>每個 API request 產生一組 <code>request_id</code>（<code>crypto.randomUUID()</code>），
+      錯誤回應的 JSON 一併回傳該 id，讓店長截圖即可對應日誌。</li>
+  <li>把所有空的 <code>catch {}</code> 與吞錯的 catch 補上 <code>logger.error</code>。</li>
+  <li><b>禁止記錄</b>完整電話、email、問卷答案內容。電話與 email 僅記錄遮罩後的形式
+      （例：<code>09**-***-123</code>、<code>a***@gmail.com</code>）。</li>
+</ul>
+
+<div class="accept">
+  <b>驗收條件</b>
+  <ol>
+    <li>刻意讓提交失敗，容器日誌中可查到含 <code>request_id</code> 與 <code>survey_id</code> 的錯誤行。</li>
+    <li>錯誤回應的 JSON 內含同一組 <code>request_id</code>。</li>
+    <li>用真實電話與 email 填答一次，日誌中<b>不得</b>出現完整號碼或完整信箱。</li>
+  </ol>
+</div>
+
+<h3>4. <code>getSelectedStore</code> 補 <code>user_id</code> 條件 <span class="tag t-cheap">順手修</span></h3>
+
+<div class="evidence">
+  <b>問題證據</b>　<code>src/lib/store-context.ts:36-40</code>
+  查詢 membership 時僅比對 <code>store_members.store_id = storeId</code>，未比對 <code>user_id</code>。
+  只要該店存在任一成員即判定通過；而決定看哪家店的 <code>feedbites_store_id</code> 是使用者可自行修改的 cookie。<br>
+  <b>現況風險</b>　因目前只有一間店，實際可利用性趨近於零。修復成本為單一 <code>where</code> 條件，
+  低於記錄技術債的成本，故納入本階段。
+</div>
+
+<p><b>方案</b>：<code>where</code> 改為 <code>and(eq(store_members.store_id, storeId), eq(store_members.user_id, userId))</code>。</p>
+
+<div class="accept">
+  <b>驗收條件</b>　使用者 A 手動把 cookie <code>feedbites_store_id</code> 改成非其擁有／非其成員的 store id，
+  重新整理後<b>不得</b>看到該店資料，應退回自己的第一間店或空狀態。
+</div>
+
+<h3>5. 優惠券店員手動標記已使用 <span class="tag t-design">設計調整</span></h3>
+
+<div class="evidence">
+  <b>問題證據</b>　<code>discount_codes</code> 具備 <code>is_used</code>、<code>used_at</code> 欄位
+  （<code>schema.ts:96-97</code>），<code>src/lib/discount.ts:21-23</code> 甚至定義了
+  <code>already_used</code> 狀態，但<b>全專案沒有任何一行將 <code>is_used</code> 設為 true</b> ——
+  僅在建立時寫入 <code>false</code>（<code>responses/route.ts:144</code>）。
+  儀表板 <code>dashboard/surveys/[id]/page.tsx:78</code> 統計 <code>usedCodes</code>，
+  因此該數字<b>永遠顯示 0</b>。<br>
+  <b>為何要處理</b>　老闆已決定不做嚴格核銷，但儀表板持續顯示明顯錯誤的「已使用 0 張」會讓店長判定
+  系統不可信，直接損害目標 A（店長每天願意打開）。
+</div>
+
+<p><b>方案</b>（純記帳工具，<b>不</b>防重複、<b>不</b>防偽造，符合「優惠碼當行銷」的決定）</p>
+<ul>
+  <li>店長後台的優惠券清單，每筆加一個「標記已使用 / 取消標記」切換按鈕。</li>
+  <li>新增 <code>PATCH /api/discounts/[code]/mark</code>，需登入且該 code 屬於目前選定的 store。</li>
+  <li>寫入 <code>is_used</code> 與 <code>used_at</code>；允許取消（改回 false 並清空 <code>used_at</code>）。</li>
+  <li>儀表板文案由「已使用」改為「已核銷（店長標記）」，明確表達這是人工記錄而非系統驗證。</li>
+</ul>
+
+<div class="accept">
+  <b>驗收條件</b>
+  <ol>
+    <li>店長點擊標記後，重新整理仍為已標記狀態，<code>used_at</code> 有值。</li>
+    <li>儀表板「已核銷」數字隨標記即時反映，不再恆為 0。</li>
+    <li>未登入呼叫該 API → 401；用他店的 code → 404。</li>
+  </ol>
+</div>
+
+<h3>6. 裝置識別碼與 AI 分析去重 <span class="tag t-design">設計調整</span></h3>
+
+<div class="evidence">
+  <b>問題證據</b>　<code>src/app/s/[surveyId]/SurveyClient.tsx:18-21</code>
+  防重複提交函式被停用並永遠回傳 <code>false</code>，程式碼註解為
+  <code>Disabled: allow unlimited submissions for testing</code>。<br>
+  <b>決策</b>　老闆決定<b>不擋</b>重複填寫（佔便宜心態有助宣傳），但目標 B 要求 AI 分析可信。
+  若同一人填十次被算成十個人，第一份 AI 報告會建立在被放大的單一意見上，
+  導致依錯誤結論調整菜單 —— 比沒有報告更糟。因此改為<b>照常發券、但標記來源</b>。
+</div>
+
+<p><b>方案</b></p>
+<ul>
+  <li>新增 migration <code>020_response_device_key.sql</code>：
+      <code>ALTER TABLE responses ADD COLUMN IF NOT EXISTS device_key TEXT;</code>，
+      並建立索引 <code>idx_responses_device_key</code>。同步更新 <code>src/lib/db/schema.ts</code>。</li>
+  <li>前端在 <code>localStorage</code> 保存一組隨機 UUID 作為 <code>device_key</code>（不存在則產生），
+      提交時一併送出。此值不含任何個人資訊。</li>
+  <li>後端原樣寫入，<b>不做任何阻擋</b>，發券行為完全不變。</li>
+  <li>AI 分析與統計端（<code>/api/ai/feedback-*</code>、洞察頁）以 <code>device_key</code> 分組：
+      同一 <code>device_key</code> 的多筆回應在<b>意見分析</b>時<b>只取 <code>submitted_at</code> 最新的一筆</b>
+      （不做合併，避免同一人前後矛盾的答案被拼成不存在的意見），
+      在<b>發券張數</b>統計時仍分別計算。<code>device_key</code> 為 NULL 的舊資料一律各自視為獨立填答。</li>
+  <li>儀表板同時呈現「總填答數」與「不重複裝置數」兩個數字，讓店長看得出行銷聲量與真實客數的差別。</li>
+</ul>
+
+<div class="accept">
+  <b>驗收條件</b>
+  <ol>
+    <li>同一瀏覽器連續填 3 次 → 拿到 3 張券（行為不變），儀表板顯示「總填答 3 / 不重複裝置 1」。</li>
+    <li>AI 分析輸入的資料集中，該裝置僅出現一次。</li>
+    <li>清除 localStorage 後再填 → 視為新裝置（已知限制，接受）。</li>
+  </ol>
+</div>
+
+<h3>7. 確認並處置 Vercel／EC2 雙部署 <span class="tag t-cheap">順手修</span></h3>
+
+<div class="evidence">
+  <b>問題證據</b>　專案同時存在 Vercel 綁定（<code>.vercel/project.json</code>，
+  project <code>prj_kTepX6…gAPC</code>）與 EC2 部署（<code>Dockerfile</code>、<code>scripts/deploy-ec2.sh</code>、
+  <code>scripts/nginx-feedbites.conf</code>）。<code>vercel.json</code> 設有 cron
+  <code>/api/cron/knowledge-refresh</code>（每週一 18:00），該路徑<b>未含 <code>/feedbites</code> 前綴</b>，
+  與 <code>next.config.ts:5</code> 的 <code>basePath</code> 不一致。
+  專案 <code>CLAUDE.md</code> 仍記載「推上 GitHub 後 Vercel 自動部署」，與實際跑在 EC2 的現況不符。<br>
+  <b>未能確認</b>　Vercel 專案是否仍在部署、cron 是否啟用、兩邊是否共用同一 <code>DATABASE_URL</code>。
+  此為靜態稽核無法判定的部分，須實際查證。
+</div>
+
+<p><b>方案</b></p>
+<ul>
+  <li>查 Vercel 專案的最新部署狀態與 cron 執行紀錄。</li>
+  <li>若仍在運作：確認其 <code>DATABASE_URL</code> 是否指向同一資料庫。是則<b>立即停用該部署</b>
+      （移除 production domain 或暫停專案），避免雙寫。</li>
+  <li>確定 <code>knowledge-refresh</code> 這支 cron 的唯一執行者（EC2 system cron 或 Vercel 擇一），
+      並修正路徑使其與 basePath 一致。</li>
+  <li>更新專案 <code>CLAUDE.md</code> 的部署段落，改為 EC2 實況。</li>
+</ul>
+
+<div class="accept">
+  <b>驗收條件</b>
+  <ol>
+    <li>能明確回答「正式站是哪一套、cron 由誰跑」，並寫入專案 <code>CLAUDE.md</code>。</li>
+    <li>不存在第二套連向同一資料庫的運行中部署。</li>
+    <li><code>knowledge-refresh</code> 有一次可驗證的成功執行紀錄。</li>
+  </ol>
+</div>
+
+<h2>四、開工前待補資訊</h2>
+<div class="card warn">
+<table>
+  <tr><th>項目</th><th>用途</th><th>取得方式</th></tr>
+  <tr><td>店長的 Gmail 帳號</td><td>填入 <code>ALLOWED_LOGIN_EMAILS</code> 白名單</td><td>向欣殿萬飲確認實際使用後台的人員與信箱</td></tr>
+  <tr><td>Google OAuth Client ID / Secret</td><td>Google 登入</td><td>Google Cloud Console 建立 OAuth 用戶端，
+      redirect URI 設為 <code>https://poc.mcstation.ai/feedbites/api/auth/callback/google</code></td></tr>
+  <tr><td>Vercel 專案現況</td><td>工作項 7 判斷依據</td><td>查 Vercel 後台部署與 cron 紀錄</td></tr>
+</table>
+<p>前兩項未取得前，工作項 1 可完成程式碼與本機測試，但無法完成正式站驗收。</p>
+</div>
+
+<h2>五、資料庫變更</h2>
+<table>
+  <tr><th>檔案</th><th>內容</th><th>可逆性</th></tr>
+  <tr>
+    <td><code>supabase/migrations/020_response_device_key.sql</code></td>
+    <td>responses 新增 <code>device_key TEXT</code>（可為 NULL）＋ 索引</td>
+    <td>純新增欄位，不影響既有資料，可直接 DROP COLUMN 回滾</td>
+  </tr>
+</table>
+<p>其餘五項不涉及 schema 變更。<code>discount_codes</code> 既有的 <code>is_used</code> / <code>used_at</code>
+欄位本次才首度被寫入，無需新增欄位。</p>
+
+<h2>六、已接受的風險（老闆明示決定）</h2>
+<div class="card warn">
+<table>
+  <tr><th>風險</th><th>影響</th><th>接受理由</th></tr>
+  <tr><td>優惠碼可被複製、重複使用</td><td>店家承擔額外折扣成本</td><td>視為行銷支出，佔便宜心態可帶動口碑與來店</td></tr>
+  <tr><td>中獎結果由前端決定，可被偽造</td><td>客人可自選最高獎項</td><td>同上</td></tr>
+  <tr><td><code>xp_earned</code> 由客戶端傳入決定獎勵等級</td><td>同上</td><td>同上</td></tr>
+  <tr><td>同一人可無限次填寫</td><td>發券量高於真實客數</td><td>刻意不擋；資料污染改以 device_key 去重解決</td></tr>
+  <tr><td>成員無角色權限分級</td><td>任一成員可邀請／移除其他成員</td><td>目前僅一間店、成員極少，延後至第二家店前處理</td></tr>
+  <tr><td>RLS 未實際生效於應用層</td><td>應用層授權為單一防線</td><td>延後；本階段以工作項 1、4 強化應用層授權</td></tr>
+</table>
+</div>
+
+<h2>七、端到端驗收（P0 完成的定義）</h2>
+<p>以下流程須在<b>真實手機</b>上跑通，桌面 + iPhone + Android 三端截圖全過才算完成
+（依全域規範 <code>DEPLOY_VERIFICATION</code>）：</p>
+<ol>
+  <li>店長用白名單內 Google 帳號登入後台，非白名單帳號被拒。</li>
+  <li>手機掃桌上 QR → 開啟問卷 → 填答 → 取得優惠碼。（Safari 與 Chrome 各測一次）</li>
+  <li>店長在後台看到該筆回饋，點「標記已核銷」，數字更新。</li>
+  <li>同一手機再填一次 → 仍可取得優惠碼，儀表板顯示總填答 2 / 不重複裝置 1。</li>
+  <li>刻意送出錯誤請求 → 回應含 request_id，日誌可查到對應行，且日誌內無完整電話／email。</li>
+  <li>確認正式站只有 EC2 一套在跑（Vercel 專案狀態需查明並處置）。</li>
+</ol>
+
+<div class="card danger">
+  <p><b>P0 期間的暫時管制</b>：在工作項 1（登入驗證）完成部署前，
+  不對外發布任何 FeedBites 連結或 QR，包含測試用途。</p>
+</div>
+
+<h2>八、後續階段（本規格不涵蓋）</h2>
+<table>
+  <tr><th>階段</th><th>內容</th><th>前置條件</th></tr>
+  <tr><td>P1</td><td>桌上 QR 立牌（帶 table / campaign 參數）、短問卷、店長 Today 頁、<b>自願</b>身分綁定</td><td>P0 完成</td></tr>
+  <tr><td>P2</td><td>顧客主檔、LINE Login / LIFF 綁定、點數 ledger</td><td>P1 有真實轉換率數據；點數 15 條規則先定案</td></tr>
+  <tr><td>P3</td><td>LINE 12cm 整合</td><td>商務合約與資料主權歸屬定案</td></tr>
+  <tr><td>P4</td><td>智能 IP 櫃（單面）取物</td><td>兌換模型先於實體櫃完成</td></tr>
+</table>
+
+<div class="card">
+  <p><b>已知的跨階段衝突，需在 P2 前解決</b>：
+  <code>src/components/LineBrowserGuard.tsx</code> 目前在全站以不可關閉的全螢幕遮罩<b>阻擋 LINE 內建瀏覽器</b>。
+  未來 LINE Login / LIFF 正是運行於該瀏覽器內，此防護會擋住自家的會員入口。
+  P2 開始前必須改為「LIFF 路徑放行、其餘維持阻擋」或改採其他相容方案。</p>
+</div>
+
+<footer>
+  FeedBites P0 設計規格　·　AI CPO 撰寫　·　2026-08-11<br>
+  稽核依據：Claude Opus 5 + Codex 雙模型對抗審查，引用行號經 Claude 逐一開檔核實。<br>
+  相關紀錄：<code>~/.claude/shared_intel/PROGRESS_LOG.md</code>（2026-08-10 條目）
+</footer>
+
+</div>
+</body>
+</html>
