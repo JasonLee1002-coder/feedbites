@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
 import { stores, store_members } from '@/lib/db/schema';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 
 const STORE_COOKIE = 'feedbites_store_id';
 
@@ -36,7 +36,10 @@ export async function getSelectedStore(userId: string) {
       const [membership] = await db
         .select({ id: store_members.id })
         .from(store_members)
-        .where(eq(store_members.store_id, storeId))
+        .where(and(
+          eq(store_members.store_id, storeId),
+          eq(store_members.user_id, userId),
+        ))
         .limit(1);
 
       if (membership) {
