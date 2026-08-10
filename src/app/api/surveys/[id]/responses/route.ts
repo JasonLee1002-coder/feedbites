@@ -2,11 +2,12 @@ import { auth } from '@/auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { surveys, responses, discount_codes, stores } from '@/lib/db/schema'
-import { eq, desc } from 'drizzle-orm'
+import { eq, and, desc } from 'drizzle-orm'
 import { createDiscountCode, getExpiryDate } from '@/lib/discount'
 import { getSelectedStore } from '@/lib/store-context'
 import { Resend } from 'resend'
 import { checkAndPushUrgentAlert } from '@/lib/line/urgent-alert'
+import { logger, newRequestId, maskPhone } from '@/lib/logger'
 
 // GET: List responses (owner only)
 export async function GET(
@@ -171,18 +172,23 @@ export async function POST(
   }
 }
 
-// PATCH: Update phone/email on an existing response (public, best-effort)
+// PATCH: Update phone/email on an existing response (public, time-boxed)
+// 約束：①只能改同一份問卷底下的 response ②只能在提交後 30 分鐘內改
+// 正當用途是「客人填完後回頭補留聯絡方式」，該行為必定發生在填答後短時間內。
+const PATCH_WINDOW_MS = 30 * 60 * 1000
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const request_id = newRequestId()
   try {
     const { id } = await params
     const body = await request.json()
     const { response_id, phone, email, prize_label, prize_emoji } = body
 
     if (!response_id) {
-      return NextResponse.json({ error: '缺少參數' }, { status: 400 })
+      return NextResponse.json({ error: '缺少參數', request_id }, { status: 400 })
     }
 
     const updates: Record<string, string> = {}
@@ -190,7 +196,32 @@ export async function PATCH(
     if (email) updates.email = email
 
     if (Object.keys(updates).length === 0) {
-      return NextResponse.json({ error: '沒有要更新的欄位' }, { status: 400 })
+      return NextResponse.json({ error: '沒有要更新的欄位', request_id }, { status: 400 })
+    }
+
+    // ① 必須屬於網址上這份問卷
+    const [existing] = await db
+      .select({ id: responses.id, submitted_at: responses.submitted_at })
+      .from(responses)
+      .where(and(
+        eq(responses.id, response_id),
+        eq(responses.survey_id, id),
+      ))
+      .limit(1)
+
+    if (!existing) {
+      logger.warn('response.patch.not_found',
+        { request_id, survey_id: id, response_id, attempted_phone: maskPhone(phone) },
+        'response_id does not belong to this survey')
+      return NextResponse.json({ error: '找不到可修改的回覆', request_id }, { status: 404 })
+    }
+
+    // ② 必須在時間窗內
+    const submittedAt = existing.submitted_at ? new Date(existing.submitted_at).getTime() : 0
+    if (Date.now() - submittedAt > PATCH_WINDOW_MS) {
+      logger.warn('response.patch.expired', { request_id, survey_id: id, response_id },
+        'edit window expired')
+      return NextResponse.json({ error: '已超過可修改時間', request_id }, { status: 403 })
     }
 
     await db
@@ -303,7 +334,8 @@ export async function PATCH(
     }
 
     return NextResponse.json({ success: true })
-  } catch {
-    return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 })
+  } catch (err) {
+    logger.error('response.patch.failed', { request_id }, err)
+    return NextResponse.json({ error: '伺服器錯誤', request_id }, { status: 500 })
   }
 }
