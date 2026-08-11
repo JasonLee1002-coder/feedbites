@@ -6,9 +6,10 @@ import { db } from '@/lib/db';
 import { surveys, responses, discount_codes } from '@/lib/db/schema';
 import { and, eq, desc } from 'drizzle-orm';
 import { templates } from '@/lib/templates';
-import { ArrowLeft, TrendingUp, TrendingDown, Flame, Zap, Crown, Target, BarChart3, MessageCircle, Printer } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Flame, Zap, Crown, Target, BarChart3, MessageCircle, Printer, Users } from 'lucide-react';
 import type { TemplateId, Question, SurveyResponse, DiscountTier } from '@/types/survey';
 import SurveyDetailClient from './SurveyDetailClient';
+import RedeemCodeBox from './RedeemCodeBox';
 import { getSelectedStore } from '@/lib/store-context';
 
 interface PageProps {
@@ -59,6 +60,16 @@ export default async function SurveyDetailPage({ params }: PageProps) {
   const template = templates[survey.template_id as TemplateId];
   const questions: Question[] = (survey.questions as Question[]) || [];
   const publicUrl = `https://poc.mcstation.ai/feedbites/s/${survey.id}`;
+
+  const deviceRows = await db
+    .select({ device_key: responses.device_key })
+    .from(responses)
+    .where(eq(responses.survey_id, id));
+
+  // 不重複裝置數：device_key 為 NULL 的舊資料一律各自視為獨立填答
+  const uniqueDevices = new Set(
+    deviceRows.map((r, i) => r.device_key ?? `__legacy_${i}`)
+  ).size;
 
   const discountCodeRows = await db
     .select({ is_used: discount_codes.is_used, created_at: discount_codes.created_at, expires_at: discount_codes.expires_at })
@@ -212,7 +223,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
       </div>
 
       {/* Mini KPI Strips */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
         <div className="bg-white rounded-xl border border-[#E8E2D8] px-4 py-3 flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center"><Target className="w-4 h-4 text-emerald-500" /></div>
           <div><div className="text-lg font-bold text-[#3A3A3A]">{completionRate}%</div><div className="text-[10px] text-[#8A8585]">完成率</div></div>
@@ -220,6 +231,10 @@ export default async function SurveyDetailPage({ params }: PageProps) {
         <div className="bg-white rounded-xl border border-[#E8E2D8] px-4 py-3 flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center"><BarChart3 className="w-4 h-4 text-blue-500" /></div>
           <div><div className="text-lg font-bold text-[#3A3A3A]">{weekResponses}</div><div className="text-[10px] text-[#8A8585]">本週回覆</div></div>
+        </div>
+        <div className="bg-white rounded-xl border border-[#E8E2D8] px-4 py-3 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-cyan-50 flex items-center justify-center"><Users className="w-4 h-4 text-cyan-500" /></div>
+          <div><div className="text-lg font-bold text-[#3A3A3A]">{uniqueDevices}</div><div className="text-[10px] text-[#8A8585]">不重複裝置</div><div className="text-[9px] text-[#8A8585]/60">總填答 {totalResponses} 次</div></div>
         </div>
         <div className="bg-white rounded-xl border border-[#E8E2D8] px-4 py-3 flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center"><Zap className="w-4 h-4 text-amber-500" /></div>
@@ -417,7 +432,8 @@ export default async function SurveyDetailPage({ params }: PageProps) {
                   <div className="mt-4 pt-3 border-t border-[#E8E2D8]">
                     <div className="flex items-center justify-between mb-2"><span className="text-xs text-[#8A8585]">核銷率</span><span className="text-sm font-bold text-[#C5A55A]">{codeUsageRate}%</span></div>
                     <div className="w-full h-2.5 bg-[#F3F0E8] rounded-full overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-[#C5A55A] to-[#FFD700]" style={{ width: `${codeUsageRate}%` }} /></div>
-                    <div className="flex justify-between mt-1.5"><span className="text-[10px] text-[#8A8585]">已發 {totalCodes} 張</span><span className="text-[10px] text-emerald-600 font-medium">已核銷 {usedCodes} 張</span></div>
+                    <div className="flex justify-between mt-1.5"><span className="text-[10px] text-[#8A8585]">已發 {totalCodes} 張</span><span className="text-[10px] text-emerald-600 font-medium">已核銷（店長標記）{usedCodes} 張</span></div>
+                    <RedeemCodeBox />
                   </div>
                 )}
               </>

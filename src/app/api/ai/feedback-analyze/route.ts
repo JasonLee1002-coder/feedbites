@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { surveys, responses, feedback_insights } from '@/lib/db/schema';
 import { eq, gte, lte, inArray, desc, count } from 'drizzle-orm';
 import { getSelectedStore } from '@/lib/store-context';
+import { dedupeByDevice } from '@/lib/dedupe';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -51,6 +52,7 @@ export async function POST(request: NextRequest) {
         answers: responses.answers,
         submitted_at: responses.submitted_at,
         xp_earned: responses.xp_earned,
+        device_key: responses.device_key,
       })
       .from(responses)
       .where(
@@ -59,11 +61,15 @@ export async function POST(request: NextRequest) {
       .orderBy(desc(responses.submitted_at));
 
     // Filter by period in memory (avoids complex date range with inArray)
-    const filteredResponses = responseRows.filter((r) => {
+    const periodResponses = responseRows.filter((r) => {
       if (!r.submitted_at) return false;
       const t = new Date(r.submitted_at);
       return t >= periodStart && t <= periodEnd;
     });
+
+    // 同一裝置的重複填答只取最新一筆，避免單一顧客的意見被放大成多人共識。
+    // 注意：這只影響「意見分析」，發券張數與填答次數統計不受影響。
+    const filteredResponses = dedupeByDevice(periodResponses);
 
     if (filteredResponses.length === 0) {
       return NextResponse.json({

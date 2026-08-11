@@ -84,6 +84,7 @@ export const responses = pgTable('responses', {
   phone:           text('phone'),
   email:           text('email'),
   xp_earned:       integer('xp_earned'),
+  device_key:      text('device_key'),
   submitted_at:    timestamp('submitted_at', { withTimezone: true }).default(sql`NOW()`),
 })
 

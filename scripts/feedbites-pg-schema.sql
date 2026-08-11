@@ -86,12 +86,14 @@ CREATE TABLE IF NOT EXISTS responses (
   phone           TEXT,
   email           TEXT,
   xp_earned       INTEGER,
+  device_key      TEXT,
   submitted_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_responses_survey_id ON responses(survey_id);
-CREATE INDEX IF NOT EXISTS idx_responses_phone     ON responses(phone) WHERE phone IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_responses_email     ON responses(email) WHERE email IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_responses_survey_id  ON responses(survey_id);
+CREATE INDEX IF NOT EXISTS idx_responses_phone      ON responses(phone) WHERE phone IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_responses_email      ON responses(email) WHERE email IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_responses_device_key ON responses(device_key);
 
 -- ============================================================
 -- discount_codes (001)
@@ -369,3 +371,7 @@ CREATE INDEX IF NOT EXISTS idx_knowledge_gaps ON knowledge_gaps(project, status,
 INSERT INTO users (email, password_hash)
 VALUES ('jason@mcstation.ai', '$2b$10$K7L/8Y2z9mQ.P4v5Z3N2GeP3FKhQm4TF.rFr8oE0vvqm7KZuCbv3u')
 ON CONFLICT (email) DO NOTHING;
+
+-- ── 020: device_key（對既有資料庫補欄位）──
+ALTER TABLE responses ADD COLUMN IF NOT EXISTS device_key TEXT;
+CREATE INDEX IF NOT EXISTS idx_responses_device_key ON responses(device_key);
