@@ -53,6 +53,15 @@ export default function PrivacyPage() {
           </section>
 
           <section>
+            <h2 className="text-lg font-bold mb-2">常來點的登入與點數</h2>
+            <p className="text-[#8A8585]">
+              您用 LINE 或 Google 登入領取點數時，我們只取得該服務的使用者識別碼、顯示名稱與頭像，不取得您的好友、訊息、電話或 Email。
+              這些資料只用於記錄您在各店家的點數與餐券，不會提供給第三方。
+              店家只看得到您在該店的填答與點數紀錄。刪除請求處理方式同下方「資料刪除」。
+            </p>
+          </section>
+
+          <section>
             <h2 className="text-lg font-bold mb-2">資料刪除</h2>
             <p className="text-[#8A8585]">
               如需刪除帳號或相關資料，請聯繫我們，我們將在 30 天內處理您的請求。

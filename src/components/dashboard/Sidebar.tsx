@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LogOut, Menu, Plus, LayoutDashboard, UtensilsCrossed, ClipboardList, Sparkles, Settings } from 'lucide-react';
+import { LogOut, Menu, Plus, LayoutDashboard, UtensilsCrossed, ClipboardList, Sparkles, Settings, Ticket } from 'lucide-react';
 import { useState } from 'react';
 import { signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -25,6 +25,7 @@ const navItems = [
   { href: '/dashboard',          label: '總覽',    icon: LayoutDashboard },
   { href: '/dashboard/menu',     label: '菜單管理', icon: UtensilsCrossed },
   { href: '/dashboard/surveys',  label: '問卷管理', icon: ClipboardList },
+  { href: '/dashboard/vouchers', label: '點數與餐券', icon: Ticket },
   { href: '/dashboard/insights', label: 'AI 洞察', icon: Sparkles },
   { href: '/dashboard/settings', label: '店家設定', icon: Settings },
 ];
