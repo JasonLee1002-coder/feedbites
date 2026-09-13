@@ -11,6 +11,7 @@
 - **身分**：顧客端 LINE Login（Jason 定），與店長 Google 登入分開；匿名可填，領點才登入
 - **首張餐券**：填完第一份問卷即發，面額待阿水給毛利
 - **品牌（2026-09-13 Jason 定案）**：對客品牌「常來點」，英文 **EatAgain**；FeedBites 留作店長後台名
+- **Logo（2026-09-13 Jason 選 A）**：笑臉碗加回來箭頭，橘色 #DB5620。檔案在 `docs/brand/`：`changlaidian-lockup.png`（橫式含字）、`changlaidian-icon-1024/512/192/180/32.png`（App 圖示）、`changlaidian-line-avatar-640.png`（LINE 官方帳號頭像）
 - **許願功能命名（同日定案）**：客人畫面叫「敲碗」，店長後台叫「許願」；外文畫面英文 Request／Wish、日文 リクエスト、韓文 요청하기，跟隨按鈕 +1。四種語言按鈕位置與圖示一致
 - **設計 spec**：`docs/superpowers/specs/2026-09-13-customer-ledger-design.html`（第一期六件：素材庫、問卷連菜品 ID、時段×菜品×客群分析、點數帳與許願、LINE Login、餐券與核銷、總部唯讀視角）
 - 更上位的目標：AI 勞動力替代餐飲人力。欣殿萬飲是實驗場，每個 AI 工位要用實測人時證明；店家利益立場見 `欣殿萬飲/CLAUDE.md`
