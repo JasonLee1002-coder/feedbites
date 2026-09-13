@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS vouchers (
   cost_points  INTEGER NOT NULL,
   status       TEXT NOT NULL DEFAULT 'active',
   used_at      TIMESTAMPTZ,
-  used_by      UUID REFERENCES users(id),
+  used_by      UUID REFERENCES users(id) ON DELETE SET NULL,
   expires_at   TIMESTAMPTZ NOT NULL,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

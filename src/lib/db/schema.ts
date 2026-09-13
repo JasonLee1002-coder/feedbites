@@ -376,7 +376,7 @@ export const vouchers = pgTable('vouchers', {
   cost_points: integer('cost_points').notNull(),
   status:      text('status').notNull().default('active'),
   used_at:     timestamp('used_at', { withTimezone: true }),
-  used_by:     uuid('used_by').references(() => users.id),
+  used_by:     uuid('used_by').references(() => users.id, { onDelete: 'set null' }),
   expires_at:  timestamp('expires_at', { withTimezone: true }).notNull(),
   created_at:  timestamp('created_at', { withTimezone: true }).notNull().default(sql`NOW()`),
 })
