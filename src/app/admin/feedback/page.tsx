@@ -163,7 +163,7 @@ export default function AdminFeedbackPage() {
             <p className="text-[10px] text-[#8A8585]">意見回報管理</p>
           </div>
         </div>
-        <a href="/dashboard" className="text-xs text-[#C5A55A] hover:text-[#A08735]">
+        <a href={`${BASE_PATH}/dashboard`} className="text-xs text-[#C5A55A] hover:text-[#A08735]">
           回到 Dashboard →
         </a>
       </div>

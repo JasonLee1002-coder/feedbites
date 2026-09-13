@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 import { surveys, stores } from '@/lib/db/schema';
 import { and, eq } from 'drizzle-orm';
 import type { Metadata } from 'next';
-import { BRAND_FULL } from '@/lib/brand';
+import { BRAND_FULL, BASE_PATH } from '@/lib/brand';
 import SurveyClient from './SurveyClient';
 
 interface Props {
@@ -70,7 +70,7 @@ export default async function PublicSurveyPage({ params }: Props) {
           或連結有誤，請向店家確認。
         </p>
         <div className="mt-8 text-center">
-          <a href="/" className="text-xs font-medium text-[#C5A55A]">
+          <a href={`${BASE_PATH}/`} className="text-xs font-medium text-[#C5A55A]">
             {BRAND_FULL}
           </a>
           <div className="text-[10px] mt-0.5 text-[#8A8585]">

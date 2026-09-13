@@ -129,7 +129,7 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
             );
           })}
         </div>
-        <a href="/dashboard/new-store"
+        <a href={`${BASE_PATH}/dashboard/new-store`}
           className="flex items-center gap-2 px-3 py-2 mt-1.5 text-xs font-semibold text-orange-400/70 hover:text-orange-400 hover:bg-orange-500/10 rounded-xl transition-all border border-dashed border-orange-500/20 hover:border-orange-500/40">
           <Plus className="w-3.5 h-3.5" />
           新增店家
@@ -184,7 +184,7 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
           </button>
         </div>
         <div className="text-center">
-          <a href="/dashboard/feedback" className="text-[9px] text-white/20 hover:text-white/40 transition-colors">
+          <a href={`${BASE_PATH}/dashboard/feedback`} className="text-[9px] text-white/20 hover:text-white/40 transition-colors">
             意見回饋給 {CUSTOMER_BRAND}
           </a>
         </div>

@@ -44,8 +44,8 @@ const faqData = [
   },
 ];
 
-// 上帝模式密鑰 — 加在網址後面 ?m=eatagain2026 才會顯示招商頁面
-const GOD_MODE_KEY = 'eatagain2026';
+// 上帝模式密鑰 — 加在網址後面 ?m=eatagain2026 才會顯示招商頁面；舊密鑰 feedbites2026 仍有效，避免已分享的連結失效
+const GOD_MODE_KEYS = ['eatagain2026', 'feedbites2026'];
 
 export default async function LandingPage({
   searchParams,
@@ -53,7 +53,7 @@ export default async function LandingPage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const params = await searchParams;
-  const isGodMode = params.m === GOD_MODE_KEY;
+  const isGodMode = typeof params.m === 'string' && GOD_MODE_KEYS.includes(params.m);
 
   const faqJsonLd = {
     '@context': 'https://schema.org',
