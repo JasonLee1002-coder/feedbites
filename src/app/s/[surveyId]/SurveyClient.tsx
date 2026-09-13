@@ -351,40 +351,42 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
 
   // ─── Step: Discount / Thank You ───
   if (step === 'discount' && discountResult) {
+    // 領點列是 fixed bottom，蓋在 DiscountCodeDisplay 上方；留出等高 padding 避免遮住內容。
+    const showClaimBar = Boolean(claimToken || awardedPoints);
     return (
       <>
       {isPreview && <PreviewBar surveyId={survey.id} />}
-      <DiscountCodeDisplay
-        code={discountResult.code}
-        discountValue={discountResult.discount_value || survey.discount_value}
-        expiresAt={discountResult.expires_at}
-        storeName={storeName}
-        colors={colors}
-        discountMode={survey.discount_mode || 'basic'}
-        tierName={discountResult.tier_name}
-        tierEmoji={discountResult.tier_emoji}
-        xpEarned={xpEarned}
-        responseId={responseId || undefined}
-        surveyId={survey.id}
-        prizeItems={survey.prize_items}
-        prizeValidToday={survey.prize_same_day_valid !== false}
-        onPhoneSubmit={(phoneNumber) => {
-          // Update phone on existing response via PATCH
-          if (responseId) {
-            fetch(`${BASE_PATH}/api/surveys/${survey.id}/responses`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                response_id: responseId,
-                phone: phoneNumber,
-              }),
-            }).catch(() => {});
-          }
-        }}
-      />
-      <div className="px-6 pb-10" style={{ background: colors.background }}>
-        <ClaimPointsCard claimToken={claimToken} points={awardedPoints} colors={colors} />
+      <div style={{ paddingBottom: showClaimBar ? 88 : 0 }}>
+        <DiscountCodeDisplay
+          code={discountResult.code}
+          discountValue={discountResult.discount_value || survey.discount_value}
+          expiresAt={discountResult.expires_at}
+          storeName={storeName}
+          colors={colors}
+          discountMode={survey.discount_mode || 'basic'}
+          tierName={discountResult.tier_name}
+          tierEmoji={discountResult.tier_emoji}
+          xpEarned={xpEarned}
+          responseId={responseId || undefined}
+          surveyId={survey.id}
+          prizeItems={survey.prize_items}
+          prizeValidToday={survey.prize_same_day_valid !== false}
+          onPhoneSubmit={(phoneNumber) => {
+            // Update phone on existing response via PATCH
+            if (responseId) {
+              fetch(`${BASE_PATH}/api/surveys/${survey.id}/responses`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  response_id: responseId,
+                  phone: phoneNumber,
+                }),
+              }).catch(() => {});
+            }
+          }}
+        />
       </div>
+      <ClaimPointsCard claimToken={claimToken} points={awardedPoints} colors={colors} variant="bar" />
       </>
     );
   }
