@@ -912,7 +912,7 @@ export default function MenuPage() {
             </p>
             <div className="flex items-center justify-center gap-3">
               <a
-                href="/dashboard/surveys/new"
+                href={`${BASE_PATH}/dashboard/surveys/new`}
                 className="px-5 py-2.5 bg-gradient-to-r from-[#FF8C00] to-[#FF6B00] text-white rounded-xl text-sm font-bold shadow-lg shadow-[#FF8C00]/20 hover:shadow-xl transition-all"
               >
                 下一步：建立問卷 →

@@ -82,7 +82,7 @@ function PreviewBar({ surveyId }: { surveyId: string }) {
         <span className="text-xs font-medium text-white/80">店長預覽模式</span>
       </div>
       <a
-        href={`/dashboard/surveys/${surveyId}`}
+        href={`${BASE_PATH}/dashboard/surveys/${surveyId}`}
         className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-[#C5A55A] text-white text-xs font-bold rounded-full hover:bg-[#A08735] transition-colors"
       >
         ← 返回後台

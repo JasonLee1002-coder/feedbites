@@ -16,6 +16,7 @@ import {
   index,
   bigserial,
   primaryKey,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 
@@ -87,7 +88,7 @@ export const responses = pgTable('responses', {
   email:           text('email'),
   xp_earned:       integer('xp_earned'),
   device_key:      text('device_key'),
-  customer_id:     uuid('customer_id'),
+  customer_id:     uuid('customer_id').references((): AnyPgColumn => customers.id, { onDelete: 'set null' }),
   submitted_at:    timestamp('submitted_at', { withTimezone: true }).default(sql`NOW()`),
 })
 

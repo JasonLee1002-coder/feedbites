@@ -105,6 +105,9 @@ export async function finishLogin(
   } catch (err) {
     logger.error('customer.login.callback.failed', { request_id, provider }, err)
     const storeId = st.store ?? (st.claim ? await getStoreIdForResponse(st.claim) : null)
-    return NextResponse.redirect(walletUrl(storeId, `login=failed${retry}`))
+    const res = NextResponse.redirect(walletUrl(storeId, `login=failed${retry}`))
+    // state 一次性：例外路徑也要清掉，否則 10 分鐘內同一個 state 可被重放
+    res.cookies.delete(OAUTH_STATE_COOKIE)
+    return res
   }
 }
