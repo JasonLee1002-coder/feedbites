@@ -26,7 +26,7 @@
 <body>
 <main>
 <h1>FeedBites 顧客帳本 設計規格</h1>
-<div class="meta">2026-09-13｜文件整理：JASON｜狀態：Jason 已核可設計方向（LINE Login、首張餐券），待審閱本文｜對客品牌名：呷點（暫名）</div>
+<div class="meta">2026-09-13｜文件整理：JASON｜狀態：Jason 已核可設計方向（LINE Login、首張餐券），待審閱本文｜對客品牌名：常來點 EatAgain（2026-09-13 定案）</div>
 
 <h2>一、定義與目標</h2>
 <p><strong>定義。</strong>FeedBites 是餐廳的<strong>顧客帳本</strong>。每一位客人從掃第一次 QR 開始，在這家店做的每件事都記在帳本上並換成點數：填問卷、補資料、許願、線上訂餐、到智取櫃自助取餐。點數換餐券，餐券把人帶回店裡，回店再產生新資料。菜單照片是這本帳的素材庫，未來所有行銷內容都從它長出來。問卷是帳本的第一頁，不是產品本身。</p>
@@ -196,7 +196,7 @@ answers 內 dish-group 的回答
 </ul>
 
 <h2>六、推播</h2>
-<p>本期用<strong>一個平台級 LINE 官方帳號</strong>（品牌：呷點暫名），不是每店一個。理由：跨店身分本來就在平台層，一個 OA 就能對所有客人推播；各店自有 OA 的串接留到第二期。LINE Login 時帶 <code>bot_prompt=aggressive</code> 邀客人加好友，沒加的人收不到推播，但帳本功能不受影響。</p>
+<p>本期用<strong>一個平台級 LINE 官方帳號</strong>（品牌：常來點 EatAgain），不是每店一個。理由：跨店身分本來就在平台層，一個 OA 就能對所有客人推播；各店自有 OA 的串接留到第二期。LINE Login 時帶 <code>bot_prompt=aggressive</code> 邀客人加好友，沒加的人收不到推播，但帳本功能不受影響。</p>
 <p>推播只有三種，全部走既有 <code>src/lib/line/push.ts</code> 擴充：願望被採納、點數 7 天內到期、餐券 7 天內到期。免費額度每月 200 則（見專案記憶），超過就先停「到期提醒」保留「願望採納」，不升級方案。</p>
 
 <h2>七、菜單素材庫</h2>
@@ -259,7 +259,7 @@ answers 內 dish-group 的回答
 
 <h2>十四、待決與假設</h2>
 <ul>
-<li>對客品牌名「呷點」為暫名，Jason 選定後查網域與商標再替換；程式內以常數 <code>CUSTOMER_BRAND</code> 集中管理。</li>
+<li>對客品牌名定案為「常來點」，英文 EatAgain；程式內以常數 <code>CUSTOMER_BRAND</code>、<code>CUSTOMER_BRAND_EN</code> 集中管理。網域與商標待實查。</li><li>許願功能：客人畫面叫「敲碗」、店長後台叫「許願」；英文 Request／Wish、日文 リクエスト、韓文 요청하기，跟隨按鈕 +1。</li>
 <li>首張券面額 NT$30、滿 NT$150 可用為系統預設，正式值待阿水給毛利。</li>
 <li>平台級 LINE OA 需要新申請一個官方帳號並取得 Channel，Jason 授權後由 CTO 建置。</li>
 <li>月費 NT$100 的收款與開通流程不在本期程式範圍；本期所有店以人工開通，收款另議。</li>
