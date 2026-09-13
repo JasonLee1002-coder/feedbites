@@ -462,3 +462,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_vouchers_welcome
 
 ALTER TABLE responses ADD COLUMN IF NOT EXISTS customer_id UUID REFERENCES customers(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_responses_customer ON responses(customer_id);
+
+-- 022: users.google_sub（店長 Google 登入綁定 Google sub）
+ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_users_google_sub ON users(google_sub) WHERE google_sub IS NOT NULL;

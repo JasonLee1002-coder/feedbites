@@ -14,8 +14,9 @@ import { authConfig } from './auth.config'
 import { isEmailAllowed } from '@/lib/auth-allowlist'
 import { isStaffEmailLoginEnabled, normalizeStaffEmail } from '@/lib/staff-login-policy'
 import { createStaffAuthCallbacks } from '@/lib/staff-auth-callbacks'
+import { bindGoogleUserWith, createDbGoogleBindingStore } from '@/lib/staff-google-binding'
 
-/** 以 email 找或建立使用者，回傳 users.id。email 須已正規化（小寫、trim）。 */
+/** 過渡用 email 登入：以 email 找或建立使用者，回傳 users.id。email 須已正規化（小寫、trim）。 */
 async function upsertUserByEmail(email: string): Promise<{ id: string; email: string } | null> {
   const [user] = await db
     .insert(users)
@@ -27,6 +28,8 @@ async function upsertUserByEmail(email: string): Promise<{ id: string; email: st
     .returning({ id: users.id, email: users.email })
   return user ?? null
 }
+
+const googleBindingStore = createDbGoogleBindingStore(db)
 
 const providers: Provider[] = [
   // clientId / clientSecret 由 @auth/core 自動讀 AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET
@@ -56,7 +59,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     ...authConfig.callbacks,
     ...createStaffAuthCallbacks({
-      upsertUserByEmail,
+      // Google 登入綁定 Google sub（users.google_sub），同 email 換人會被拒絕
+      bindGoogleUser: (input) => bindGoogleUserWith(googleBindingStore, input),
       env: () => ({
         allowlistRaw: process.env.ALLOWED_LOGIN_EMAILS,
         emailLoginFlag: process.env.STAFF_EMAIL_LOGIN_ENABLED,

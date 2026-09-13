@@ -27,6 +27,8 @@ const now = () => sql`NOW()`
 export const users = pgTable('users', {
   id:           uuid('id').primaryKey().default(sql`gen_random_uuid()`),
   email:        text('email').unique().notNull(),
+  // 022：店長 Google 登入綁定的 Google sub；NULL = 尚未用 Google 登入過
+  google_sub:   text('google_sub'),
   password_hash: text('password_hash'),
   created_at:   timestamp('created_at', { withTimezone: true }).notNull().default(sql`NOW()`),
   updated_at:   timestamp('updated_at', { withTimezone: true }).notNull().default(sql`NOW()`),
