@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import {
   CUSTOMER_COOKIE, OAUTH_STATE_COOKIE, SESSION_TTL_MS,
-  cookieOptions, customerSecret, isUuid, signPayload, verifyPayload,
+  cookieOptions, customerSecret, isUuid, readClaimToken, signPayload, verifyPayload,
 } from '@/lib/customer-session'
 import { claimResponse, getStoreIdForResponse, upsertCustomer, type IdentityProvider } from '@/lib/ledger/service'
 import type { LineProfile } from '@/lib/line-login'
@@ -14,6 +14,7 @@ export type OAuthState = {
   state: string
   nonce: string
   claim: string | null
+  claimToken: string | null
   store: string | null
   exp: number
 }
@@ -26,16 +27,19 @@ export function startLogin(
   const claimParam = req.nextUrl.searchParams.get('claim')
   const storeParam = req.nextUrl.searchParams.get('store')
   try {
+    const secret = customerSecret()
+    const claimRid = readClaimToken(claimParam, secret)
     const payload: OAuthState = {
       provider,
       state: randomBytes(16).toString('hex'),
       nonce: randomBytes(16).toString('hex'),
-      claim: isUuid(claimParam) ? claimParam : null,
+      claim: claimRid,
+      claimToken: claimRid ? claimParam : null,
       store: isUuid(storeParam) ? storeParam : null,
       exp: Date.now() + 10 * 60 * 1000,
     }
     const res = NextResponse.redirect(buildUrl(payload.state, payload.nonce))
-    res.cookies.set(OAUTH_STATE_COOKIE, signPayload(payload, customerSecret()), cookieOptions(600))
+    res.cookies.set(OAUTH_STATE_COOKIE, signPayload(payload, secret), cookieOptions(600))
     return res
   } catch (err) {
     logger.error('customer.login.start.failed', { provider }, err)
@@ -57,7 +61,7 @@ export async function finishLogin(
 
   const walletUrl = (storeId: string | null, query: string) =>
     storeId ? `${base}/w/${storeId}?${query}` : `${base}/`
-  const retry = st?.claim ? `&claim=${st.claim}` : ''
+  const retry = st?.claimToken ? `&claim=${encodeURIComponent(st.claimToken)}` : ''
 
   if (providerError || !st || st.provider !== provider || !code || state !== st.state) {
     logger.warn('customer.login.rejected', { request_id, provider }, providerError ?? 'state mismatch or missing')

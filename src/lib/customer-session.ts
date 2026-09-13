@@ -36,9 +36,24 @@ export function verifyPayload<T extends { exp: number }>(
 }
 
 export function customerSecret(): string {
-  const s = process.env.CUSTOMER_SESSION_SECRET || process.env.AUTH_SECRET
+  const s = process.env.CUSTOMER_SESSION_SECRET
   if (!s) throw new Error('CUSTOMER_SESSION_SECRET is not set')
   return s
+}
+
+// 認領憑證：匿名送出問卷時發給前端，登入時帶回來換成 response id。
+// 不讓裸 response id 直接當認領依據，避免拿到別人的 id 就能搶先認領。
+export const CLAIM_TOKEN_TTL_MS = 30 * 60 * 1000
+
+export type ClaimToken = { rid: string; exp: number }
+
+export function signClaimToken(responseId: string, secret: string, now: number = Date.now()): string {
+  return signPayload({ rid: responseId, exp: now + CLAIM_TOKEN_TTL_MS } satisfies ClaimToken, secret)
+}
+
+export function readClaimToken(token: string | null | undefined, secret: string, now: number = Date.now()): string | null {
+  const p = verifyPayload<ClaimToken>(token, secret, now)
+  return p && isUuid(p.rid) ? p.rid : null
 }
 
 export function cookieOptions(maxAgeSeconds: number) {

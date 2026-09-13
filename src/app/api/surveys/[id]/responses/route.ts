@@ -8,7 +8,7 @@ import { getSelectedStore } from '@/lib/store-context'
 import { Resend } from 'resend'
 import { checkAndPushUrgentAlert } from '@/lib/line/urgent-alert'
 import { logger, newRequestId, maskPhone } from '@/lib/logger'
-import { CUSTOMER_COOKIE, readCustomerId } from '@/lib/customer-session'
+import { CUSTOMER_COOKIE, customerSecret, readCustomerId, signClaimToken } from '@/lib/customer-session'
 import { awardSurveyCompleted } from '@/lib/ledger/service'
 import { voucherLabel } from '@/lib/ledger/rules'
 
@@ -128,6 +128,16 @@ export async function POST(
       }
     }
 
+    // 匿名客人：發認領憑證，登入時帶回來認領這一筆。已登入者不需要。
+    let claimToken: string | null = null
+    if (!customerId) {
+      try {
+        claimToken = signClaimToken(response.id, customerSecret())
+      } catch (err) {
+        logger.error('points.claim_token.failed', { request_id, survey_id: id }, err)
+      }
+    }
+
     // Trigger urgent alert (non-blocking) — fetch store for line_user_id
     const [storeRow] = await db
       .select({ store_name: stores.store_name, owner_line_user_id: stores.owner_line_user_id })
@@ -197,6 +207,7 @@ export async function POST(
       return NextResponse.json({
         response,
         points,
+        ...(claimToken ? { claim_token: claimToken } : {}),
         discount_code: discountCode
           ? {
               code: discountCode.code,
@@ -210,7 +221,12 @@ export async function POST(
       }, { status: 201 })
     }
 
-    return NextResponse.json({ response, points, discount_code: null }, { status: 201 })
+    return NextResponse.json({
+      response,
+      points,
+      ...(claimToken ? { claim_token: claimToken } : {}),
+      discount_code: null,
+    }, { status: 201 })
   } catch (err) {
     logger.error('response.submit.failed', { request_id }, err)
     return NextResponse.json({ error: '伺服器錯誤', request_id }, { status: 500 })
