@@ -7,6 +7,7 @@ import {
   Sparkles, Store, UtensilsCrossed, ClipboardList, QrCode,
   ChevronRight, Check, X, MessageCircle,
 } from 'lucide-react';
+import { BRAND_FULL, CUSTOMER_BRAND } from '@/lib/brand';
 
 interface Step {
   id: string;
@@ -85,7 +86,7 @@ export default function OnboardingGuide(props: Props) {
 
   // Find current AI message
   const matched = aiMessages.find(m => m.check(props));
-  const activeMessage = matched ? matched.msg(props) : `歡迎來到 FeedBites，${storeName}！讓我帶你快速上手。`;
+  const activeMessage = matched ? matched.msg(props) : `歡迎來到 ${BRAND_FULL}，${storeName}！讓我帶你快速上手。`;
 
   // Typewriter effect
   useEffect(() => {
@@ -137,7 +138,7 @@ export default function OnboardingGuide(props: Props) {
           </motion.div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-bold text-[#FF8C00]">FeedBites AI 嚮導</span>
+              <span className="text-xs font-bold text-[#FF8C00]">{CUSTOMER_BRAND} AI 嚮導</span>
               {allDone && (
                 <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">全部完成！</span>
               )}

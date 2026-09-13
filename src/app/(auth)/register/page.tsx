@@ -2,6 +2,7 @@
 
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
+import { BASE_PATH } from '@/lib/brand'
 
 export default function RegisterPage() {
   return (
@@ -24,7 +25,7 @@ function RegisterForm() {
     setMessage('');
 
     try {
-      const res = await fetch('/feedbites/api/auth/register', {
+      const res = await fetch(`${BASE_PATH}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { Mic, Square, Loader2 } from 'lucide-react';
+import { BASE_PATH } from '@/lib/brand'
 
 interface VoiceRecorderProps {
   dishName?: string;
@@ -48,7 +49,7 @@ export default function VoiceRecorder({ dishName, onResult, mode = 'describe' }:
           formData.append('mode', mode);
           if (dishName) formData.append('dishName', dishName);
 
-          const res = await fetch('/feedbites/api/ai/transcribe', {
+          const res = await fetch(`${BASE_PATH}/api/ai/transcribe`, {
             method: 'POST',
             body: formData,
           });

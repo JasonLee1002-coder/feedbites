@@ -1,5 +1,6 @@
 import { auth } from "@/auth"
 import { NextResponse } from "next/server"
+import { BASE_PATH } from "@/lib/brand"
 
 export const proxy = auth(function(req) {
   const nextUrl = req.nextUrl
@@ -15,11 +16,11 @@ export const proxy = auth(function(req) {
   if (isPublic) return NextResponse.next()
 
   if (nextUrl.pathname.startsWith('/dashboard') && !isLoggedIn) {
-    return NextResponse.redirect(new URL('/feedbites/login', req.url))
+    return NextResponse.redirect(new URL(`${BASE_PATH}/login`, req.url))
   }
 
   if ((nextUrl.pathname === '/login' || nextUrl.pathname === '/register') && isLoggedIn) {
-    return NextResponse.redirect(new URL('/feedbites/dashboard', req.url))
+    return NextResponse.redirect(new URL(`${BASE_PATH}/dashboard`, req.url))
   }
 
   return NextResponse.next()

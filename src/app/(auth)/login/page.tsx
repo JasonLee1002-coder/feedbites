@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { BASE_PATH } from '@/lib/brand'
 
 function isInAppWebView(): boolean {
   if (typeof window === 'undefined') return false;
@@ -87,7 +88,7 @@ function LoginForm() {
     setMessage('');
 
     try {
-      const res = await fetch('/feedbites/api/auth/login', {
+      const res = await fetch(`${BASE_PATH}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -99,7 +100,7 @@ function LoginForm() {
       } else {
         // If there's a pending invite token, join the store before going to dashboard
         if (inviteToken) {
-          await fetch('/feedbites/api/stores/join', {
+          await fetch(`${BASE_PATH}/api/stores/join`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token: inviteToken }),

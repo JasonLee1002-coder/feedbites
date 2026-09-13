@@ -1,4 +1,4 @@
-// ══ FeedBites 版本更新紀錄 ══
+// ══ 常來點 EatAgain 版本更新紀錄 ══
 // 每次發版在最上面新增一筆，舊的不要刪
 
 export interface ChangelogEntry {

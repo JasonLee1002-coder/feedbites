@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { CatalogItem, PointRules } from '@/lib/ledger/rules'
+import { BASE_PATH } from '@/lib/brand'
 
 const input = 'w-full rounded-lg border border-[#E8E2D8] bg-white px-3 py-2 text-sm focus:outline-none focus:border-[#C5A55A]'
 
@@ -21,7 +22,7 @@ export default function VouchersClient({ initialRules, canEdit, issued, used }: 
     const c = code.trim().toUpperCase()
     if (!c) return
     setRedeemMsg(null)
-    const res = await fetch(`/feedbites/api/vouchers/${encodeURIComponent(c)}/redeem`, { method: 'POST' })
+    const res = await fetch(`${BASE_PATH}/api/vouchers/${encodeURIComponent(c)}/redeem`, { method: 'POST' })
     const data = await res.json().catch(() => ({}))
     setRedeemMsg(res.ok ? '✓ 核銷成功' : data.error ?? '核銷失敗')
     if (res.ok) setCode('')
@@ -30,7 +31,7 @@ export default function VouchersClient({ initialRules, canEdit, issued, used }: 
   async function save() {
     setSaving(true)
     setSaveMsg(null)
-    const res = await fetch('/feedbites/api/store-point-rules', {
+    const res = await fetch(`${BASE_PATH}/api/store-point-rules`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ rules }),

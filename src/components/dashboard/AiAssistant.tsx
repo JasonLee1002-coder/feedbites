@@ -6,6 +6,7 @@ import { X, Send, Loader2, ChevronDown } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import confetti from 'canvas-confetti';
+import { BASE_PATH, BRAND_FULL, CUSTOMER_BRAND } from '@/lib/brand'
 
 interface BubbleMessage {
   text: string;
@@ -45,10 +46,10 @@ function getPageMessages(pathname: string, context?: { dishCount?: number; surve
     return ['上傳 Logo 讓問卷更有品牌感！', '記得填寫「店家資料」，填完就能解鎖同業比較分析功能。'];
   }
   if (pathname.includes('/new-store')) {
-    return ['歡迎加入 FeedBites！先幫你的餐廳取個名字吧。'];
+    return [`歡迎加入 ${BRAND_FULL}！先幫你的餐廳取個名字吧。`];
   }
   return [
-    '嗨！我是你的 FeedBites 副店長，有什麼需要幫忙的隨時問我！',
+    `嗨！我是你的 ${CUSTOMER_BRAND} 副店長，有什麼需要幫忙的隨時問我！`,
     '每天花 2 分鐘看一下新回覆，持續改進就是最好的經營策略。',
   ];
 }
@@ -79,7 +80,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
 
   // Fetch live stats
   useEffect(() => {
-    fetch('/feedbites/api/ai/assistant-stats')
+    fetch(`${BASE_PATH}/api/ai/assistant-stats`)
       .then(r => r.ok ? r.json() : {})
       .then(data => setLiveStats(data))
       .catch(() => {});
@@ -88,7 +89,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
   // Load chat history when panel opens for the first time
   useEffect(() => {
     if (!isOpen || historyLoaded) return;
-    fetch('/feedbites/api/ai/assistant-history')
+    fetch(`${BASE_PATH}/api/ai/assistant-history`)
       .then((r) => r.ok ? r.json() : { history: [] })
       .then(({ history }: { history: Array<{ role: string; content: string }> }) => {
         if (history.length > 0) {
@@ -183,7 +184,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
     setChatHistory(newHistory);
 
     try {
-      const res = await fetch('/feedbites/api/ai/assistant-chat', {
+      const res = await fetch(`${BASE_PATH}/api/ai/assistant-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -381,13 +382,13 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
             /* eslint-disable-next-line @next/next/no-img-element */
             <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
           ) : (
-            <span className="text-base font-black text-white" style={{ fontFamily: 'Georgia, serif' }}>F</span>
+            <span className="text-base font-black text-white" style={{ fontFamily: 'Georgia, serif' }}>常</span>
           )}
         </div>
 
         {/* Title */}
         <div className="flex-1 text-left">
-          <div className="text-sm font-bold leading-tight">FeedBites 副店長</div>
+          <div className="text-sm font-bold leading-tight">{CUSTOMER_BRAND} 副店長</div>
           <div className="text-[10px] text-white/70 flex items-center gap-1">
             <motion.span
               className="w-1.5 h-1.5 bg-green-300 rounded-full inline-block"

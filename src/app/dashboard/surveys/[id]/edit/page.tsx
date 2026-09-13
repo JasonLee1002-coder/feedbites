@@ -8,6 +8,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { getSelectedStore, getUserStores } from '@/lib/store-context';
 import EditClient from './EditClient';
 import type { Question, TemplateId, ThemeColors } from '@/types/survey';
+import { BASE_PATH } from '@/lib/brand'
 
 interface PrizeItem { label: string; emoji: string; color: string }
 
@@ -63,7 +64,7 @@ export default async function SurveyEditPage({
               切換過去就可以編輯了。
             </p>
             <a
-              href={`/feedbites/api/stores/select?id=${ownerStore.id}&returnTo=${encodeURIComponent(`/dashboard/surveys/${id}/edit`)}`}
+              href={`${BASE_PATH}/api/stores/select?id=${ownerStore.id}&returnTo=${encodeURIComponent(`/dashboard/surveys/${id}/edit`)}`}
               className="inline-flex items-center gap-2 px-5 py-3 bg-[#80651F] text-white font-bold rounded-xl text-base"
             >
               切換到 {ownerStore.store_name} →

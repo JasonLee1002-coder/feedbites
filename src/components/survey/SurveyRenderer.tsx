@@ -6,6 +6,7 @@ import confetti from 'canvas-confetti';
 import type { Question, ThemeColors, DiscountTier } from '@/types/survey';
 import { getFrame } from '@/lib/qr-frames';
 import { getTextureStyle } from '@/lib/textures';
+import { BRAND_FULL } from '@/lib/brand';
 
 const EMOJI_LABELS = ['😫', '😕', '😐', '😊', '🤩'];
 const EMOJI_TEXTS = ['不太行', '還好', '普通', '不錯', '超讚！'];
@@ -1702,7 +1703,7 @@ export default function SurveyRenderer({
               <span className="text-xs" style={{ color: colors.textLight }}>
                 Powered by{' '}
                 <a href="/" target="_blank" className="font-medium" style={{ color: colors.primary }}>
-                  FeedBites
+                  {BRAND_FULL}
                 </a>
               </span>
               <div className="text-[10px] mt-1" style={{ color: colors.textLight }}>

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import WhatsNew from './WhatsNew';
 import UrgentAlert from './UrgentAlert';
+import { CUSTOMER_BRAND } from '@/lib/brand';
 
 interface DashboardData {
   storeName: string;
@@ -181,7 +182,7 @@ export default function DashboardClient(props: DashboardData) {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-[#C5A55A]" />
-                    <span className="text-[11px] font-bold text-[#C5A55A]">FeedBites 餐飲顧問</span>
+                    <span className="text-[11px] font-bold text-[#C5A55A]">{CUSTOMER_BRAND} 餐飲顧問</span>
                   </div>
                   <p className="text-sm text-white/90 leading-relaxed">{tip.tip}</p>
                 </div>

@@ -11,6 +11,7 @@ import { logger, newRequestId, maskPhone } from '@/lib/logger'
 import { CUSTOMER_COOKIE, customerSecret, readCustomerId, signClaimToken } from '@/lib/customer-session'
 import { awardSurveyCompleted } from '@/lib/ledger/service'
 import { voucherLabel } from '@/lib/ledger/rules'
+import { BASE_PATH, BRAND_FULL } from '@/lib/brand'
 
 // GET: List responses (owner only)
 export async function GET(
@@ -125,7 +126,7 @@ export async function POST(
           first_voucher: r.firstVoucher
             ? { code: r.firstVoucher.code, label: voucherLabel(r.firstVoucher), expires_at: r.firstVoucher.expires_at }
             : null,
-          wallet_url: `/feedbites/w/${survey.store_id}`,
+          wallet_url: `${BASE_PATH}/w/${survey.store_id}`,
         }
       } catch (err) {
         // 發點失敗不能讓問卷失敗
@@ -334,7 +335,7 @@ export async function PATCH(
 
           const resend = new Resend(process.env.RESEND_API_KEY)
           await resend.emails.send({
-            from: process.env.EMAIL_FROM ?? 'FeedBites <noreply@feedbites.app>',
+            from: process.env.EMAIL_FROM ?? `${BRAND_FULL} <noreply@feedbites.app>`,
             to: email,
             subject: emailSubject,
             html: `
@@ -383,7 +384,7 @@ export async function PATCH(
         </tr>
         <tr>
           <td style="background:#faf7f4;padding:20px 32px;text-align:center;border-radius:0 0 24px 24px;border-top:1px solid #f0ebe5">
-            <p style="margin:0 0 4px;color:#bbb;font-size:11px">此優惠券由 <strong style="color:#FF8C00">FeedBites</strong> 智慧問卷系統產生</p>
+            <p style="margin:0 0 4px;color:#bbb;font-size:11px">此優惠券由 <strong style="color:#FF8C00">${BRAND_FULL}</strong> 智慧問卷系統產生</p>
             <p style="margin:0;color:#ccc;font-size:10px">Bite · Rate · Save &nbsp;|&nbsp; ${today}</p>
           </td>
         </tr>

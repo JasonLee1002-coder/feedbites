@@ -1,5 +1,6 @@
 // 顧客端 session：HMAC-SHA256 簽章 cookie，與店長端 NextAuth 完全分開。
 import { createHmac, timingSafeEqual } from 'crypto'
+import { BASE_PATH } from '@/lib/brand'
 
 export const CUSTOMER_COOKIE = 'fb_customer'
 export const OAUTH_STATE_COOKIE = 'fb_oauth_state'
@@ -72,7 +73,7 @@ export function readCustomerId(cookieValue: string | undefined): string | null {
 }
 
 export function safeNext(next: string | null | undefined): string {
-  if (!next || !next.startsWith('/feedbites/') || next.startsWith('//')) return '/feedbites'
+  if (!next || !next.startsWith(`${BASE_PATH}/`) || next.startsWith('//')) return BASE_PATH
   return next
 }
 

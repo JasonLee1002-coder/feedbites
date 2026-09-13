@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { BASE_PATH } from '@/lib/brand'
 
 interface SurveyToggleProps {
   surveyId: string;
@@ -18,7 +19,7 @@ export default function SurveyToggle({ surveyId, initialActive }: SurveyTogglePr
     const newVal = !active;
     setActive(newVal);
     try {
-      const res = await fetch(`/feedbites/api/surveys/${surveyId}`, {
+      const res = await fetch(`${BASE_PATH}/api/surveys/${surveyId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: newVal }),

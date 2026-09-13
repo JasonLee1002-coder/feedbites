@@ -8,6 +8,7 @@ import SurveyRenderer from '@/components/survey/SurveyRenderer';
 import DiscountCodeDisplay from '@/components/survey/DiscountCodeDisplay';
 import ClaimPointsCard, { type AwardedPoints } from '@/components/survey/ClaimPointsCard';
 import { getTextureStyle } from '@/lib/textures';
+import { BASE_PATH, BRAND_FULL } from '@/lib/brand'
 
 type SurveyStep = 'already-submitted' | 'survey' | 'submitting' | 'discount' | 'phone-prompt';
 
@@ -159,7 +160,7 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
     }
 
     try {
-      const res = await fetch(`/feedbites/api/surveys/${survey.id}/responses`, {
+      const res = await fetch(`${BASE_PATH}/api/surveys/${survey.id}/responses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -216,7 +217,7 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
     setPhoneError('');
     // Update phone on existing response via PATCH
     if (responseId) {
-      fetch(`/feedbites/api/surveys/${survey.id}/responses`, {
+      fetch(`${BASE_PATH}/api/surveys/${survey.id}/responses`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -370,7 +371,7 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
         onPhoneSubmit={(phoneNumber) => {
           // Update phone on existing response via PATCH
           if (responseId) {
-            fetch(`/feedbites/api/surveys/${survey.id}/responses`, {
+            fetch(`${BASE_PATH}/api/surveys/${survey.id}/responses`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -426,7 +427,7 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
 
       <div className="mt-6 text-center">
         <div className="text-[10px]" style={{ color: colors.textLight }}>
-          Powered by FeedBites
+          Powered by {BRAND_FULL}
         </div>
       </div>
 

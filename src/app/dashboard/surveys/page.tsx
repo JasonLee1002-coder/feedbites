@@ -11,6 +11,7 @@ import SurveyDeleteButton from './SurveyDeleteButton';
 import SurveyToggle from '@/components/dashboard/SurveyToggle';
 import type { TemplateId, Question } from '@/types/survey';
 import { getSelectedStore } from '@/lib/store-context';
+import { BASE_PATH } from '@/lib/brand'
 
 const ratingEmoji = (v: number) =>
   v >= 4.5 ? '😍' : v >= 3.5 ? '😊' : v >= 2.5 ? '😐' : v >= 1.5 ? '😕' : '😢';
@@ -213,7 +214,7 @@ export default async function SurveysPage() {
 
                 {/* Action bar */}
                 <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center gap-1.5 flex-wrap">
-                  <a href={`/feedbites/s/${survey.id}?preview=1`} target="_blank" rel="noopener noreferrer"
+                  <a href={`${BASE_PATH}/s/${survey.id}?preview=1`} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-emerald-500 rounded-lg hover:bg-emerald-600 active:scale-[0.97] transition-all shadow-sm">
                     👁️ 體驗
                   </a>

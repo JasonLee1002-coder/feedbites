@@ -1,4 +1,5 @@
 import { pushFlexMessage } from './push';
+import { BRAND_FULL, BASE_PATH } from '@/lib/brand';
 
 const NEGATIVE_WORDS = ['鹹', '淡', '慢', '貴', '冷', '硬', '油', '臭', '差', '爛', '等太久', '不新鮮', '不好', '難吃'];
 
@@ -26,7 +27,7 @@ export async function checkAndPushUrgentAlert({
               type: 'box',
               layout: 'vertical',
               contents: [
-                { type: 'text', text: '🚨 FeedBites 緊急警示', size: 'sm', color: '#FFFFFF', weight: 'bold' },
+                { type: 'text', text: `🚨 ${BRAND_FULL} 緊急警示`, size: 'sm', color: '#FFFFFF', weight: 'bold' },
                 { type: 'text', text: storeName, size: 'xs', color: '#FFFFFFCC' },
               ],
             },
@@ -65,7 +66,7 @@ export async function checkAndPushUrgentAlert({
             action: {
               type: 'uri',
               label: '立刻查看回饋',
-              uri: 'https://poc.mcstation.ai/feedbites/dashboard/surveys',
+              uri: `https://poc.mcstation.ai${BASE_PATH}/dashboard/surveys`,
             },
             style: 'primary',
             color: '#DC2626',

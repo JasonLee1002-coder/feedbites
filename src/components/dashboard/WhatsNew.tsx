@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles, Gift } from 'lucide-react';
 import Link from 'next/link';
 import { CURRENT_VERSION, changelog } from '@/lib/changelog';
+import { CUSTOMER_BRAND } from '@/lib/brand';
 
 export default function WhatsNew() {
   const [show, setShow] = useState(false);
@@ -80,7 +81,7 @@ export default function WhatsNew() {
                 <span className="text-xs font-bold text-[#C5A55A]">新版本上線</span>
               </motion.div>
 
-              <h2 className="text-xl font-bold text-white mb-1">FeedBites 又進步了！</h2>
+              <h2 className="text-xl font-bold text-white mb-1">{CUSTOMER_BRAND} 又進步了！</h2>
               <p className="text-xs text-white/50">{latest.date} — {latest.title}</p>
             </div>
 

@@ -1,7 +1,7 @@
 'use client'
 
 import type { ThemeColors } from '@/types/survey'
-import { CUSTOMER_BRAND } from '@/lib/brand'
+import { CUSTOMER_BRAND, BASE_PATH } from '@/lib/brand'
 
 export type AwardedPoints = {
   awarded: number
@@ -58,14 +58,14 @@ export default function ClaimPointsCard({
         點數可以換餐券，下次來店直接用
       </p>
       <a
-        href={`/feedbites/api/customer/line/start?claim=${claim}`}
+        href={`${BASE_PATH}/api/customer/line/start?claim=${claim}`}
         className="mt-4 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-white"
         style={{ background: '#06C755' }}
       >
         用 LINE 登入領取
       </a>
       <a
-        href={`/feedbites/api/customer/google/start?claim=${claim}`}
+        href={`${BASE_PATH}/api/customer/google/start?claim=${claim}`}
         className="mt-3 block text-xs underline underline-offset-2"
         style={{ color: colors.textLight }}
       >

@@ -4,11 +4,12 @@ import { db } from '@/lib/db'
 import { stores, store_members, store_invites } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { cookies } from 'next/headers'
+import { BASE_PATH } from '@/lib/brand'
 
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) {
-    return NextResponse.redirect(new URL('/feedbites/login', req.url))
+    return NextResponse.redirect(new URL(`${BASE_PATH}/login`, req.url))
   }
 
   const userId = session.user.id
@@ -73,7 +74,7 @@ export async function GET(req: NextRequest) {
   const hasAnyStore = ownedStores.length > 0 || memberStores.length > 0
 
   if (!hasAnyStore) {
-    return NextResponse.redirect(new URL('/feedbites/dashboard/new-store', req.url))
+    return NextResponse.redirect(new URL(`${BASE_PATH}/dashboard/new-store`, req.url))
   }
 
   // Auto-select first store if no cookie set

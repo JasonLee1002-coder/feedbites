@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { BASE_PATH } from '@/lib/brand'
 import {
   Brain, TrendingDown, TrendingUp, AlertTriangle, CheckCircle2,
   Loader2, Star, ChevronRight, Zap, Target, BarChart3,
@@ -84,7 +85,7 @@ export default function FeedbackInsightsDashboard() {
 
   const fetchInsights = useCallback(async () => {
     try {
-      const res = await fetch('/feedbites/api/ai/feedback-analyze');
+      const res = await fetch(`${BASE_PATH}/api/ai/feedback-analyze`);
       if (res.ok) setInsights(await res.json());
     } catch { /* ignore */ } finally {
       setLoading(false);
@@ -93,7 +94,7 @@ export default function FeedbackInsightsDashboard() {
 
   const fetchResponseCount = useCallback(async () => {
     try {
-      const res = await fetch('/feedbites/api/ai/feedback-analyze?check=count');
+      const res = await fetch(`${BASE_PATH}/api/ai/feedback-analyze?check=count`);
       if (res.ok) {
         const data = await res.json();
         setResponseCount(data.count ?? 0);
@@ -105,7 +106,7 @@ export default function FeedbackInsightsDashboard() {
     setAnalyzing(true);
     setAnalyzeError(null);
     try {
-      const res = await fetch('/feedbites/api/ai/feedback-analyze', {
+      const res = await fetch(`${BASE_PATH}/api/ai/feedback-analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ days }),

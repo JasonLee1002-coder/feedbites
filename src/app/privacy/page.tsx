@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { BRAND_FULL } from '@/lib/brand';
 
 export default function PrivacyPage() {
   return (
@@ -18,7 +19,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-bold mb-2">資料收集</h2>
             <p className="text-[#8A8585]">
-              FeedBites 僅收集提供服務所需的最少資料：
+              {BRAND_FULL} 僅收集提供服務所需的最少資料：
             </p>
             <ul className="list-disc pl-5 mt-2 space-y-1 text-[#8A8585]">
               <li>店長帳號：Email、店家名稱（透過 Google 登入或 Email 註冊）</li>
@@ -47,7 +48,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-bold mb-2">Cookie 與第三方服務</h2>
             <p className="text-[#8A8585]">
-              FeedBites 使用 Supabase Auth 管理登入狀態，可能使用 Google OAuth 進行身份驗證。
+              {BRAND_FULL} 使用 Supabase Auth 管理登入狀態，可能使用 Google OAuth 進行身份驗證。
               我們不使用追蹤型 Cookie 或廣告追蹤。
             </p>
           </section>

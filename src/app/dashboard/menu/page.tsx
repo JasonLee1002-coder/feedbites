@@ -6,6 +6,7 @@ import DishRatingBadge from '@/components/dashboard/DishRatingBadge';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import VoiceRecorder from '@/components/shared/VoiceRecorder';
+import { BASE_PATH } from '@/lib/brand'
 
 interface Dish {
   id: string;
@@ -107,7 +108,7 @@ export default function MenuPage() {
 
   async function fetchCategories() {
     try {
-      const res = await fetch('/feedbites/api/menu/categories');
+      const res = await fetch(`${BASE_PATH}/api/menu/categories`);
       if (res.ok) {
         const data = await res.json();
         setCategories(data);
@@ -121,7 +122,7 @@ export default function MenuPage() {
     if (!name) return;
     setSavingCat(true);
     try {
-      const res = await fetch('/feedbites/api/menu/categories', {
+      const res = await fetch(`${BASE_PATH}/api/menu/categories`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),
@@ -155,7 +156,7 @@ export default function MenuPage() {
   async function handleRenameCategory(id: string, name: string) {
     if (!name.trim()) return;
     try {
-      const res = await fetch(`/feedbites/api/menu/categories/${id}`, {
+      const res = await fetch(`${BASE_PATH}/api/menu/categories/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim() }),
@@ -180,7 +181,7 @@ export default function MenuPage() {
     if (!confirm(msg)) return;
     setDeletingCatId(id);
     try {
-      const res = await fetch(`/feedbites/api/menu/categories/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${BASE_PATH}/api/menu/categories/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setCategories(prev => prev.filter(c => c.id !== id));
         if (filterCategory === cat?.name) setFilterCategory('全部');
@@ -195,7 +196,7 @@ export default function MenuPage() {
     if (!name) return;
     setSavingManagerCat(true);
     try {
-      const res = await fetch('/feedbites/api/menu/categories', {
+      const res = await fetch(`${BASE_PATH}/api/menu/categories`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),
@@ -215,7 +216,7 @@ export default function MenuPage() {
 
   async function fetchDishes() {
     try {
-      const res = await fetch('/feedbites/api/dishes');
+      const res = await fetch(`${BASE_PATH}/api/dishes`);
       if (res.ok) {
         const data = await res.json();
         setDishes(data);
@@ -259,7 +260,7 @@ export default function MenuPage() {
       formData.append('photo', file);
       if (effectiveDishId) formData.append('dishId', effectiveDishId);
 
-      const res = await fetch('/feedbites/api/dishes/upload-photo', {
+      const res = await fetch(`${BASE_PATH}/api/dishes/upload-photo`, {
         method: 'POST',
         body: formData,
       });
@@ -287,7 +288,7 @@ export default function MenuPage() {
     try {
       if (editingId) {
         // Update
-        const res = await fetch(`/feedbites/api/dishes/${editingId}`, {
+        const res = await fetch(`${BASE_PATH}/api/dishes/${editingId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -305,7 +306,7 @@ export default function MenuPage() {
         }
       } else {
         // Create
-        const res = await fetch('/feedbites/api/dishes', {
+        const res = await fetch(`${BASE_PATH}/api/dishes`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -331,7 +332,7 @@ export default function MenuPage() {
     if (!confirm('確定要刪除此菜品嗎？')) return;
     setDeleting(id);
     try {
-      const res = await fetch(`/feedbites/api/dishes/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${BASE_PATH}/api/dishes/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setDishes(prev => prev.filter(d => d.id !== id));
         if (editingId === id) resetForm();
@@ -345,7 +346,7 @@ export default function MenuPage() {
     if (!confirm(`確定要清空全部 ${dishes.length} 道菜品嗎？此操作無法復原。`)) return;
     setClearingAll(true);
     try {
-      const res = await fetch('/feedbites/api/dishes', { method: 'DELETE' });
+      const res = await fetch(`${BASE_PATH}/api/dishes`, { method: 'DELETE' });
       if (res.ok) {
         setDishes([]);
         resetForm();
@@ -395,7 +396,7 @@ export default function MenuPage() {
     try {
       const formData = new FormData();
       formData.append('photo', blob, `${dishName}_${Date.now()}.jpg`);
-      const res = await fetch('/feedbites/api/dishes/upload-photo', { method: 'POST', body: formData });
+      const res = await fetch(`${BASE_PATH}/api/dishes/upload-photo`, { method: 'POST', body: formData });
       if (res.ok) {
         const data = await res.json();
         return data.url || null;
@@ -473,7 +474,7 @@ export default function MenuPage() {
 
       let res: Response;
       try {
-        res = await fetch('/feedbites/api/ai/parse-menu', {
+        res = await fetch(`${BASE_PATH}/api/ai/parse-menu`, {
           method: 'POST',
           body: formData,
           signal: controller.signal,
@@ -575,7 +576,7 @@ export default function MenuPage() {
     try {
       for (let i = 0; i < selected.length; i++) {
         const d = selected[i];
-        const res = await fetch('/feedbites/api/dishes', {
+        const res = await fetch(`${BASE_PATH}/api/dishes`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

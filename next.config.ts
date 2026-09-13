@@ -2,9 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  basePath: '/feedbites',
+  basePath: '/eatagain',
   env: {
-    NEXT_PUBLIC_BASE_PATH: '/feedbites',
+    NEXT_PUBLIC_BASE_PATH: '/eatagain',
   },
   images: {
     remotePatterns: [

@@ -3,6 +3,7 @@ import { stores, dishes } from '@/lib/db/schema';
 import { and, eq, asc, desc } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import { BRAND_FULL } from '@/lib/brand';
 import MenuClient from './MenuClient';
 
 interface Props {
@@ -19,11 +20,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .limit(1);
 
   if (!store) {
-    return { title: '菜單不存在 | FeedBites' };
+    return { title: `菜單不存在 | ${BRAND_FULL}` };
   }
 
   return {
-    title: `${store.store_name} 菜單 | FeedBites`,
+    title: `${store.store_name} 菜單 | ${BRAND_FULL}`,
     description: `瀏覽 ${store.store_name} 的精選菜單`,
   };
 }

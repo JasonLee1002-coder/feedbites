@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { getTemplate } from '@/lib/templates';
 import type { TemplateId, ThemeColors } from '@/types/survey';
 import FeedbackGenie from '@/components/feedback-genie/FeedbackGenie';
+import { BRAND_FULL } from '@/lib/brand';
 
 // ─── Types ───
 interface Store {
@@ -296,7 +297,7 @@ export default function MenuClient({ store, dishes }: { store: Store; dishes: Di
           className="inline-block text-xs font-semibold tracking-wider transition-opacity hover:opacity-70"
           style={{ color: colors.primary }}
         >
-          Powered by FeedBites
+          Powered by {BRAND_FULL}
         </a>
         <p className="text-[10px] mt-1 tracking-widest" style={{ color: colors.textLight }}>
           Bite. Rate. Save.

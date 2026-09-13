@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { BASE_PATH, BRAND_FULL } from '@/lib/brand'
 
 export default function InvitePage() {
   const params = useParams();
@@ -18,7 +19,7 @@ export default function InvitePage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`/feedbites/api/stores/join?token=${token}`);
+        const res = await fetch(`${BASE_PATH}/api/stores/join?token=${token}`);
         const data = await res.json();
         if (data.error) {
           setError(data.error);
@@ -45,7 +46,7 @@ export default function InvitePage() {
   async function handleAutoJoin() {
     setJoining(true);
     try {
-      const res = await fetch('/feedbites/api/stores/join', {
+      const res = await fetch(`${BASE_PATH}/api/stores/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token }),
@@ -66,7 +67,7 @@ export default function InvitePage() {
 
   function handleLoginRedirect() {
     // Redirect to login, with invite token as query param so callback can process it
-    window.location.href = `/feedbites/login?invite=${token}`;
+    window.location.href = `${BASE_PATH}/login?invite=${token}`;
   }
 
   if (loading) {
@@ -91,7 +92,7 @@ export default function InvitePage() {
             href="/"
             className="inline-block px-6 py-2.5 bg-[#C5A55A] text-white rounded-xl text-sm font-bold hover:bg-[#A08735] transition-colors"
           >
-            前往 FeedBites 首頁
+            前往 {BRAND_FULL} 首頁
           </a>
         </div>
       </div>
@@ -128,7 +129,7 @@ export default function InvitePage() {
             <div className="text-4xl mb-3">🍽️</div>
             <h1 className="text-lg font-bold text-white mb-1">你被邀請加入</h1>
             <p className="text-2xl font-bold text-[#C5A55A]">{storeName}</p>
-            <p className="text-xs text-white/50 mt-2">FeedBites 餐廳管理團隊</p>
+            <p className="text-xs text-white/50 mt-2">{BRAND_FULL} 餐廳管理團隊</p>
           </div>
 
           {/* Body */}
@@ -161,7 +162,7 @@ export default function InvitePage() {
 
         {/* Footer */}
         <div className="text-center mt-6">
-          <a href="/" className="text-xs text-[#C5A55A] font-medium">FeedBites</a>
+          <a href="/" className="text-xs text-[#C5A55A] font-medium">{BRAND_FULL}</a>
           <p className="text-[10px] text-[#8A8585] mt-0.5">Bite. Rate. Save.</p>
         </div>
       </div>

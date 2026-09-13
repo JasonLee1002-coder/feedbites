@@ -6,6 +6,7 @@ import { LogOut, Menu, Plus, LayoutDashboard, UtensilsCrossed, ClipboardList, Sp
 import { useState } from 'react';
 import { signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { BASE_PATH, CUSTOMER_BRAND } from '@/lib/brand'
 
 interface StoreInfo {
   id: string;
@@ -38,7 +39,7 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
   const handleLogout = async () => {
     await signOut({ redirect: false });
     router.refresh();
-    window.location.href = '/feedbites/login';
+    window.location.href = `${BASE_PATH}/login`;
   };
 
   const handleSwitchStore = (newStoreId: string, name: string) => {
@@ -64,7 +65,7 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
     `;
     document.body.appendChild(overlay);
     setTimeout(() => {
-      window.location.href = `/feedbites/api/stores/select?id=${newStoreId}&returnTo=${encodeURIComponent(pathname)}`;
+      window.location.href = `${BASE_PATH}/api/stores/select?id=${newStoreId}&returnTo=${encodeURIComponent(pathname)}`;
     }, 1500);
   };
 
@@ -184,7 +185,7 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
         </div>
         <div className="text-center">
           <a href="/dashboard/feedback" className="text-[9px] text-white/20 hover:text-white/40 transition-colors">
-            意見回饋給 FeedBites
+            意見回饋給 {CUSTOMER_BRAND}
           </a>
         </div>
       </div>

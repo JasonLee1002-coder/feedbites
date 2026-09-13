@@ -6,6 +6,7 @@ import { eq, and } from 'drizzle-orm';
 import { isSuperAdmin } from '@/lib/admin';
 import { getSelectedStore } from '@/lib/store-context';
 import { pushFlexMessage, buildFeedbackResolvedMessage } from '@/lib/line/push';
+import { BRAND_FULL } from '@/lib/brand';
 
 // POST: Reply to a feedback report (admin or store owner)
 export async function POST(
@@ -87,7 +88,7 @@ export async function POST(
 
           pushFlexMessage(
             store.owner_line_user_id,
-            `FeedBites：您的回報「${report.title}」已處理`,
+            `${BRAND_FULL}：您的回報「${report.title}」已處理`,
             flexBody,
           ).catch(() => {}); // Fire-and-forget
         }

@@ -6,7 +6,7 @@ import { stores } from '@/lib/db/schema'
 import { CUSTOMER_COOKIE, isUuid, readCustomerId } from '@/lib/customer-session'
 import { getRules, getWallet } from '@/lib/ledger/service'
 import { EVENT_LABELS, voucherLabel, type LedgerEvent } from '@/lib/ledger/rules'
-import { CUSTOMER_BRAND } from '@/lib/brand'
+import { CUSTOMER_BRAND, BASE_PATH } from '@/lib/brand'
 import WalletClient from './WalletClient'
 
 export const dynamic = 'force-dynamic'
@@ -36,8 +36,8 @@ export default async function WalletPage({
   // claim 是簽章 token，由登入路由驗證；這裡只做長度防呆後原樣轉交
   const retryClaim = typeof sp.claim === 'string' && sp.claim.length > 0 && sp.claim.length < 512 ? sp.claim : null
   const loginQuery = `store=${storeId}${retryClaim ? `&claim=${encodeURIComponent(retryClaim)}` : ''}`
-  const loginHref = `/feedbites/api/customer/line/start?${loginQuery}`
-  const googleHref = `/feedbites/api/customer/google/start?${loginQuery}`
+  const loginHref = `${BASE_PATH}/api/customer/line/start?${loginQuery}`
+  const googleHref = `${BASE_PATH}/api/customer/google/start?${loginQuery}`
 
   if (!customerId) {
     return (

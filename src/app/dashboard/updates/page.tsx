@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { ArrowLeft, Sparkles, Gift } from 'lucide-react';
 import { changelog, CURRENT_VERSION } from '@/lib/changelog';
+import { BRAND_FULL } from '@/lib/brand';
 
 export default function UpdatesPage() {
   return (
@@ -104,7 +105,7 @@ export default function UpdatesPage() {
           <div className="w-9 h-9 rounded-full bg-[#FAF7F2] border-2 border-dashed border-[#E8E2D8] flex items-center justify-center shrink-0 z-10">
             <span className="text-sm">🚀</span>
           </div>
-          <p className="text-sm text-[#8A8585]">FeedBites 的故事，從這裡開始...</p>
+          <p className="text-sm text-[#8A8585]">{BRAND_FULL} 的故事，從這裡開始...</p>
         </div>
       </div>
     </div>

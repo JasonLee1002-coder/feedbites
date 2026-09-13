@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import { getSelectedStore } from '@/lib/store-context';
 import { isSuperAdmin } from '@/lib/admin';
 import { pushFlexMessage, buildStatusChangeMessage } from '@/lib/line/push';
+import { BRAND_FULL } from '@/lib/brand';
 
 // GET: Get feedback report detail
 export async function GET(
@@ -106,7 +107,7 @@ export async function PATCH(
 
           pushFlexMessage(
             store.owner_line_user_id,
-            `FeedBites：您的回報狀態更新為「${STATUS_LABELS[status] || status}」`,
+            `${BRAND_FULL}：您的回報狀態更新為「${STATUS_LABELS[status] || status}」`,
             flexBody,
           ).catch(() => {});
         }
