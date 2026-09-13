@@ -8,6 +8,9 @@ import { getSelectedStore } from '@/lib/store-context'
 import { Resend } from 'resend'
 import { checkAndPushUrgentAlert } from '@/lib/line/urgent-alert'
 import { logger, newRequestId, maskPhone } from '@/lib/logger'
+import { CUSTOMER_COOKIE, readCustomerId } from '@/lib/customer-session'
+import { awardSurveyCompleted } from '@/lib/ledger/service'
+import { voucherLabel } from '@/lib/ledger/rules'
 
 // GET: List responses (owner only)
 export async function GET(
@@ -77,6 +80,14 @@ export async function POST(
       return NextResponse.json({ error: '缺少回答內容' }, { status: 400 })
     }
 
+    // 已用 LINE 登入的客人（第二次以後來店），填完直接入帳；匿名客人在完成頁認領。
+    let customerId: string | null = null
+    try {
+      customerId = readCustomerId(request.cookies.get(CUSTOMER_COOKIE)?.value)
+    } catch {
+      customerId = null
+    }
+
     // Create response
     const [response] = await db
       .insert(responses)
@@ -87,8 +98,35 @@ export async function POST(
         phone: phone || null,
         xp_earned: typeof xp_earned === 'number' ? xp_earned : null,
         device_key: typeof device_key === 'string' && device_key.length <= 64 ? device_key : null,
+        customer_id: customerId,
       })
       .returning()
+
+    let points: {
+      awarded: number
+      first_voucher: { code: string; label: string; expires_at: Date } | null
+      wallet_url: string
+    } | null = null
+    if (customerId) {
+      try {
+        const r = await awardSurveyCompleted({
+          customerId,
+          storeId: survey.store_id,
+          responseId: response.id,
+          submittedAt: response.submitted_at ?? new Date(),
+        })
+        points = {
+          awarded: r.pointsAwarded,
+          first_voucher: r.firstVoucher
+            ? { code: r.firstVoucher.code, label: voucherLabel(r.firstVoucher), expires_at: r.firstVoucher.expires_at }
+            : null,
+          wallet_url: `/feedbites/w/${survey.store_id}`,
+        }
+      } catch (err) {
+        // 發點失敗不能讓問卷失敗
+        logger.error('points.award.failed', { request_id, survey_id: id }, err)
+      }
+    }
 
     // Trigger urgent alert (non-blocking) — fetch store for line_user_id
     const [storeRow] = await db
@@ -158,6 +196,7 @@ export async function POST(
 
       return NextResponse.json({
         response,
+        points,
         discount_code: discountCode
           ? {
               code: discountCode.code,
@@ -171,7 +210,7 @@ export async function POST(
       }, { status: 201 })
     }
 
-    return NextResponse.json({ response, discount_code: null }, { status: 201 })
+    return NextResponse.json({ response, points, discount_code: null }, { status: 201 })
   } catch (err) {
     logger.error('response.submit.failed', { request_id }, err)
     return NextResponse.json({ error: '伺服器錯誤', request_id }, { status: 500 })
