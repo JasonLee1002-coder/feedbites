@@ -5,7 +5,9 @@ import { logger } from '@/lib/logger'
 export const maxDuration = 300
 
 export async function GET(request: NextRequest) {
-  if (request.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+  const secret = process.env.CRON_SECRET
+  // 沒設定 secret 時一律拒絕，避免 "Bearer undefined" 通過
+  if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   try {

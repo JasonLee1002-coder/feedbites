@@ -8,7 +8,7 @@ import { logger, newRequestId } from '@/lib/logger'
 export async function POST(req: NextRequest) {
   const request_id = newRequestId()
   const customerId = readCustomerId(req.cookies.get(CUSTOMER_COOKIE)?.value)
-  if (!customerId) return NextResponse.json({ error: '請先用 LINE 登入', request_id }, { status: 401 })
+  if (!customerId) return NextResponse.json({ error: '請先用 LINE 或 Google 登入', request_id }, { status: 401 })
 
   const body = await req.json().catch(() => ({}))
   const { store_id, catalog_id } = body as { store_id?: string; catalog_id?: string }

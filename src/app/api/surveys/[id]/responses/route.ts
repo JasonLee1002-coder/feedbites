@@ -1,7 +1,7 @@
 import { auth } from '@/auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { surveys, responses, discount_codes, stores } from '@/lib/db/schema'
+import { surveys, responses, discount_codes, stores, customers } from '@/lib/db/schema'
 import { eq, and, desc } from 'drizzle-orm'
 import { createDiscountCode, getExpiryDate } from '@/lib/discount'
 import { getSelectedStore } from '@/lib/store-context'
@@ -84,6 +84,11 @@ export async function POST(
     let customerId: string | null = null
     try {
       customerId = readCustomerId(request.cookies.get(CUSTOMER_COOKIE)?.value)
+      if (customerId) {
+        // session 效期 90 天，期間客人可能已被刪除；不存在就當匿名，避免外鍵錯誤讓整份問卷失敗
+        const [exists] = await db.select({ id: customers.id }).from(customers).where(eq(customers.id, customerId)).limit(1)
+        if (!exists) customerId = null
+      }
     } catch {
       customerId = null
     }
