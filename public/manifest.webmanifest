@@ -1,8 +1,10 @@
 {
   "name": "常來點 EatAgain — 問卷回饋系統",
   "short_name": "常來點",
-  "description": "Bite. Rate. Save. 掃碼填問卷，立即拿折扣",
-  "start_url": "/eatagain",
+  "description": "Eat. Earn. Eat again. 掃碼填問卷，集點換餐券",
+  "id": "/eatagain/",
+  "start_url": "/eatagain/",
+  "scope": "/eatagain/",
   "display": "standalone",
   "background_color": "#FAF7F2",
   "theme_color": "#DB5620",

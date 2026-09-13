@@ -25,7 +25,7 @@ export default function DishRatingBadge({ dishId }: { dishId: string }) {
     <div className="flex items-center gap-1.5 mt-1 flex-wrap">
       {stats.avgRating !== null && (
         <span className="flex items-center gap-1 text-[11px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">
-          <Image src="/icons/star.png" alt="star" width={12} height={12} />
+          <Image src={`${BASE_PATH}/icons/star.png`} alt="star" width={12} height={12} />
           {stats.avgRating.toFixed(1)}
         </span>
       )}

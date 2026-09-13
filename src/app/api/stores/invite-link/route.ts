@@ -22,11 +22,8 @@ export async function GET() {
       })
     }
 
-    // Generate a new token (8 chars, URL-safe)
-    const token = Array.from(crypto.getRandomValues(new Uint8Array(6)))
-      .map(b => b.toString(36).padStart(2, '0'))
-      .join('')
-      .slice(0, 8)
+    // 邀請連結等同加入店家的通行證，至少 128-bit；原本截成 8 字元只剩約 32-bit，可被暴力猜中
+    const token = Buffer.from(crypto.getRandomValues(new Uint8Array(18))).toString('base64url')
 
     await db
       .update(stores)

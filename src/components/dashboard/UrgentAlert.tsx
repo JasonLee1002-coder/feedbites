@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
+import { BASE_PATH } from '@/lib/brand';
 
 interface UrgentAlertProps {
   keywords: { keyword: string; count: number; samples: string[] }[];
@@ -28,7 +29,7 @@ export default function UrgentAlert({ keywords, todayResponses, overallAvg, pend
           transition={{ duration: 2, repeat: Infinity }}
         >
           <div className="flex items-center gap-2 mb-2">
-            <Image src="/icons/alert.png" alt="alert" width={24} height={24} />
+            <Image src={`${BASE_PATH}/icons/alert.png`} alt="alert" width={24} height={24} />
             <span className="text-sm font-bold text-red-700">今日需要注意</span>
           </div>
           <div className="space-y-1.5">
@@ -52,7 +53,7 @@ export default function UrgentAlert({ keywords, todayResponses, overallAvg, pend
             whileTap={{ scale: 0.97 }}
             className="bg-white rounded-2xl p-4 border border-[#E8E2D8] flex items-center gap-3"
           >
-            <Image src="/icons/feedback.png" alt="feedback" width={36} height={36} />
+            <Image src={`${BASE_PATH}/icons/feedback.png`} alt="feedback" width={36} height={36} />
             <div>
               <div className="text-2xl font-bold text-[#3A3A3A]">{todayResponses}</div>
               <div className="text-[11px] text-[#8A8585]">今日回饋</div>
@@ -65,7 +66,7 @@ export default function UrgentAlert({ keywords, todayResponses, overallAvg, pend
             whileTap={{ scale: 0.97 }}
             className="bg-white rounded-2xl p-4 border border-[#E8E2D8] flex items-center gap-3"
           >
-            <Image src="/icons/star.png" alt="star" width={36} height={36} />
+            <Image src={`${BASE_PATH}/icons/star.png`} alt="star" width={36} height={36} />
             <div>
               <div className="text-2xl font-bold text-[#3A3A3A]">
                 {overallAvg ? overallAvg.toFixed(1) : '--'}
