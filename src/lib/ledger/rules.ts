@@ -97,12 +97,22 @@ export function mergeRules(partial?: Partial<PointRules> | null): PointRules {
 
 const isNonNegInt = (n: unknown) => typeof n === 'number' && Number.isInteger(n) && n >= 0
 
+// 給店長看的中文欄位名，錯誤訊息用這個而不是程式變數名。
+const FIELD_LABELS: Record<string, string> = {
+  survey_completed: '填問卷得點',
+  profile_field: '補充資料得點',
+  wish_created: '許願得點',
+  wish_daily_limit: '每日許願上限',
+  wish_adopted: '願望被採納得點',
+  earn_valid_months: '點數有效月數',
+}
+
 function validateTemplate(t: VoucherTemplate, where: string): string | null {
-  if (t.kind !== 'amount' && t.kind !== 'item') return `${where} 券種必須是 amount 或 item`
-  if (t.kind === 'amount' && !(isNonNegInt(t.value) && (t.value as number) >= 1)) return `${where} 金額券需要面額（至少 1 元）`
-  if (t.kind === 'item' && !(typeof t.item_label === 'string' && t.item_label.trim().length > 0)) return `${where} 品項券需要品項名稱`
-  if (t.min_spend !== null && !isNonNegInt(t.min_spend)) return `${where} 低消必須是非負整數`
-  if (!(isNonNegInt(t.valid_days) && t.valid_days >= 1)) return `${where} 有效天數至少 1 天`
+  if (t.kind !== 'amount' && t.kind !== 'item') return `${where}的券種必須是折抵金額或指定品項`
+  if (t.kind === 'amount' && !(isNonNegInt(t.value) && (t.value as number) >= 1)) return `${where}是金額券，需要面額（至少 1 元）`
+  if (t.kind === 'item' && !(typeof t.item_label === 'string' && t.item_label.trim().length > 0)) return `${where}是品項券，需要品項名稱`
+  if (t.min_spend !== null && !isNonNegInt(t.min_spend)) return `${where}的低消必須是非負整數`
+  if (!(isNonNegInt(t.valid_days) && t.valid_days >= 1)) return `${where}的有效天數至少 1 天`
   return null
 }
 
@@ -111,18 +121,20 @@ export function validateRules(r: PointRules): string | null {
     'survey_completed', 'profile_field', 'wish_created', 'wish_daily_limit', 'wish_adopted', 'earn_valid_months',
   ]
   for (const k of numeric) {
-    if (!isNonNegInt(r[k])) return `${k} 必須是非負整數`
+    if (!isNonNegInt(r[k])) return `${FIELD_LABELS[k]}必須是非負整數`
   }
-  if (r.earn_valid_months < 1) return 'earn_valid_months 至少 1 個月'
+  if (r.earn_valid_months < 1) return '點數有效月數至少 1 個月'
   const fv = validateTemplate(r.first_voucher, '見面禮券')
   if (fv) return fv
   const ids = new Set<string>()
-  for (const c of r.catalog) {
-    if (typeof c.id !== 'string' || c.id.trim() === '') return '兌換項目缺少 id'
-    if (ids.has(c.id)) return `兌換項目 id 重複：${c.id}`
+  for (let i = 0; i < r.catalog.length; i++) {
+    const c = r.catalog[i]
+    const label = `第 ${i + 1} 個兌換項目`
+    if (typeof c.id !== 'string' || c.id.trim() === '') return `${label}缺少 id`
+    if (ids.has(c.id)) return `${label}的 id 重複：${c.id}`
     ids.add(c.id)
-    if (!(isNonNegInt(c.cost_points) && c.cost_points >= 1)) return `兌換項目 ${c.id} 所需點數至少 1`
-    const e = validateTemplate(c, `兌換項目 ${c.id}`)
+    if (!(isNonNegInt(c.cost_points) && c.cost_points >= 1)) return `${label}所需點數至少 1`
+    const e = validateTemplate(c, label)
     if (e) return e
   }
   return null
@@ -134,6 +146,7 @@ export function checkCatalogChange(oldCatalog: CatalogItem[], nextCatalog: Catal
   for (const o of oldCatalog) {
     const n = next.get(o.id)
     if (!n) return `不能移除已上架的兌換項目：${o.id}`
+    if (n.kind !== o.kind) return '已上架的兌換項目不能改券種'
     if (n.cost_points > o.cost_points) return `不能提高已上架項目的所需點數：${o.id}`
   }
   return null

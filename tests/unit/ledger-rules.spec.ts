@@ -39,7 +39,7 @@ test('validateRules 預設值合法', () => {
 })
 
 test('validateRules 擋負數、重複 id、金額券缺面額', () => {
-  expect(validateRules({ ...DEFAULT_RULES, survey_completed: -1 })).toMatch(/survey_completed/)
+  expect(validateRules({ ...DEFAULT_RULES, survey_completed: -1 })).toMatch(/填問卷得點/)
   const dup = mergeRules(null); dup.catalog.push({ ...dup.catalog[0] })
   expect(validateRules(dup)).toMatch(/重複/)
   const bad = mergeRules(null); bad.catalog[0] = { ...bad.catalog[0], kind: 'amount', value: null }
@@ -52,6 +52,14 @@ test('checkCatalogChange 允許新增、禁止移除與漲價', () => {
   expect(checkCatalogChange(old, old.slice(1))).toMatch(/移除/)
   expect(checkCatalogChange(old, old.map((c, i) => i === 0 ? { ...c, cost_points: c.cost_points + 1 } : c))).toMatch(/提高/)
   expect(checkCatalogChange(old, old.map((c, i) => i === 0 ? { ...c, cost_points: c.cost_points - 1 } : c))).toBeNull()
+})
+
+test('checkCatalogChange 禁止已上架項目改券種', () => {
+  const old = DEFAULT_RULES.catalog
+  const changedKind = old.map((c, i) =>
+    i === 0 ? { ...c, kind: c.kind === 'amount' ? 'item' : 'amount' } as typeof c : c
+  )
+  expect(checkCatalogChange(old, changedKind)).toMatch(/改券種/)
 })
 
 test('computeBalance 加總', () => {
