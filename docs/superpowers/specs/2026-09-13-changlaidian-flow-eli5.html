@@ -1,0 +1,377 @@
+<title>常來點怎麼運作</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@700&display=swap">
+<style>
+  :root {
+    --ground: #FBF7F2;
+    --paper: #FFFFFF;
+    --ink: #2B2118;
+    --ink-soft: #6E5E50;
+    --line: #E7DCCF;
+    --orange: #E8641B;
+    --orange-soft: #FDE9DC;
+    --line-green: #06C755;
+    --green-soft: #DDF6E7;
+    --have: #5F7A6A;
+    --have-soft: #E6EEE9;
+    --later: #4E6A8F;
+    --later-soft: #E3EAF3;
+    --shadow: 0 1px 0 rgba(43,33,24,.06), 0 8px 24px -12px rgba(43,33,24,.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #1A1512;
+      --paper: #241D18;
+      --ink: #F4ECE3;
+      --ink-soft: #B9A898;
+      --line: #3A2F27;
+      --orange: #FF8A45;
+      --orange-soft: #3A2417;
+      --line-green: #2FD774;
+      --green-soft: #173323;
+      --have: #9CC0AA;
+      --have-soft: #22302A;
+      --later: #9AB6DB;
+      --later-soft: #1F2937;
+      --shadow: 0 1px 0 rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #1A1512;
+    --paper: #241D18;
+    --ink: #F4ECE3;
+    --ink-soft: #B9A898;
+    --line: #3A2F27;
+    --orange: #FF8A45;
+    --orange-soft: #3A2417;
+    --line-green: #2FD774;
+    --green-soft: #173323;
+    --have: #9CC0AA;
+    --have-soft: #22302A;
+    --later: #9AB6DB;
+    --later-soft: #1F2937;
+    --shadow: 0 1px 0 rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    padding-inline: 20px;
+    padding-block: 36px 72px;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 56px; }
+  h1, h2, .big { font-family: "Huninn", "Noto Sans TC", sans-serif; font-weight: 400; text-wrap: balance; }
+
+  /* ── hero ── */
+  .hero { display: grid; grid-template-columns: 1.1fr 1fr; gap: 32px; align-items: center; }
+  .brand { display: inline-flex; gap: 10px; align-items: baseline; color: var(--orange); font-weight: 700; letter-spacing: .08em; font-size: 14px; }
+  .brand b { font-family: "Huninn", sans-serif; font-size: 22px; letter-spacing: .02em; font-weight: 400; }
+  .hero h1 { font-size: clamp(34px, 5.4vw, 56px); line-height: 1.15; margin: 10px 0 14px; }
+  .hero h1 em { font-style: normal; color: var(--orange); }
+  .hero p { color: var(--ink-soft); margin: 0; max-width: 34em; font-size: 17px; }
+  .loop svg { width: 100%; max-width: 440px; display: block; margin: 0 auto; }
+  .loop text { font-family: "Huninn", "Noto Sans TC", sans-serif; fill: var(--ink); font-size: 17px; }
+  .loop .small { font-family: "Noto Sans TC", sans-serif; font-size: 12px; fill: var(--ink-soft); }
+
+  /* ── legend ── */
+  .legend { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; font-size: 14px; color: var(--ink-soft); }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 700; letter-spacing: .04em; white-space: nowrap; }
+  .chip.have { background: var(--have-soft); color: var(--have); }
+  .chip.new { background: var(--orange-soft); color: var(--orange); }
+  .chip.later { background: var(--later-soft); color: var(--later); }
+
+  /* ── lanes ── */
+  .lane-head { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+  .lane-head .who { width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; flex: none; }
+  .lane-head .who svg { width: 32px; height: 32px; }
+  .owner .who { background: var(--ink); color: var(--ground); }
+  .guest .who { background: var(--orange); color: #fff; }
+  .lane-head h2 { font-size: 30px; margin: 0; line-height: 1.2; }
+  .lane-head p { margin: 0; color: var(--ink-soft); font-size: 15px; }
+
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; counter-reset: step; }
+  .step {
+    counter-increment: step;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px 16px 14px;
+    display: grid;
+    grid-template-rows: auto 64px auto 1fr;
+    gap: 10px;
+    position: relative;
+  }
+  /* ticket notches */
+  .step::before, .step::after {
+    content: ""; position: absolute; top: 96px; width: 14px; height: 14px; border-radius: 50%;
+    background: var(--ground); border: 1px solid var(--line);
+  }
+  .step::before { left: -8px; clip-path: inset(0 0 0 50%); }
+  .step::after { right: -8px; clip-path: inset(0 50% 0 0); }
+  .step-top { display: flex; justify-content: space-between; align-items: center; }
+  .step-top .n { font-family: "JetBrains Mono", monospace; font-size: 13px; color: var(--ink-soft); }
+  .step-top .n::before { content: counter(step, decimal-leading-zero); }
+  .pic { color: var(--ink); display: flex; align-items: center; }
+  .pic svg { width: 60px; height: 60px; }
+  .step.is-line .pic { color: var(--line-green); }
+  .step.is-new .pic { color: var(--orange); }
+  .step h3 { font-size: 17px; margin: 0; line-height: 1.35; font-weight: 700; border-top: 1.5px dashed var(--line); padding-top: 12px; }
+  .step p { margin: 0; font-size: 14px; color: var(--ink-soft); line-height: 1.5; }
+  .pts { font-family: "JetBrains Mono", monospace; color: var(--orange); font-weight: 700; }
+
+  /* ── hq + future ── */
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .panel { border-radius: 18px; padding: 22px; display: grid; grid-template-columns: 72px 1fr; gap: 16px; align-items: start; }
+  .panel svg { width: 64px; height: 64px; }
+  .panel h3 { margin: 0 0 6px; font-family: "Huninn", sans-serif; font-weight: 400; font-size: 22px; line-height: 1.25; }
+  .panel p { margin: 0; color: var(--ink-soft); font-size: 15px; }
+  .panel .chip { margin-bottom: 8px; }
+  .hq { background: var(--paper); border: 1px solid var(--line); }
+  .hq svg { color: var(--ink); }
+  .future { background: var(--later-soft); }
+  .future svg { color: var(--later); }
+
+  .money { background: var(--ink); color: var(--ground); border-radius: 22px; padding: 28px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .money div { display: grid; gap: 4px; }
+  .money .big { font-size: 34px; line-height: 1.1; color: var(--orange); }
+  .money span { font-size: 14px; opacity: .8; }
+
+  @media (max-width: 760px) {
+    .hero, .duo { grid-template-columns: 1fr; }
+    .money { grid-template-columns: 1fr; }
+    .steps { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  }
+  @media (max-width: 420px) {
+    .steps { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .step { padding: 12px; grid-template-rows: auto 52px auto 1fr; }
+    .pic svg { width: 48px; height: 48px; }
+    .step::before, .step::after { top: 82px; }
+    .panel { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .loop .orbit { animation: spin 18s linear infinite; transform-origin: 220px 220px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  }
+</style>
+
+<div class="wrap">
+
+  <!-- HERO -->
+  <header class="hero">
+    <div>
+      <div class="brand"><b>常來點</b> 餐廳的顧客帳本</div>
+      <h1>客人做的每件事都變成點數，<em>點數把客人帶回來</em></h1>
+      <p>店長上傳菜單、放一張 QR 立牌。客人掃碼、填問卷、敲碗，拿點數換餐券，下次再來。</p>
+    </div>
+    <div class="loop" aria-label="循環圖：掃碼、點數、餐券、回店">
+      <svg viewBox="0 0 440 440" role="img">
+        <circle cx="220" cy="220" r="150" fill="none" stroke="var(--line)" stroke-width="26"/>
+        <g class="orbit">
+          <circle cx="220" cy="220" r="150" fill="none" stroke="var(--orange)" stroke-width="6" stroke-dasharray="40 900" stroke-linecap="round"/>
+        </g>
+        <!-- arrows -->
+        <g fill="var(--orange)">
+          <path d="M338 118 l18 -4 -6 17z"/>
+          <path d="M322 338 l4 18 -17 -6z"/>
+          <path d="M102 322 l-18 4 6 -17z"/>
+          <path d="M118 102 l-4 -18 17 6z"/>
+        </g>
+        <!-- nodes -->
+        <g>
+          <circle cx="220" cy="70" r="46" fill="var(--paper)" stroke="var(--line)" stroke-width="2"/>
+          <g transform="translate(200 44)" fill="none" stroke="var(--ink)" stroke-width="3" stroke-linecap="round">
+            <rect x="0" y="0" width="16" height="16" rx="2"/><rect x="24" y="0" width="16" height="16" rx="2"/><rect x="0" y="24" width="16" height="16" rx="2"/><path d="M24 26h6M36 26v14M24 36h6"/>
+          </g>
+          <text x="220" y="146" text-anchor="middle">掃碼填問卷</text>
+
+          <circle cx="370" cy="220" r="46" fill="var(--paper)" stroke="var(--line)" stroke-width="2"/>
+          <g transform="translate(348 198)" fill="none" stroke="var(--orange)" stroke-width="3">
+            <circle cx="22" cy="22" r="20"/><path d="M22 10v24M14 16h11a5 5 0 0 1 0 10H14" stroke-linecap="round"/>
+          </g>
+          <text x="370" y="296" text-anchor="middle">拿點數</text>
+
+          <circle cx="220" cy="370" r="46" fill="var(--paper)" stroke="var(--line)" stroke-width="2"/>
+          <g transform="translate(194 352)" fill="none" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round">
+            <path d="M0 4h52v10a6 6 0 0 0 0 12v10H0V26a6 6 0 0 0 0-12z"/><path d="M34 6v28" stroke-dasharray="3 4"/>
+          </g>
+          <text x="220" y="300" text-anchor="middle">換餐券</text>
+
+          <circle cx="70" cy="220" r="46" fill="var(--paper)" stroke="var(--line)" stroke-width="2"/>
+          <g transform="translate(46 196)" fill="none" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+            <path d="M4 20 L24 4 L44 20"/><path d="M9 17v27h30V17"/><path d="M19 44V30h10v14"/>
+          </g>
+          <text x="70" y="296" text-anchor="middle">再回店</text>
+        </g>
+        <text x="220" y="214" text-anchor="middle" class="big" style="font-size:26px; fill: var(--orange)">常來點</text>
+        <text x="220" y="238" text-anchor="middle" class="small">一直轉，客人一直回來</text>
+      </svg>
+    </div>
+  </header>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <span>每一格右上角：</span>
+    <span class="chip have">已經有</span><span>系統現在就能用</span>
+    <span class="chip new">這次新做</span><span>第一期在欣殿萬飲做</span>
+    <span class="chip later">之後</span><span>第二、三期</span>
+  </div>
+
+  <!-- OWNER LANE -->
+  <section class="owner">
+    <div class="lane-head">
+      <div class="who" aria-hidden="true">
+        <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13c0-6 16-6 16 0"/><path d="M6 13h20"/><circle cx="16" cy="18" r="4"/><path d="M8 30c1-5 4-7 8-7s7 2 8 7"/></svg>
+      </div>
+      <div>
+        <h2>店長這樣用</h2>
+        <p>設定一次，之後每天花五分鐘看就好</p>
+      </div>
+    </div>
+    <ol class="steps">
+      <li class="step">
+        <div class="step-top"><span class="n"></span><span class="chip have">已經有</span></div>
+        <div class="pic"><svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="16" y="4" width="28" height="52" rx="5"/><circle cx="30" cy="24" r="6"/><path d="M21 40c2-5 16-5 18 0"/><path d="M26 50h8"/></svg></div>
+        <h3>登入、開一家店</h3>
+        <p>填店名，選店家照片</p>
+      </li>
+      <li class="step is-new">
+        <div class="step-top"><span class="n"></span><span class="chip new">這次新做</span></div>
+        <div class="pic"><svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="14" width="52" height="38" rx="6"/><path d="M20 14l4-7h12l4 7"/><circle cx="30" cy="33" r="10"/><path d="M47 22h2"/></svg></div>
+        <h3>拍菜單照片上傳</h3>
+        <p>AI 自動抓菜名價格，照片全部存成行銷素材</p>
+      </li>
+      <li class="step">
+        <div class="step-top"><span class="n"></span><span class="chip have">已經有</span></div>
+        <div class="pic"><svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="4" width="40" height="52" rx="5"/><path d="M18 18l3 3 6-6M32 18h10M18 32l3 3 6-6M32 32h10M18 46h24"/></svg></div>
+        <h3>挑一份問卷</h3>
+        <p>用範本改幾題，題目直接連到菜</p>
+      </li>
+      <li class="step">
+        <div class="step-top"><span class="n"></span><span class="chip have">已經有</span></div>
+        <div class="pic"><svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 56L22 8h16l8 48"/><rect x="21" y="16" width="18" height="18" rx="2"/><path d="M26 21h3v3h-3zM31 26h3v3h-3z"/><path d="M8 56h44"/></svg></div>
+        <h3>印 QR 立牌放桌上</h3>
+        <p>每桌一張，客人自己掃</p>
+      </li>
+      <li class="step is-new">
+        <div class="step-top"><span class="n"></span><span class="chip new">這次新做</span></div>
+        <div class="pic"><svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 54h48"/><rect x="10" y="34" width="8" height="20"/><rect x="26" y="20" width="8" height="34"/><rect x="42" y="8" width="8" height="46"/><circle cx="46" cy="26" r="0.5"/></svg></div>
+        <h3>看今天誰來、愛吃什麼</h3>
+        <p>哪個時段、哪道菜、哪一群客人最多</p>
+      </li>
+      <li class="step is-new">
+        <div class="step-top"><span class="n"></span><span class="chip new">這次新做</span></div>
+        <div class="pic"><svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 30h48a24 24 0 0 1-48 0z"/><path d="M40 6l-8 18"/><path d="M36 4l8 4"/><path d="M12 14l4 4M48 14l-4 4M30 8v4"/></svg></div>
+        <h3>看敲碗牆，採納心願</h3>
+        <p>客人想吃的東西排好隊，一鍵採納就通知他</p>
+      </li>
+      <li class="step is-new">
+        <div class="step-top"><span class="n"></span><span class="chip new">這次新做</span></div>
+        <div class="pic"><svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><path d="M4 16h52v10a6 6 0 0 0 0 12v10H4V38a6 6 0 0 0 0-12z"/><path d="M40 18v28" stroke-dasharray="3 4"/><path d="M14 32h16" stroke-linecap="round"/></svg></div>
+        <h3>設定餐券</h3>
+        <p>見面禮送多少、幾點換什麼，自己決定</p>
+      </li>
+      <li class="step is-new">
+        <div class="step-top"><span class="n"></span><span class="chip new">這次新做</span></div>
+        <div class="pic"><svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="18" width="48" height="34" rx="5"/><path d="M16 18v-6h28v6"/><path d="M20 36l7 7 14-14"/></svg></div>
+        <h3>店員一鍵核銷</h3>
+        <p>客人給看餐券代碼，按一下就用掉，不能重複用</p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- GUEST LANE -->
+  <section class="guest">
+    <div class="lane-head">
+      <div class="who" aria-hidden="true">
+        <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="10" r="5"/><path d="M6 30c1-7 5-10 10-10s9 3 10 10"/></svg>
+      </div>
+      <div>
+        <h2>客人這樣玩</h2>
+        <p>不用下載 App，手機掃一下就開始</p>
+      </div>
+    </div>
+    <ol class="steps">
+      <li class="step">
+        <div class="step-top"><span class="n"></span><span class="chip have">已經有</span></div>
+        <div class="pic"><svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="16" y="4" width="28" height="52" rx="5"/><path d="M22 16h6v6h-6zM32 16h6v6h-6zM22 28h6v6h-6zM32 30h6M35 28v8"/><path d="M4 22V12a4 4 0 0 1 4-4h4M56 22V12a4 4 0 0 0-4-4h-4"/></svg></div>
+        <h3>掃桌上的 QR</h3>
+        <p>不用登入，直接開始</p>
+      </li>
+      <li class="step">
+        <div class="step-top"><span class="n"></span><span class="chip have">已經有</span></div>
+        <div class="pic"><svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="30" r="10"/><path d="M14 32c2 3 6 3 8 0"/><circle cx="42" cy="30" r="10"/><path d="M38 34c2-3 6-3 8 0"/><path d="M14 12h32M14 50h32" stroke-dasharray="2 5"/></svg></div>
+        <h3>點笑臉填問卷</h3>
+        <p>一分鐘，還能刮刮樂</p>
+      </li>
+      <li class="step is-line">
+        <div class="step-top"><span class="n"></span><span class="chip new">這次新做</span></div>
+        <div class="pic"><svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M30 8C16 8 5 17 5 28c0 10 8 18 20 20l-2 8 12-8c12-2 20-10 20-20C55 17 44 8 30 8z"/><path d="M17 24v10h6M28 24v10M34 34V24l8 10V24"/></svg></div>
+        <h3>用 LINE 登入領獎</h3>
+        <p>按一下綠色按鈕，不用打帳號密碼</p>
+      </li>
+      <li class="step is-new">
+        <div class="step-top"><span class="n"></span><span class="chip new">這次新做</span></div>
+        <div class="pic"><svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><circle cx="22" cy="24" r="16"/><path d="M22 14v20M16 18h8a4 4 0 0 1 0 8h-8" stroke-linecap="round"/><path d="M26 42h30v10a4 4 0 0 0 0 0v4H26z"/><path d="M46 42v14" stroke-dasharray="2 3"/></svg></div>
+        <h3>拿到點數和見面禮券</h3>
+        <p>第一次來就有一張，<span class="pts">+50</span> 點</p>
+      </li>
+      <li class="step is-new">
+        <div class="step-top"><span class="n"></span><span class="chip new">這次新做</span></div>
+        <div class="pic"><svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 32h48a24 24 0 0 1-48 0z"/><path d="M42 8l-8 18"/><path d="M38 6l8 4"/><path d="M12 16l4 4M48 16l-4 4"/></svg></div>
+        <h3>敲碗、補資料，再加點</h3>
+        <p>想吃什麼就敲碗，生日也可以留</p>
+      </li>
+      <li class="step is-new">
+        <div class="step-top"><span class="n"></span><span class="chip new">這次新做</span></div>
+        <div class="pic"><svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="30" r="10"/><path d="M16 24v12"/><path d="M30 30h8M34 26l4 4-4 4"/><path d="M42 20h14v6a4 4 0 0 0 0 8v6H42v-6a4 4 0 0 0 0-8z"/></svg></div>
+        <h3>點數換餐券</h3>
+        <p>夠點就按兌換，券存在手機裡</p>
+      </li>
+      <li class="step is-new">
+        <div class="step-top"><span class="n"></span><span class="chip new">這次新做</span></div>
+        <div class="pic"><svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 26L30 8l22 18"/><path d="M14 22v32h32V22"/><path d="M24 54V38h12v16"/></svg></div>
+        <h3>下次來店用掉它</h3>
+        <p>結帳時給店員看代碼</p>
+      </li>
+      <li class="step is-line">
+        <div class="step-top"><span class="n"></span><span class="chip new">這次新做</span></div>
+        <div class="pic"><svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 44V26a12 12 0 0 1 24 0v18l5 5H13z"/><path d="M26 54h8"/><path d="M50 12l-4 4M10 12l4 4"/></svg></div>
+        <h3>心願被採納，LINE 通知</h3>
+        <p>「你敲碗的菜上架了，送你 <span class="pts">200</span> 點」</p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- HQ + FUTURE -->
+  <div class="duo">
+    <div class="panel hq">
+      <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="10" width="26" height="48"/><path d="M34 26h22v32H34"/><path d="M15 20h4M23 20h4M15 30h4M23 30h4M15 40h4M23 40h4M41 36h8M41 46h8"/><path d="M4 58h56"/></svg>
+      <div>
+        <span class="chip new">這次新做</span>
+        <h3>連鎖總部一眼看全部分店</h3>
+        <p>每家店的客人、時段、敲碗、餐券都看得到，但不會去動分店的設定。分店的客人還是分店的。</p>
+      </div>
+    </div>
+    <div class="panel future">
+      <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="52" height="52" rx="4"/><path d="M32 6v52M6 24h26M6 42h26M32 24h26M32 42h26"/><circle cx="26" cy="15" r="1.5"/><circle cx="26" cy="33" r="1.5"/><circle cx="38" cy="33" r="1.5"/></svg>
+      <div>
+        <span class="chip later">之後</span>
+        <h3>線上訂餐、智取櫃取餐也送點</h3>
+        <p>第二期：網路訂完就推問卷。第三期：到智能櫃自己取餐，多送一點，讓客人習慣自助。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MONEY -->
+  <div class="money">
+    <div><span class="big">NT$100</span><span>每家店每個月</span></div>
+    <div><span class="big">1 個帳號</span><span>客人走遍所有用常來點的店</span></div>
+    <div><span class="big">欣殿萬飲 → 東方美</span><span>第一家在駁二，接著東方美早餐店</span></div>
+  </div>
+
+</div>
