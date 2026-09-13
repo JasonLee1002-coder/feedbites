@@ -4,7 +4,7 @@ import { buildGoogleAuthorizeUrl, checkGoogleClaims } from '../../src/lib/google
 test('Google authorize URL 帶齊參數', () => {
   const url = new URL(buildGoogleAuthorizeUrl({
     clientId: 'cid.apps.googleusercontent.com',
-    redirectUri: 'https://poc.mcstation.ai/feedbites/api/customer/google/callback',
+    redirectUri: 'https://poc.mcstation.ai/eatagain/api/customer/google/callback',
     state: 'st', nonce: 'nc',
   }))
   expect(url.origin + url.pathname).toBe('https://accounts.google.com/o/oauth2/v2/auth')

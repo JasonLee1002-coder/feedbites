@@ -33,11 +33,11 @@ test('空值與亂碼回 null 不丟例外', () => {
   expect(verifyPayload('a.b', SECRET)).toBeNull()
 })
 
-test('safeNext 只允許站內 /feedbites/ 路徑', () => {
-  expect(safeNext('/feedbites/w/123')).toBe('/feedbites/w/123')
-  expect(safeNext('https://evil.com')).toBe('/feedbites')
-  expect(safeNext('//evil.com/feedbites/')).toBe('/feedbites')
-  expect(safeNext(null)).toBe('/feedbites')
+test('safeNext 只允許站內 /eatagain/ 路徑', () => {
+  expect(safeNext('/eatagain/w/123')).toBe('/eatagain/w/123')
+  expect(safeNext('https://evil.com')).toBe('/eatagain')
+  expect(safeNext('//evil.com/eatagain/')).toBe('/eatagain')
+  expect(safeNext(null)).toBe('/eatagain')
 })
 
 test('isUuid', () => {

@@ -8,7 +8,7 @@ const RID = '11111111-2222-4333-8444-555555555555'
 
 test.beforeAll(() => {
   process.env.CUSTOMER_SESSION_SECRET = SECRET
-  process.env.PUBLIC_BASE_URL = 'http://localhost/feedbites'
+  process.env.PUBLIC_BASE_URL = 'http://localhost/eatagain'
 })
 
 function stateFrom(res: Response): OAuthState | null {
@@ -18,7 +18,7 @@ function stateFrom(res: Response): OAuthState | null {
 }
 
 function start(claim: string) {
-  const req = new NextRequest(`http://localhost/feedbites/api/customer/line/start?claim=${encodeURIComponent(claim)}`)
+  const req = new NextRequest(`http://localhost/eatagain/api/customer/line/start?claim=${encodeURIComponent(claim)}`)
   return startLogin(req, 'line', () => 'https://access.line.me/oauth2/v2.1/authorize')
 }
 
@@ -52,7 +52,7 @@ test('finishLogin 失敗時重試連結帶回原始認領憑證（已編碼）',
     provider: 'line', state: 's', nonce: 'n', claim: RID, claimToken: token,
     store: '22222222-2222-4333-8444-555555555555', exp: Date.now() + 60_000,
   }
-  const req = new NextRequest('http://localhost/feedbites/api/customer/line/callback?error=access_denied', {
+  const req = new NextRequest('http://localhost/eatagain/api/customer/line/callback?error=access_denied', {
     headers: { cookie: `${OAUTH_STATE_COOKIE}=${signPayload(st, SECRET)}` },
   })
   const res = await finishLogin(req, 'line', async () => { throw new Error('should not be called') })
