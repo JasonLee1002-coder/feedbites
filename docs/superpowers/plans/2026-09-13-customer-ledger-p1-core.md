@@ -19,15 +19,15 @@
 1. **LINE Login 不用 NextAuth provider，改手寫 OAuth。** 同一個 app 起第二個 NextAuth 實例會共用 `AUTH_URL`、basePath 與 `authjs.*` cookie 命名空間，和店長端互相干擾的風險高；手寫流程只有 start／callback 兩支路由，完全隔離且可測。
 2. **扣點事件名稱改為 `voucher_exchanged`**（spec 原寫 `voucher_redeemed`），避免和「店員核銷」混淆。另新增 `voucher_issued`（0 點，記錄見面禮券發放）。
 3. **身分改成多登入方式**（Jason 2026-09-13：外國觀光客沒有 LINE 怎麼辦）。`customers` 不放 `line_user_id`，改用 `customer_identities(provider, subject)`。LINE 服務台灣、日本、泰國客人；Google 服務韓國與歐美客人。完全不想登入的觀光客照舊拿刮刮卡折扣，只是不累積點數。
-4. **全站品牌換成「常來點 EatAgain」，FeedBites 字樣從畫面上消失**（Jason 2026-09-13）。網址路徑 `/feedbites` 暫不改：欣殿萬飲桌上已印的 QR 碼指向這個路徑，改了會全部失效；換正式網域時一起處理。
+4. **全站品牌換成「常來點 EatAgain」，FeedBites 字樣從畫面上消失**（Jason 2026-09-13）。網址路徑也從 `/feedbites` 改成 `/eatagain`（Jason 2026-09-13：欣殿萬飲的 QR 還沒印）。舊路徑在 nginx 保留 301 轉址，既有連結與資料庫裡已存的圖片網址不會壞。
 
 ## 前置條件（Task 0，需要 Jason 或 CTO 手動）
 
 - [ ] 在 [LINE Developers Console](https://developers.line.biz/console/) 建一個 **LINE Login channel**（Provider 用銓幻元），Callback URL 填：
-  - 正式：`https://poc.mcstation.ai/feedbites/api/customer/line/callback`
-  - 本機：`http://localhost:3000/feedbites/api/customer/line/callback`
+  - 正式：`https://poc.mcstation.ai/eatagain/api/customer/line/callback`
+  - 本機：`http://localhost:3000/eatagain/api/customer/line/callback`
 - [ ] 同一 Provider 下的平台級 Messaging API channel（官方帳號）連結到此 Login channel，`bot_prompt=aggressive` 才會邀客人加好友。沒有 OA 時登入仍可用，只是不會出現加好友畫面。
-- [ ] 在 Google Cloud Console 既有的 OAuth client（`global.env` 的 `GOOGLE_CLIENT_ID`）加兩個已授權重新導向 URI：`https://poc.mcstation.ai/feedbites/api/customer/google/callback`、`http://localhost:3000/feedbites/api/customer/google/callback`；OAuth 同意畫面的應用程式名稱改成「常來點 EatAgain」。
+- [ ] 在 Google Cloud Console 既有的 OAuth client（`global.env` 的 `GOOGLE_CLIENT_ID`）加兩個已授權重新導向 URI：`https://poc.mcstation.ai/eatagain/api/customer/google/callback`、`http://localhost:3000/eatagain/api/customer/google/callback`；OAuth 同意畫面的應用程式名稱改成「常來點 EatAgain」。
 - [ ] 把 Channel ID 與 Channel secret 寫入 `~/.credentials/global.env`（`FEEDBITES_LINE_LOGIN_CHANNEL_ID`、`FEEDBITES_LINE_LOGIN_CHANNEL_SECRET`），並登記到 `shared_intel/CTO_RESOURCES.md`。
 
 Task 1–12 不依賴 Task 0，可以先做。Task 13 的端到端驗證需要 Task 0。
@@ -820,13 +820,13 @@ import { buildAuthorizeUrl } from '../../src/lib/line-login'
 test('authorize URL 帶齊必要參數與加好友提示', () => {
   const url = new URL(buildAuthorizeUrl({
     channelId: '1234567890',
-    redirectUri: 'https://poc.mcstation.ai/feedbites/api/customer/line/callback',
+    redirectUri: 'https://poc.mcstation.ai/eatagain/api/customer/line/callback',
     state: 'st', nonce: 'nc',
   }))
   expect(url.origin + url.pathname).toBe('https://access.line.me/oauth2/v2.1/authorize')
   expect(url.searchParams.get('response_type')).toBe('code')
   expect(url.searchParams.get('client_id')).toBe('1234567890')
-  expect(url.searchParams.get('redirect_uri')).toBe('https://poc.mcstation.ai/feedbites/api/customer/line/callback')
+  expect(url.searchParams.get('redirect_uri')).toBe('https://poc.mcstation.ai/eatagain/api/customer/line/callback')
   expect(url.searchParams.get('state')).toBe('st')
   expect(url.searchParams.get('nonce')).toBe('nc')
   expect(url.searchParams.get('scope')).toBe('profile openid')
@@ -1432,7 +1432,7 @@ import { buildGoogleAuthorizeUrl, checkGoogleClaims } from '../../src/lib/google
 test('Google authorize URL 帶齊參數', () => {
   const url = new URL(buildGoogleAuthorizeUrl({
     clientId: 'cid.apps.googleusercontent.com',
-    redirectUri: 'https://poc.mcstation.ai/feedbites/api/customer/google/callback',
+    redirectUri: 'https://poc.mcstation.ai/eatagain/api/customer/google/callback',
     state: 'st', nonce: 'nc',
   }))
   expect(url.origin + url.pathname).toBe('https://accounts.google.com/o/oauth2/v2/auth')
@@ -1742,7 +1742,7 @@ Run: `npm run dev`，另一個終端：
 ```bash
 curl -s -o /dev/null -w "%{http_code} %{redirect_url}\n" "http://localhost:3000/feedbites/api/customer/line/start?claim=36759bb5-7786-47bf-a5e2-ce78b3e27dc7"
 curl -s -o /dev/null -w "%{http_code} %{redirect_url}\n" "http://localhost:3000/feedbites/api/customer/google/start?store=36759bb5-7786-47bf-a5e2-ce78b3e27dc7"
-curl -s -o /dev/null -w "%{http_code} %{redirect_url}\n" "http://localhost:3000/feedbites/api/customer/line/callback?code=x&state=y"
+curl -s -o /dev/null -w "%{http_code} %{redirect_url}\n" "http://localhost:3000/eatagain/api/customer/line/callback?code=x&state=y"
 ```
 
 Expected: 第一行 `307 https://access.line.me/oauth2/v2.1/authorize?...bot_prompt=aggressive`；第二行 `307 https://accounts.google.com/o/oauth2/v2/auth?...prompt=select_account`；第三行 `307 http://localhost:3000/feedbites/`（沒有 state cookie，被拒絕後導回，不是 500）。
@@ -2697,14 +2697,16 @@ git commit -m "feat(ledger): customer wallet page and staff vouchers dashboard"
 - Modify: `public/manifest.webmanifest`、`public/icons/*`（重新產生）
 - Modify: `src/` 內所有畫面上看得到的 FeedBites 字樣
 
-**規則（逐一判斷，不要全域取代）：**
+**規則（逐一判斷，不要盲目全域取代）：**
 
 | 類型 | 處理 |
 |---|---|
 | 畫面文字、`<title>`、metadata、email 主旨與內文、LINE 推播文字、「Powered by FeedBites」 | 換成「常來點」；需要英文處換 `EatAgain`；對客與店長端都換 |
-| Logo 圖檔引用（`feedbites-logo.png`） | 換成 `/feedbites/brand/changlaidian-lockup.png`（橫式）或 `changlaidian-icon-1024.png`（方形） |
-| 網址 basePath `/feedbites`、API 路徑、cookie 名稱（`feedbites_store_id`）、logger 服務名、資料庫、環境變數、`package.json` name | **不動**。改了會讓已印的 QR 碼失效或登入掉線 |
+| Logo 圖檔引用（`feedbites-logo.png`） | 換成 `BRAND_LOGO_LOCKUP` 或 `BRAND_ICON` 常數 |
+| 網址 basePath `/feedbites` | **改成 `/eatagain`**。程式裡寫死的 `/feedbites/...` 字串一律改成用 `BASE_PATH` 常數組出來，之後再改只要動一處 |
+| cookie 名稱（`feedbites_store_id`）、logger 服務名、資料庫、`package.json` name、Docker 容器名 | **不動**。改 cookie 名會讓所有店長登出；其餘是內部識別，客人看不到 |
 | 寄件地址 `noreply@feedbites.app` | 只改顯示名稱：`常來點 EatAgain <noreply@feedbites.app>`，地址等有新網域再換 |
+| 資料庫裡已存的圖片網址（`.../feedbites/uploads/...`） | **不改資料**，由 nginx 舊路徑繼續提供（Step 6） |
 
 - [ ] **Step 1: 品牌常數**
 
@@ -2715,9 +2717,12 @@ git commit -m "feat(ledger): customer wallet page and staff vouchers dashboard"
 export const CUSTOMER_BRAND = '常來點'
 export const CUSTOMER_BRAND_EN = 'EatAgain'
 export const BRAND_FULL = `${CUSTOMER_BRAND} ${CUSTOMER_BRAND_EN}`
-export const BRAND_LOGO_LOCKUP = '/feedbites/brand/changlaidian-lockup.png'
-export const BRAND_ICON = '/feedbites/brand/changlaidian-icon-1024.png'
+export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? '/eatagain'
+export const BRAND_LOGO_LOCKUP = `${BASE_PATH}/brand/changlaidian-lockup.png`
+export const BRAND_ICON = `${BASE_PATH}/brand/changlaidian-icon-1024.png`
 ```
+
+`next.config.ts` 的 `basePath` 與 `env.NEXT_PUBLIC_BASE_PATH` 都改成 `'/eatagain'`。`src/lib/local-upload.ts` 的 `UPLOADS_BASE_URL` 預設值改成 `https://poc.mcstation.ai/eatagain/uploads`。`playwright.config.ts` 註解與 `tests/` 內的 `/feedbites` 前綴改成 `/eatagain`。
 
 - [ ] **Step 2: 圖檔**
 
@@ -2734,7 +2739,10 @@ sed -n 1,40p scripts/generate-icons.mjs
 ```bash
 grep -rn "FeedBites\|Feedbites" src --include=*.tsx --include=*.ts
 grep -rn "feedbites-logo" src public
+grep -rn "/feedbites" src tests public next.config.ts playwright.config.ts
 ```
+
+`/feedbites` 開頭的字串約 170 處。客戶端元件改成 `` `${BASE_PATH}/api/...` ``（從 `@/lib/brand` 匯入）；`src/proxy.ts` 內的轉址也用 `BASE_PATH`。
 
 逐筆依上表判斷，每一處改完再往下。
 
@@ -2744,18 +2752,54 @@ grep -rn "feedbites-logo" src public
 grep -rn "FeedBites\|Feedbites" src --include=*.tsx --include=*.ts | grep -v "^src/lib/logger"
 ```
 
-Expected: 只剩上表「不動」類型（例如程式註解、內部識別）。剩下的每一筆在 commit 訊息裡列出保留理由。
-
-`npm run dev` 後打開：登入頁、`/feedbites/dashboard`、一份問卷 `/feedbites/s/<id>` 完成頁、`/feedbites/w/<storeId>`、`/feedbites/m/<storeId>`。Expected: 看得到的地方全部是常來點與新 logo，瀏覽器分頁標題也是。
-
-- [ ] **Step 5: build 與 commit**
-
-Run: `npx tsc --noEmit && npm run build`
-Expected: 成功。
+再跑：
 
 ```bash
-git add src public
-git commit -m "feat(brand): rebrand all visible FeedBites text and logo to 常來點 EatAgain"
+grep -rn "/feedbites" src tests public next.config.ts playwright.config.ts
+```
+
+Expected: 兩次 grep 都只剩上表「不動」類型（cookie 名 `feedbites_store_id`、程式註解）。剩下的每一筆在 commit 訊息裡列出保留理由。
+
+`.env.local` 的 `PUBLIC_BASE_URL` 改成 `http://localhost:3000/eatagain`。`npm run dev` 後打開：登入頁、`/eatagain/dashboard`、一份問卷 `/eatagain/s/<id>` 完成頁、`/eatagain/w/<storeId>`、`/eatagain/m/<storeId>`。店長登入、問卷送出、領點卡片的 LINE 與 Google 連結都要實際點過，確認沒有 404。Expected: 看得到的地方全部是常來點與新 logo，瀏覽器分頁標題也是。
+
+- [ ] **Step 5: 部署設定檔**
+
+`scripts/nginx-feedbites.conf` 改為（新路徑為主、舊路徑轉址，舊上傳圖檔照常提供）：
+
+```nginx
+# 常來點 EatAgain（原 FeedBites）
+location /eatagain/uploads/ {
+    alias /home/jason/feedbites-uploads/;
+}
+
+location /feedbites/uploads/ {
+    alias /home/jason/feedbites-uploads/;
+}
+
+location /eatagain/ {
+    proxy_pass http://feedbites:3200/eatagain/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+}
+
+location /feedbites/ {
+    return 301 /eatagain/$request_uri_tail;
+}
+```
+
+> `$request_uri_tail` 不是 nginx 內建變數。實作時改用 `rewrite ^/feedbites/(.*)$ /eatagain/$1 permanent;`，並保留原檔其他 header 設定（先 `cat scripts/nginx-feedbites.conf` 看現況，只改路徑與加轉址，不要刪掉原本的設定）。
+
+`scripts/deploy-ec2.sh`、`scripts/deploy_boto3.py`、`scripts/quick_redeploy.py` 裡的健康檢查網址 `/feedbites` 改成 `/eatagain`；容器名、目錄名 `feedbites` 不動。
+
+- [ ] **Step 6: build 與 commit**
+
+Run: `npx tsc --noEmit && npx playwright test tests/unit && npm run build`
+Expected: 全部成功。
+
+```bash
+git add src public tests scripts next.config.ts playwright.config.ts
+git commit -m "feat(brand): rebrand to 常來點 EatAgain, move basePath to /eatagain with nginx redirect from /feedbites"
 ```
 
 ---
@@ -2786,7 +2830,8 @@ LINE_LOGIN_CHANNEL_ID=<Task 0>
 LINE_LOGIN_CHANNEL_SECRET=<Task 0>
 CUSTOMER_GOOGLE_CLIENT_ID=<global.env 的 GOOGLE_CLIENT_ID>
 CUSTOMER_GOOGLE_CLIENT_SECRET=<global.env 的 GOOGLE_CLIENT_SECRET>
-PUBLIC_BASE_URL=https://poc.mcstation.ai/feedbites
+PUBLIC_BASE_URL=https://poc.mcstation.ai/eatagain
+UPLOADS_BASE_URL=https://poc.mcstation.ai/eatagain/uploads
 CUSTOMER_SESSION_SECRET=<openssl rand -base64 48 產生，另存 global.env 為 FEEDBITES_CUSTOMER_SESSION_SECRET>
 ```
 
@@ -2807,14 +2852,14 @@ docker exec feedbites-postgres psql -U postgres -d feedbites -v ON_ERROR_STOP=1 
 
 - [ ] **Step 6: 🔴 部署**
 
-合併到 master、push，依 `scripts/deploy-ec2.sh` 重建容器（與 P0 上線同流程）。
+合併到 master、push，依 `scripts/deploy-ec2.sh` 重建容器（與 P0 上線同流程）。同時把新的 nginx 設定套到 EC2 並 `nginx -t` 通過後 reload；驗證 `https://poc.mcstation.ai/feedbites/dashboard` 會 301 到 `/eatagain/dashboard`，舊的店家 logo 圖片網址仍回 200。
 
 - [ ] **Step 7: EC2 到期排程**
 
 EC2 crontab 加一行（每天台北 03:00）：
 
 ```
-0 19 * * * curl -s -H "Authorization: Bearer $CRON_SECRET" https://poc.mcstation.ai/feedbites/api/cron/points-expiry >> /home/jason/feedbites/logs/points-expiry.log 2>&1
+0 19 * * * curl -s -H "Authorization: Bearer $CRON_SECRET" https://poc.mcstation.ai/eatagain/api/cron/points-expiry >> /home/jason/feedbites/logs/points-expiry.log 2>&1
 ```
 
 手動跑一次確認回 `{"ok":true,"inserted":0}`。
@@ -2823,7 +2868,7 @@ EC2 crontab 加一行（每天台北 03:00）：
 
 1. 手機掃欣殿萬飲問卷 QR，匿名填完。
 2. 完成頁按「用 LINE 登入領取」。
-3. Expected: 回到 `/feedbites/w/<欣殿萬飲 store id>?claimed=50`，看到 50 點與一張見面禮券。
+3. Expected: 回到 `/eatagain/w/<欣殿萬飲 store id>?claimed=50`，看到 50 點與一張見面禮券。
 4. 店長後台核銷該券，第二次核銷被拒。
 5. 同一支手機再填一次問卷。Expected: 完成頁直接顯示「今天已經領過點數囉」，不再出現 LINE 按鈕。
 6. 用另一支沒登入過的手機，改按「No LINE? Continue with Google」走一次，Expected 同第 3 步。
@@ -2831,14 +2876,14 @@ EC2 crontab 加一行（每天台北 03:00）：
 
 - [ ] **Step 9: 三端截圖**
 
-依 `~/.claude/shared_intel/playbooks/DEPLOY_VERIFICATION.md`，對 `/feedbites/w/<store id>` 與問卷完成頁做桌面、iPhone、Android 截圖，全部正常才算完成。
+依 `~/.claude/shared_intel/playbooks/DEPLOY_VERIFICATION.md`，對 `/eatagain/w/<store id>` 與問卷完成頁做桌面、iPhone、Android 截圖，全部正常才算完成。
 
 - [ ] **Step 10: 收尾紀錄**
 
 - `shared_intel/PROGRESS_LOG.md` 最上方加一行完成紀錄。
 - `shared_intel/DELIVERABLES_CHECKLIST.md` 加一行待 Jason 看：帳本頁網址、見面禮券預設面額仍待阿水確認。
 - `shared_intel/CTO_RESOURCES.md` 登記 LINE Login channel、Google OAuth 新增的 redirect URI 與新 env。
-- 通知欣殿萬飲試用負責人鄭子民（吧台主管）：店長後台核銷教學、見面禮券面額待阿水確認。
+- 通知欣殿萬飲試用負責人鄭子民（吧台主管）：店長後台核銷教學、見面禮券面額待阿水確認；桌上 QR 立牌用新網址 `/eatagain/s/<surveyId>` 重新產生後才印。
 
 ---
 
