@@ -6,6 +6,7 @@ import type { Survey, ThemeColors, TemplateId, DiscountTier } from '@/types/surv
 import { getTemplate } from '@/lib/templates';
 import SurveyRenderer from '@/components/survey/SurveyRenderer';
 import DiscountCodeDisplay from '@/components/survey/DiscountCodeDisplay';
+import ClaimPointsCard, { type AwardedPoints } from '@/components/survey/ClaimPointsCard';
 import { getTextureStyle } from '@/lib/textures';
 
 type SurveyStep = 'already-submitted' | 'survey' | 'submitting' | 'discount' | 'phone-prompt';
@@ -103,6 +104,8 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
   const [phoneError, setPhoneError] = useState('');
   const [discountResult, setDiscountResult] = useState<DiscountResult | null>(null);
   const [responseId, setResponseId] = useState<string | null>(null);
+  const [awardedPoints, setAwardedPoints] = useState<AwardedPoints | null>(null);
+  const [claimToken, setClaimToken] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState('');
 
   const template = getTemplate(survey.template_id as TemplateId);
@@ -178,6 +181,8 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
       if (data.response?.id) {
         setResponseId(data.response.id);
       }
+      if (data.points) setAwardedPoints(data.points);
+      if (typeof data.claim_token === 'string') setClaimToken(data.claim_token);
 
       if (data.discount_code) {
         setDiscountResult({
@@ -376,6 +381,9 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
           }
         }}
       />
+      <div className="px-6 pb-10" style={{ background: colors.background }}>
+        <ClaimPointsCard claimToken={claimToken} points={awardedPoints} colors={colors} />
+      </div>
       </>
     );
   }
@@ -413,6 +421,8 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
           感謝撥冗填寫，{storeName} 會持續改進，期待您下次光臨！
         </p>
       </div>
+
+      <ClaimPointsCard claimToken={claimToken} points={awardedPoints} colors={colors} />
 
       <div className="mt-6 text-center">
         <div className="text-[10px]" style={{ color: colors.textLight }}>
