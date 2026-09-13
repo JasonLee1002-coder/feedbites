@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FeedBites 顧客帳本設計 2026-09-13</title>
+<style>
+  :root { --bg:#0f1115; --panel:#171a21; --line:#2a2f3a; --fg:#e6e6e6; --muted:#9aa3b2; --accent:#ff8a3d; --ok:#5ed39a; --warn:#f2c14e; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.7 -apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif; padding:32px 20px 80px; }
+  main { max-width:960px; margin:0 auto; }
+  h1 { font-size:28px; margin:0 0 4px; color:var(--accent); }
+  h2 { font-size:20px; margin:40px 0 12px; padding-bottom:6px; border-bottom:1px solid var(--line); }
+  h3 { font-size:16px; margin:24px 0 8px; color:var(--warn); }
+  .meta { color:var(--muted); font-size:13px; margin-bottom:24px; }
+  table { border-collapse:collapse; width:100%; margin:12px 0 20px; font-size:14px; }
+  th,td { border:1px solid var(--line); padding:8px 10px; vertical-align:top; text-align:left; }
+  th { background:var(--panel); color:var(--warn); font-weight:600; }
+  code { background:var(--panel); padding:1px 6px; border-radius:4px; font-family:Consolas,"JetBrains Mono",monospace; font-size:13px; color:#ffd7b5; }
+  pre { background:var(--panel); border:1px solid var(--line); padding:14px; border-radius:8px; overflow-x:auto; font-size:13px; line-height:1.5; }
+  .box { background:var(--panel); border-left:4px solid var(--accent); padding:12px 16px; border-radius:6px; margin:14px 0; }
+  .ok { border-left-color:var(--ok); }
+  ul { padding-left:22px; } li { margin:4px 0; }
+  .muted { color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>FeedBites 顧客帳本 設計規格</h1>
+<div class="meta">2026-09-13｜文件整理：JASON｜狀態：Jason 已核可設計方向（LINE Login、首張餐券），待審閱本文｜對客品牌名：呷點（暫名）</div>
+
+<h2>一、定義與目標</h2>
+<p><strong>定義。</strong>FeedBites 是餐廳的<strong>顧客帳本</strong>。每一位客人從掃第一次 QR 開始，在這家店做的每件事都記在帳本上並換成點數：填問卷、補資料、許願、線上訂餐、到智取櫃自助取餐。點數換餐券，餐券把人帶回店裡，回店再產生新資料。菜單照片是這本帳的素材庫，未來所有行銷內容都從它長出來。問卷是帳本的第一頁，不是產品本身。</p>
+<p><strong>商業前提（Jason 2026-09-13 定）。</strong>每家店每月 NT$100，價格低到不必決策就能開。價值在跨店的客人網路：客人一個帳號走遍所有用這套系統的餐廳。因此對客人的品牌名要中文、好記、每家店桌上都看得到；FeedBites 作為店長後台名稱保留。<strong>核心軟體我們自己做</strong>；店家要人到場拍照、上傳菜單、整理素材等，另收服務費，外包給周邊團隊執行。</p>
+<p><strong>連鎖集團是主要通路。</strong>東方美早餐店先試用，之後推到弘爺漢堡等連鎖。要同時對<strong>總部</strong>有好處（看得到所有分店的客群、時段、許願與口碑，統一素材庫）、對<strong>分店</strong>有好處（自己的客人、自己的餐券、自己的許願牆，總部看得到但動不了）。因此資料模型從第一天就有「集團 → 分店」兩層。</p>
+<p><strong>第一個場域。</strong>欣殿萬飲（高雄駁二，東方美集團投資，殿長阿水）。已有 KIOSK、GraBox、KDS 等設備層，本期只做軟體層。第二個場域是東方美早餐店，走同一套。</p>
+
+<h3>第一期目標（本 spec 範圍）</h3>
+<table>
+<tr><th>目標</th><th>驗收方式</th></tr>
+<tr><td>客人填完第一份問卷後，能用 LINE 登入領點數，並立刻拿到一張餐券</td><td>手機實測：匿名填答 → 完成頁 → LINE 登入 → 帳本出現點數與餐券</td></tr>
+<tr><td>同一個 LINE 帳號在同一家店填第二次，點數累加在同一本帳上</td><td>DB 查 <code>point_ledger</code> 同一 customer 兩行</td></tr>
+<tr><td>客人可以許願，店長在後台看到許願牆並可標記採納，客人得到加點</td><td>後台操作 → ledger 出現「願望採納」行</td></tr>
+<tr><td>店長上傳菜單照片，原圖與裁切圖都保留在素材庫</td><td>素材庫頁列出原圖，且原圖檔案在儲存路徑實際存在</td></tr>
+<tr><td>問卷回答能連到菜品 ID，後台能看「時段 × 菜品 × 客群」</td><td>後台分析頁可切換三個維度</td></tr>
+<tr><td>店員一鍵核銷餐券，同一張券第二次核銷被拒</td><td>API 第二次呼叫回 409</td></tr>
+<tr><td>總部帳號能看旗下所有分店匯總，但改不了任何分店資料</td><td>以 hq_viewer 登入：分析頁有分店維度；對分店 API 的寫入回 403</td></tr>
+</table>
+
+<h3>明確不做（第二、三期）</h3>
+<ul>
+<li>線上訂餐（第二期）。本期只在事件表預留 <code>order_completed</code> 事件型別，不做任何訂餐 UI 或 API。</li>
+<li>智取櫃取餐事件（第三期）。預留 <code>locker_pickup</code> 事件型別；接法沿用麥味登 GraBox 的 ebus 事件。</li>
+<li>跨店點數互通。本期身分跨店（一個 LINE 帳號），<strong>點數餘額以店為單位</strong>。原因：餐券由各店買單，A 店賺的點在 B 店用等於 A 店替 B 店付錢，規則要另議。</li>
+<li>原生 App。全部走手機瀏覽器與 LINE 內建瀏覽器。</li>
+<li>問卷題型與遊戲化前端重做。現有 12 種題型與 XP 動畫保留，只把 XP 從「動畫」變成「落地的點數」。</li>
+</ul>
+
+<h2>二、架構</h2>
+<p>在現有「問卷層」下面加一層「顧客帳本層」。問卷層不動內部，只在完成時對帳本層丟事件。</p>
+<pre>
+顧客端                         店長端
+/s/[surveyId] 填問卷 ──┐      /dashboard/wishes    許願牆
+/w/[storeId]  我的帳本  │      /dashboard/assets    菜單素材庫
+/w/[storeId]/wish 許願 ─┤      /dashboard/analytics 時段×菜品×客群
+                        │      /dashboard/vouchers  餐券設定與核銷
+                        ▼
+              ┌──────────────────────────┐
+              │  顧客帳本層（新）          │
+              │  customers  point_ledger │
+              │  wishes     vouchers     │
+              │  menu_assets             │
+              │  points-engine.ts        │
+              └──────────────────────────┘
+                        ▲
+      事件：survey_completed / profile_field_added / wish_created /
+            wish_adopted / (order_completed) / (locker_pickup)
+</pre>
+
+<h3>模組邊界</h3>
+<table>
+<tr><th>模組</th><th>做什麼</th><th>介面</th><th>依賴</th></tr>
+<tr><td><code>src/lib/points-engine.ts</code></td><td>收事件、查規則、寫 ledger、觸發首張餐券</td><td><code>award(event: PointEvent): Promise&lt;LedgerRow[]&gt;</code></td><td>db、store_point_rules</td></tr>
+<tr><td><code>src/lib/customer-auth.ts</code></td><td>顧客端 LINE Login 的 session，與店長 Google session 完全分開</td><td><code>getCustomer(req)</code>、<code>linkAnonymous(deviceKey, customerId)</code></td><td>NextAuth LINE provider，獨立 cookie</td></tr>
+<tr><td><code>src/lib/vouchers.ts</code></td><td>點數換券、首張券、核銷</td><td><code>issue()</code>、<code>redeem(code, staffUserId)</code></td><td>ledger、discount 現有碼產生器</td></tr>
+<tr><td><code>src/lib/menu-assets.ts</code></td><td>原圖落地、裁切圖掛菜品、標記現行菜單</td><td><code>saveOriginal()</code>、<code>attachCrop()</code></td><td>local-upload（現行儲存）</td></tr>
+<tr><td><code>src/lib/analytics/cube.ts</code></td><td>時段 × 菜品 × 客群 聚合</td><td><code>cube({storeId, range, by:[...]})</code></td><td>responses、customers、dishes</td></tr>
+</table>
+
+<h2>三、資料模型</h2>
+<p>新增五張表，改兩張。全部走 <code>supabase/migrations/021_*.sql</code> 起算，並同步 <code>scripts/feedbites-pg-schema.sql</code>（EC2 正式庫用）。</p>
+
+<h3>新表</h3>
+<pre>
+brands                              -- 集團／連鎖品牌（東方美、弘爺漢堡）
+  id uuid pk
+  name text
+  created_at
+
+brand_members                       -- 總部人員，唯讀看旗下所有店
+  brand_id uuid fk, user_id uuid fk, role text  -- hq_viewer | hq_admin
+  primary key (brand_id, user_id)
+
+customers
+  id uuid pk
+  line_user_id text unique          -- LINE Login 的 sub
+  display_name text, picture_url text
+  birthday date null, home_area text null, visit_freq text null, gender text null, age_band text null
+  profile_awarded jsonb default '{}' -- 記哪些欄位已給過點，避免重複給
+  created_at, updated_at
+
+point_ledger                        -- 只追加，禁止 update/delete
+  id bigserial pk
+  customer_id uuid fk, store_id uuid fk
+  event_type text                   -- survey_completed | profile_field_added | wish_created | wish_adopted | voucher_redeemed | expired | order_completed | locker_pickup
+  points int                        -- 正數賺、負數花
+  ref_type text null, ref_id uuid null  -- 指回 response / wish / voucher
+  expires_at timestamptz null       -- 賺點行才有，預設 +12 個月
+  created_at
+  unique (customer_id, store_id, event_type, ref_id)  -- 同一事件不重複給
+
+store_point_rules
+  store_id uuid pk
+  rules jsonb                       -- 見 §四 預設值，店長可改
+  first_voucher jsonb               -- 首張餐券設定
+  updated_at
+
+wishes
+  id uuid pk
+  store_id uuid fk, customer_id uuid fk
+  text text, status text            -- new | adopted | launched | declined
+  adopted_at timestamptz null, adopted_by uuid null
+  created_at
+
+vouchers
+  id uuid pk
+  store_id uuid fk, customer_id uuid fk
+  code text unique                  -- 沿用 src/lib/discount.ts 產碼
+  kind text                         -- amount | item
+  value int null, item_label text null
+  cost_points int                   -- 0 = 首張贈券
+  status text                       -- active | used | expired
+  used_at timestamptz null, used_by uuid null
+  expires_at timestamptz
+  created_at
+
+menu_assets
+  id uuid pk
+  store_id uuid fk
+  kind text                         -- original | crop | generated
+  url text, width int, height int
+  dish_id uuid null fk
+  parent_id uuid null fk            -- crop 指回 original
+  is_current bool default true      -- 是否為現行菜單
+  taken_at date null, note text null
+  created_at
+</pre>
+
+<h3>改表</h3>
+<pre>
+stores
+  + brand_id uuid null fk           -- 獨立店為 null；欣殿萬飲與東方美早餐店掛同一 brand
+
+responses
+  + customer_id uuid null fk        -- 匿名填答為 null，登入領點時回填
+  + hour_of_day smallint            -- 寫入時由 submitted_at 以台北時間算好，分析不必每次轉時區
+
+surveys.questions (JSONB) 內 dish-group 題
+  + dishId uuid                     -- 原本只有 dishName 字串；既有問卷以名稱比對一次性回填
+answers 內 dish-group 的回答
+  + 以 { dishId, ...subAnswers } 存，舊資料保留原格式，cube 兩種都讀
+</pre>
+
+<div class="box">既有的 <code>discount_codes</code> 不動，繼續服務「刮刮卡當場折扣」。<code>vouchers</code> 是點數換出來、可累積的券，兩者用途不同，不合併。</div>
+
+<h2>四、點數規則（預設值，店長可改）</h2>
+<table>
+<tr><th>事件</th><th>預設點數</th><th>防刷</th></tr>
+<tr><td>survey_completed</td><td>50</td><td>同一 customer 同一店同一日只給一次；匿名填答不給，登入回填時才給</td></tr>
+<tr><td>profile_field_added</td><td>每欄 20（生日、居住區、來店頻率、性別、年齡層）</td><td><code>customers.profile_awarded</code> 記錄，每欄一生一次</td></tr>
+<tr><td>wish_created</td><td>10</td><td>每 customer 每店每日最多 3 則；少於 4 個字不給</td></tr>
+<tr><td>wish_adopted</td><td>200</td><td>店長後台手動標記，每則願望一次</td></tr>
+<tr><td>voucher_redeemed</td><td>−(cost_points)</td><td>餘額不足拒絕</td></tr>
+<tr><td>expired</td><td>−剩餘</td><td>每日 cron 掃 <code>expires_at &lt; now()</code> 的賺點行，扣未用餘額</td></tr>
+</table>
+<p><strong>到期。</strong>賺點行 12 個月到期。到期前 7 天，由平台 LINE 官方帳號推播提醒（見 §六）。麥當勞被罵最兇的就是點數默默過期，這條不可省。</p>
+<p><strong>首張餐券。</strong>customer 在某店第一筆 <code>survey_completed</code> 寫入時，自動發一張 <code>cost_points = 0</code> 的券。預設：<strong>NT$30 折抵券，30 天有效，單筆消費滿 NT$150 可用</strong>。面額由阿水依毛利調整，後台可改；此預設值只是讓系統能跑，不是定案。</p>
+<p><strong>兌換目錄。</strong>店長在 <code>/dashboard/vouchers</code> 設定「幾點換什麼」，預設兩檔：300 點換 NT$50 折抵、600 點換指定小點一份。原則是<strong>第一次消費就換得到東西</strong>，門檻不得高於一般客人兩次來店能累積的點數。</p>
+
+<h2>五、身分與登入</h2>
+<ul>
+<li><strong>匿名先填。</strong>掃 QR 進 <code>/s/[surveyId]</code> 不要求登入，沿用現有 <code>device_key</code>。</li>
+<li><strong>完成頁領點。</strong>完成頁出現「用 LINE 登入，領取 50 點與一張餐券」。登入成功後：把本次 response 的 <code>customer_id</code> 回填、寫 ledger、發首張券。只回填<strong>本次</strong>這一筆，不回溯同 device_key 的歷史匿名回答，避免把別人的手機填答歸到自己帳上。</li>
+<li><strong>LINE Login 實作。</strong>NextAuth v5 的 LINE provider，scope <code>profile openid</code>。顧客 session 用獨立 cookie 名稱（<code>fb_customer</code>），與店長的 Google session 互不影響；<code>src/lib/auth-allowlist.ts</code> 的 email 白名單只管店長端，顧客端不套。</li>
+<li><strong>LINE 內建瀏覽器。</strong>LINE Login 在 LINE 內開最順，這是選 LINE 而非 Google 的原因之一。既有的 <code>webview-detect</code> 提示只保留給店長端 Google 登入頁。</li>
+<li><strong>我的帳本頁</strong> <code>/w/[storeId]</code>：餘額、最近 10 筆進出、我的餐券（含 QR／代碼給店員看）、許願入口、補資料入口（每補一欄即時顯示加點）。</li>
+</ul>
+
+<h2>六、推播</h2>
+<p>本期用<strong>一個平台級 LINE 官方帳號</strong>（品牌：呷點暫名），不是每店一個。理由：跨店身分本來就在平台層，一個 OA 就能對所有客人推播；各店自有 OA 的串接留到第二期。LINE Login 時帶 <code>bot_prompt=aggressive</code> 邀客人加好友，沒加的人收不到推播，但帳本功能不受影響。</p>
+<p>推播只有三種，全部走既有 <code>src/lib/line/push.ts</code> 擴充：願望被採納、點數 7 天內到期、餐券 7 天內到期。免費額度每月 200 則（見專案記憶），超過就先停「到期提醒」保留「願望採納」，不升級方案。</p>
+
+<h2>七、菜單素材庫</h2>
+<ul>
+<li><code>/api/ai/parse-menu</code> 改為：<strong>先把原圖存進 <code>menu_assets(kind=original)</code></strong>，再送 Gemini 辨識。原圖不再只留在瀏覽器。</li>
+<li>前端裁切後上傳的單品圖存為 <code>kind=crop</code>，<code>parent_id</code> 指回原圖，<code>dish_id</code> 掛菜品。</li>
+<li><code>/dashboard/assets</code>：依日期列出原圖，點開看該圖切出的菜品；可把整批原圖標成「舊菜單」（<code>is_current=false</code>），不刪。</li>
+<li>儲存沿用 <code>src/lib/local-upload.ts</code>（EC2 本機 + nginx）。<code>kind=generated</code> 保留給未來 AI 生成素材，本期不產。</li>
+</ul>
+
+<h2>八、分析：時段 × 菜品 × 客群</h2>
+<p><code>/dashboard/analytics</code> 一頁，三個維度任選一或二個交叉，第三個當篩選。</p>
+<table>
+<tr><th>維度</th><th>來源</th><th>分桶</th></tr>
+<tr><td>時段</td><td><code>responses.hour_of_day</code></td><td>早 06–10、午 11–14、下午 15–17、晚 18–21、深夜 22–02（對應欣殿萬飲日簡餐、夜餐酒兩模式）</td></tr>
+<tr><td>菜品</td><td>answers 內 dish-group 的 <code>dishId</code>，舊資料以 dishName 比對</td><td>單品、分類</td></tr>
+<tr><td>客群</td><td><code>customers</code> 的 gender / age_band / visit_freq / home_area；匿名者歸「未知」</td><td>依欄位</td></tr>
+</table>
+<p>指標：填答數、平均評分、被點名喜歡次數、許願次數。匿名填答只有時段與菜品兩維，客群為未知，不丟棄。</p>
+<h3>總部視角</h3>
+<p><code>/hq/[brandId]</code>：<code>brand_members</code> 才可進。同一個 cube 多一個「分店」維度，可看旗下所有店的時段、菜品、客群、許願匯總與各店餐券發放／核銷率；<strong>唯讀</strong>，不能改任何分店的問卷、餐券或許願狀態。素材庫同理，總部可瀏覽與下載旗下各店原圖，不可刪。這一頁是東方美總部試用時的主要賣點，第一期就做，但只做讀。</p>
+
+<h2>九、核銷與錯誤處理</h2>
+<ul>
+<li><code>POST /api/vouchers/[code]/redeem</code>：店員（<code>store_members</code>）登入才可呼叫。以 <code>UPDATE ... WHERE status='active' AND expires_at &gt; now()</code> 的影響列數判斷，0 列回 409（已用或過期），不做先查再改。</li>
+<li>點數不足換券回 402，訊息寫還差幾點。</li>
+<li>ledger 寫入用 unique 約束擋重複，衝突視為已給過，回 200 不報錯。</li>
+<li>LINE Login 失敗（取消、逾時）回到完成頁，本次 response 仍保留為匿名，點數不給，畫面說明「下次登入可再領」。</li>
+<li>parse-menu 的原圖落地失敗時整個請求失敗，不進行辨識，避免出現「有菜品沒原圖」。</li>
+</ul>
+
+<h2>十、安全與個資</h2>
+<ul>
+<li>顧客資料表只存 LINE <code>sub</code>、顯示名、頭像網址與客人自填欄位，不存 access token。</li>
+<li>店長端 API 一律以 <code>store_id</code> 過濾（沿用現有多店隔離模式）；顧客端 API 一律以 session 的 <code>customer_id</code> 過濾，不接受 query 帶 customer_id。</li>
+<li>隱私頁 <code>/privacy</code> 補一段：LINE 登入取得的資料、用途、刪除方式。</li>
+<li>涉及 auth 與 schema migration，完成後依全域規範派 fresh-context 審查，並送 Codex 三輪稽核。</li>
+</ul>
+
+<h2>十一、測試</h2>
+<ul>
+<li>單元：<code>points-engine</code> 每種事件的給點與防刷；到期扣點；首張券只發一次。</li>
+<li>整合：匿名填答 → LINE 回呼（mock）→ response 回填 → ledger 兩行（問卷 50、首張券 0）→ 帳本頁顯示。</li>
+<li>並發：同一 code 兩個請求同時核銷，只有一個 200。</li>
+<li>遷移：既有 dish-group 問卷回填 <code>dishId</code> 後，舊 answers 與新 answers 在 cube 內數字一致。</li>
+<li>部署後三端截圖（桌面、iPhone、Android）依 <code>DEPLOY_VERIFICATION.md</code>。</li>
+</ul>
+
+<h2>十二、Skill 預查紀錄（治理原則二）</h2>
+<p><code>skill_preflight.py "問卷 點數 會員 loyalty 許願 訂餐 取餐 智取櫃 行銷"</code> 命中 3 個：<code>survey</code>（即本專案，L1 只取知識）、<code>market-competitors</code>、<code>market-seo</code>（皆與本設計無關，L0 不採用）。點數帳、會員、許願、餐券、素材庫無現成模組，全部自建。相關既有知識：<code>ai-advisor</code> 的記憶模式不套用於顧客端（本期不做顧客 AI 對話）。</p>
+
+<h2>十三、麥當勞報報的四條教訓（設計依據）</h2>
+<table>
+<tr><th>他們的問題</th><th>我們的對應</th></tr>
+<tr><td>最低 300 點換小杯飲料，網友仍罵「換到民國幾年」</td><td>首張券零點數即發；兌換門檻不高於兩次來店</td></tr>
+<tr><td>點數默默過期；小可樂從 300 點調到 360 點被罵「越集越沒用」</td><td>到期前 7 天推播；兌換目錄改動只加不減，改動記錄在後台可見</td></tr>
+<tr><td>2018 年問卷未驗發票，亂填也拿買一送一，檢方介入</td><td>匿名不給點；登入才給；每人每店每日一次；券要店員核銷</td></tr>
+<tr><td>改版拿掉每日抽獎與天氣優惠後，App Store 掉到 1.4 星</td><td>許願牆與「願望被採納」通知是常態新鮮事，不靠一次性活動</td></tr>
+</table>
+
+<h2>十四、待決與假設</h2>
+<ul>
+<li>對客品牌名「呷點」為暫名，Jason 選定後查網域與商標再替換；程式內以常數 <code>CUSTOMER_BRAND</code> 集中管理。</li>
+<li>首張券面額 NT$30、滿 NT$150 可用為系統預設，正式值待阿水給毛利。</li>
+<li>平台級 LINE OA 需要新申請一個官方帳號並取得 Channel，Jason 授權後由 CTO 建置。</li>
+<li>月費 NT$100 的收款與開通流程不在本期程式範圍；本期所有店以人工開通，收款另議。</li>
+<li>拍照、上傳等服務費與外包團隊是商業安排，不進程式；素材庫要讓外包人員可用「店員」身分上傳即可（沿用 <code>store_members</code>）。</li>
+</ul>
+</main>
+</body>
+</html>
