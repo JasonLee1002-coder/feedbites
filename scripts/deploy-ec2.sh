@@ -114,13 +114,13 @@ aws ssm send-command \
   --parameters commands=["
 # nginx 設定片段
 cat > /home/jason/feedbites-nginx.conf << 'NGINXEOF'
-location /eatagain/uploads/ {
+location ^~ /eatagain/uploads/ {
     alias /home/jason/feedbites-uploads/;
     expires 30d;
     add_header Cache-Control \"public, immutable\";
 }
 
-location /feedbites/uploads/ {
+location ^~ /feedbites/uploads/ {
     alias /home/jason/feedbites-uploads/;
     expires 30d;
     add_header Cache-Control \"public, immutable\";
@@ -142,8 +142,8 @@ location = /feedbites {
     return 301 /eatagain/;
 }
 
-location /feedbites/ {
-    rewrite ^/feedbites/(.*)\$ /eatagain/\$1 permanent;
+location ~ ^/feedbites/(.*)\$ {
+    return 308 /eatagain/\$1\$is_args\$args;
 }
 NGINXEOF
 echo '>>> nginx 設定已寫入 /home/jason/feedbites-nginx.conf'
