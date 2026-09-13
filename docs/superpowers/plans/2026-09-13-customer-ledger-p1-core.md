@@ -2050,6 +2050,8 @@ git commit -m "feat(ledger): award points on submit for logged-in customers"
 
 ---
 
+> **2026-09-14 審查後修正（已實作於 Task 1–8 的修正 commit）：** 認領不再用裸 response id。問卷送出 API 對未登入客人回傳 `claim_token`（簽章、30 分鐘有效），登入連結帶 `claim=<token>`。`redeemVoucher` 回傳 `'ok' | 'not_found' | 'used' | 'expired'`。以下 Task 9、10 已依此改寫。
+
 ### Task 9: 完成頁領點卡片
 
 **Files:**
@@ -2075,11 +2077,11 @@ export type AwardedPoints = {
 // 匿名客人：顯示 LINE 登入按鈕，登入後回呼會認領這一筆回答。
 // 已登入客人：顯示已入帳結果。
 export default function ClaimPointsCard({
-  responseId,
+  claimToken,
   points,
   colors,
 }: {
-  responseId: string | null
+  claimToken: string | null
   points: AwardedPoints | null
   colors: ThemeColors
 }) {
@@ -2109,7 +2111,8 @@ export default function ClaimPointsCard({
     )
   }
 
-  if (!responseId) return null
+  if (!claimToken) return null
+  const claim = encodeURIComponent(claimToken)
 
   return (
     <div className={box} style={{ background: '#06C75510', border: '1px solid #06C75540' }}>
@@ -2120,14 +2123,14 @@ export default function ClaimPointsCard({
         點數可以換餐券，下次來店直接用
       </p>
       <a
-        href={`/feedbites/api/customer/line/start?claim=${responseId}`}
+        href={`/feedbites/api/customer/line/start?claim=${claim}`}
         className="mt-4 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-white"
         style={{ background: '#06C755' }}
       >
         用 LINE 登入領取
       </a>
       <a
-        href={`/feedbites/api/customer/google/start?claim=${responseId}`}
+        href={`/feedbites/api/customer/google/start?claim=${claim}`}
         className="mt-3 block text-xs underline underline-offset-2"
         style={{ color: colors.textLight }}
       >
@@ -2160,12 +2163,14 @@ import ClaimPointsCard, { type AwardedPoints } from '@/components/survey/ClaimPo
 
 ```tsx
   const [awardedPoints, setAwardedPoints] = useState<AwardedPoints | null>(null);
+  const [claimToken, setClaimToken] = useState<string | null>(null);
 ```
 
 在送出成功處 `setResponseId(data.response.id);` 下一行加：
 
 ```tsx
         if (data.points) setAwardedPoints(data.points);
+        if (typeof data.claim_token === 'string') setClaimToken(data.claim_token);
 ```
 
 - [ ] **Step 4: 兩個完成畫面掛卡片**
@@ -2174,20 +2179,20 @@ import ClaimPointsCard, { type AwardedPoints } from '@/components/survey/ClaimPo
 
 ```tsx
       <div className="px-6 pb-10" style={{ background: colors.background }}>
-        <ClaimPointsCard responseId={responseId} points={awardedPoints} colors={colors} />
+        <ClaimPointsCard claimToken={claimToken} points={awardedPoints} colors={colors} />
       </div>
 ```
 
 在 `// No discount — just show thank you` 分支，把 `<div className="mt-6 text-center">`（Powered by FeedBites 那一段）之前加入：
 
 ```tsx
-      <ClaimPointsCard responseId={responseId} points={awardedPoints} colors={colors} />
+      <ClaimPointsCard claimToken={claimToken} points={awardedPoints} colors={colors} />
 ```
 
 - [ ] **Step 5: 本機看畫面**
 
 `npm run dev`，開測試問卷 `/feedbites/s/<TEST_SURVEY_A_ID>` 填完。
-Expected: 完成頁出現綠色「用 LINE 登入領取」卡片，下方有「No LINE? Continue with Google」；兩個連結都含 `claim=<responseId>`。
+Expected: 完成頁出現綠色「用 LINE 登入領取」卡片，下方有「No LINE? Continue with Google」；兩個連結都含 `claim=<簽章 token>`（不是 UUID）。
 
 - [ ] **Step 6: lint 與 commit**
 
@@ -2251,8 +2256,9 @@ export default async function WalletPage({
   const customerId = readCustomerId(jar.get(CUSTOMER_COOKIE)?.value)
   const rules = await getRules(storeId)
   const now = Date.now()
-  const retryClaim = isUuid(sp.claim) ? sp.claim : null
-  const loginQuery = `store=${storeId}${retryClaim ? `&claim=${retryClaim}` : ''}`
+  // claim 是簽章 token，由登入路由驗證；這裡只做長度防呆後原樣轉交
+  const retryClaim = typeof sp.claim === 'string' && sp.claim.length > 0 && sp.claim.length < 512 ? sp.claim : null
+  const loginQuery = `store=${storeId}${retryClaim ? `&claim=${encodeURIComponent(retryClaim)}` : ''}`
   const loginHref = `/feedbites/api/customer/line/start?${loginQuery}`
   const googleHref = `/feedbites/api/customer/google/start?${loginQuery}`
 
