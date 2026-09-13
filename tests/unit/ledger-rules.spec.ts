@@ -86,6 +86,60 @@ test('effectiveBalance 把尚未入帳的到期也扣掉', () => {
   expect(effectiveBalance(rows, now)).toBe(0)
 })
 
+test('computeExpiryRows 過期點數不能被之後的花費吃掉（100 已過期、50 有效、連換三次 30）', () => {
+  const now = d('2027-06-01T00:00:00Z')
+  const base = [
+    row({ id: '1', points: 100, created_at: d('2026-01-01T00:00:00Z'), expires_at: d('2027-01-01T00:00:00Z') }),
+    row({ id: '2', points: 50, created_at: d('2026-12-01T00:00:00Z'), expires_at: d('2027-12-01T00:00:00Z') }),
+  ]
+  expect(effectiveBalance(base, now)).toBe(50)
+  const spend1 = row({ id: '3', points: -30, created_at: d('2027-02-01T00:00:00Z') })
+  const afterFirst = [...base, spend1]
+  // 第二次換 30 點之前，有效餘額已不足 30
+  expect(effectiveBalance(afterFirst, now)).toBe(20)
+  const spend2 = row({ id: '4', points: -30, created_at: d('2027-03-01T00:00:00Z') })
+  const spend3 = row({ id: '5', points: -30, created_at: d('2027-04-01T00:00:00Z') })
+  const all = [...afterFirst, spend2, spend3]
+  expect(computeExpiryRows(all, now)).toEqual([{ ref_id: '1', points: -100 }])
+  expect(effectiveBalance(all, now)).toBeLessThan(0)
+})
+
+test('computeExpiryRows 部分花費後到期：到期前花掉的算舊點，到期後的花費只扣新點', () => {
+  const now = d('2027-06-01T00:00:00Z')
+  const rows = [
+    row({ id: '1', points: 100, created_at: d('2026-01-01T00:00:00Z'), expires_at: d('2027-01-01T00:00:00Z') }),
+    row({ id: '2', points: -30, created_at: d('2026-06-01T00:00:00Z') }),
+    row({ id: '3', points: 50, created_at: d('2026-12-01T00:00:00Z'), expires_at: d('2027-12-01T00:00:00Z') }),
+    row({ id: '4', points: -20, created_at: d('2027-02-01T00:00:00Z') }),
+  ]
+  expect(computeExpiryRows(rows, now)).toEqual([{ ref_id: '1', points: -70 }])
+  expect(effectiveBalance(rows, now)).toBe(30)
+})
+
+test('computeExpiryRows 同時間戳依 id 排序，且與輸入順序無關', () => {
+  const T = d('2027-01-01T00:00:00Z')
+  const now = d('2027-06-01T00:00:00Z')
+  const earnOld = row({ id: '1', points: 100, created_at: d('2026-01-01T00:00:00Z'), expires_at: T })
+  // 同一時刻：id 2 賺點、id 3 花費、id 4 賺點；舊點在 T 到期，花費當下不能用
+  const earnBefore = row({ id: '2', points: 50, created_at: T, expires_at: d('2027-03-01T00:00:00Z') })
+  const spend = row({ id: '3', points: -30, created_at: T })
+  const earnAfter = row({ id: '4', points: 40, created_at: T, expires_at: d('2027-03-01T00:00:00Z') })
+  const expected = [
+    { ref_id: '1', points: -100 },
+    { ref_id: '2', points: -20 },
+    { ref_id: '4', points: -40 },
+  ]
+  expect(computeExpiryRows([earnOld, earnBefore, spend, earnAfter], now)).toEqual(expected)
+  expect(computeExpiryRows([earnAfter, spend, earnBefore, earnOld], now)).toEqual(expected)
+  // id 順序反過來（花費排在兩筆賺點之前）時，花費沒有可扣的點
+  const spendFirst = row({ id: '2', points: -30, created_at: T })
+  const e3 = row({ id: '3', points: 50, created_at: T, expires_at: d('2027-03-01T00:00:00Z') })
+  expect(computeExpiryRows([earnOld, e3, spendFirst], now)).toEqual([
+    { ref_id: '1', points: -100 },
+    { ref_id: '3', points: -50 },
+  ])
+})
+
 test('voucherLabel', () => {
   expect(voucherLabel({ kind: 'amount', value: 30, item_label: null, min_spend: 150 })).toBe('NT$30 折抵券（滿 NT$150 可用）')
   expect(voucherLabel({ kind: 'amount', value: 50, item_label: null, min_spend: null })).toBe('NT$50 折抵券')

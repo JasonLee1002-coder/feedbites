@@ -143,33 +143,59 @@ export function computeBalance(rows: LedgerRowLite[]): number {
   return rows.reduce((s, r) => s + r.points, 0)
 }
 
-// 先進先出：花費先扣最早賺的點；已過期且尚未入帳的剩餘點數，產生 expired 列。
+function compareRows(a: LedgerRowLite, b: LedgerRowLite): number {
+  const t = a.created_at.getTime() - b.created_at.getTime()
+  if (t !== 0) return t
+  const na = Number(a.id)
+  const nb = Number(b.id)
+  if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0
+}
+
+// 依時間順序模擬先進先出：每筆花費只能扣「花費當下還沒到期」的點數，
+// 已過期的點數不能被後來的花費吃掉（否則會透支）。
+// 回傳已到期、尚有剩餘、且還沒寫過 expired 列的點數桶。
 export function computeExpiryRows(rows: LedgerRowLite[], now: Date): { ref_id: string; points: number }[] {
-  const expiredByRef = new Map<string, number>()
-  for (const r of rows) {
-    if (r.event_type === 'expired' && r.ref_id) {
-      expiredByRef.set(r.ref_id, (expiredByRef.get(r.ref_id) ?? 0) + r.points)
+  type Bucket = { row: LedgerRowLite; remaining: number; dead: boolean; processed: boolean }
+  const buckets: Bucket[] = []
+  const byId = new Map<string, Bucket>()
+
+  for (const r of [...rows].sort(compareRows)) {
+    if (r.event_type === 'expired') {
+      const b = r.ref_id ? byId.get(r.ref_id) : undefined
+      if (b) {
+        b.remaining += r.points
+        b.dead = true
+        b.processed = true
+      }
+      continue
+    }
+    if (r.points > 0) {
+      const b: Bucket = { row: r, remaining: r.points, dead: false, processed: false }
+      buckets.push(b)
+      byId.set(r.id, b)
+      continue
+    }
+    if (r.points < 0) {
+      const at = r.created_at.getTime()
+      for (const b of buckets) {
+        if (!b.dead && b.row.expires_at !== null && b.row.expires_at.getTime() <= at) b.dead = true
+      }
+      let toConsume = -r.points
+      for (const b of buckets) {
+        if (toConsume <= 0) break
+        if (b.dead || b.remaining <= 0) continue
+        const take = Math.min(b.remaining, toConsume)
+        b.remaining -= take
+        toConsume -= take
+      }
     }
   }
-  const earns = rows
-    .filter(r => r.points > 0)
-    .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
-    .map(r => ({ row: r, remaining: r.points + (expiredByRef.get(r.id) ?? 0), processed: expiredByRef.has(r.id) }))
 
-  let toConsume = -rows
-    .filter(r => r.points < 0 && r.event_type !== 'expired')
-    .reduce((s, r) => s + r.points, 0)
-
-  for (const e of earns) {
-    if (toConsume <= 0) break
-    const take = Math.min(Math.max(e.remaining, 0), toConsume)
-    e.remaining -= take
-    toConsume -= take
-  }
-
-  return earns
-    .filter(e => !e.processed && e.remaining > 0 && e.row.expires_at !== null && e.row.expires_at.getTime() <= now.getTime())
-    .map(e => ({ ref_id: e.row.id, points: -e.remaining }))
+  return buckets
+    .filter(b => !b.processed && b.remaining > 0 &&
+      (b.dead || (b.row.expires_at !== null && b.row.expires_at.getTime() <= now.getTime())))
+    .map(b => ({ ref_id: b.row.id, points: -b.remaining }))
 }
 
 export function effectiveBalance(rows: LedgerRowLite[], now: Date): number {
