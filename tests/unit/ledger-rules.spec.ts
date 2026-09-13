@@ -34,11 +34,18 @@ test('mergeRules 只覆蓋有給的欄位', () => {
   expect(r.first_voucher.valid_days).toBe(DEFAULT_RULES.first_voucher.valid_days)
 })
 
+test('點數開關預設關閉，mergeRules 後保留店主打開的設定', () => {
+  expect(DEFAULT_RULES.enabled).toBe(false)
+  expect(mergeRules(null).enabled).toBe(false)
+  expect(mergeRules({ enabled: true }).enabled).toBe(true)
+})
+
 test('validateRules 預設值合法', () => {
   expect(validateRules(DEFAULT_RULES)).toBeNull()
 })
 
 test('validateRules 擋負數、重複 id、金額券缺面額', () => {
+  expect(validateRules({ ...DEFAULT_RULES, enabled: 'yes' as never })).toMatch(/開關設定格式錯誤/)
   expect(validateRules({ ...DEFAULT_RULES, survey_completed: -1 })).toMatch(/填問卷得點/)
   const dup = mergeRules(null); dup.catalog.push({ ...dup.catalog[0] })
   expect(validateRules(dup)).toMatch(/重複/)

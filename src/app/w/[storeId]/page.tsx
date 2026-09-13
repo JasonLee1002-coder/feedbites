@@ -29,9 +29,23 @@ export default async function WalletPage({
     .limit(1)
   if (!store) notFound()
 
+  const rules = await getRules(storeId)
+  if (!rules.enabled) {
+    return (
+      <main className="min-h-screen bg-[#FFF8F0] px-4 py-8 text-[#3A2A1A]">
+        <div className="mx-auto max-w-md text-center">
+          <header className="flex flex-col items-center gap-3">
+            {store.logo_url && <img src={store.logo_url} alt="" className="h-12 w-12 shrink-0 rounded-full object-cover" />}
+            <h1 className="text-xl font-bold">{store.store_name}</h1>
+          </header>
+          <p className="mt-8 text-sm text-[#A07850]">這家店還沒開放常來點點數</p>
+        </div>
+      </main>
+    )
+  }
+
   const jar = await cookies()
   const customerId = readCustomerId(jar.get(CUSTOMER_COOKIE)?.value)
-  const rules = await getRules(storeId)
   const now = new Date().getTime()
   // claim 是簽章 token，由登入路由驗證；這裡只做長度防呆後原樣轉交
   const retryClaim = typeof sp.claim === 'string' && sp.claim.length > 0 && sp.claim.length < 512 ? sp.claim : null

@@ -36,6 +36,7 @@ export interface CatalogItem extends VoucherTemplate {
 }
 
 export interface PointRules {
+  enabled: boolean
   survey_completed: number
   profile_field: number
   wish_created: number
@@ -46,8 +47,10 @@ export interface PointRules {
   catalog: CatalogItem[]
 }
 
+// 正式站多家店共用同一套程式，點數功能預設關閉，只有店主在後台打開的店才生效。
 // 首張券面額是讓系統能跑的預設值，正式值等阿水給毛利後由店長在後台改。
 export const DEFAULT_RULES: PointRules = {
+  enabled: false,
   survey_completed: 50,
   profile_field: 20,
   wish_created: 10,
@@ -117,6 +120,7 @@ function validateTemplate(t: VoucherTemplate, where: string): string | null {
 }
 
 export function validateRules(r: PointRules): string | null {
+  if (typeof r.enabled !== 'boolean') return '開關設定格式錯誤'
   const numeric: (keyof PointRules)[] = [
     'survey_completed', 'profile_field', 'wish_created', 'wish_daily_limit', 'wish_adopted', 'earn_valid_months',
   ]

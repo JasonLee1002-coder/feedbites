@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test'
 import postgres from 'postgres'
 import {
-  upsertCustomer, claimResponse, getWallet, getRules, awardSurveyCompleted,
+  upsertCustomer, claimResponse, getWallet, getRules, saveRules, awardSurveyCompleted,
   exchangeVoucher, redeemVoucher, runExpiry, setVoucherCodeGeneratorForTest, VOUCHER_CODE_ATTEMPTS,
 } from '../../src/lib/ledger/service'
+import { mergeRules } from '../../src/lib/ledger/rules'
 import { pgClient } from '../../src/lib/db'
 
 // 執行前提：DATABASE_URL 指向本機測試庫（絕不可指正式站），已套用 021。
@@ -57,6 +58,8 @@ test.beforeAll(async () => {
   sql = postgres(DB!, { max: 2 })
   const [s] = await sql`SELECT store_id FROM surveys WHERE id = ${SURVEY!}`
   storeId = s.store_id
+  // 正式站點數功能預設關閉，測試店要先手動打開才能跑後面所有帳本測試。
+  await saveRules(storeId, mergeRules({ enabled: true }))
   customerId = await upsertCustomer({ provider: 'line', subject: `test-${Date.now()}`, displayName: '測試客人', pictureUrl: null })
 })
 
@@ -64,6 +67,7 @@ test.afterAll(async () => {
   if (responseIds.length) await sql`DELETE FROM responses WHERE id IN ${sql(responseIds)}`
   if (customerId) await sql`DELETE FROM customers WHERE id = ${customerId}`
   if (extraCustomers.length) await sql`DELETE FROM customers WHERE id IN ${sql(extraCustomers)}`
+  await sql`DELETE FROM store_point_rules WHERE store_id = ${storeId}`
   setVoucherCodeGeneratorForTest()
   await sql.end()
   await pgClient.end()
@@ -121,6 +125,23 @@ test.describe.serial('顧客帳本', () => {
     expect(await ledgerCount(cid, 'survey_completed')).toBe(1)
     expect(await voucherCount(cid)).toBe(1)
     expect((await getWallet(cid, storeId)).balance).toBe(rules.survey_completed)
+  })
+
+  test('該店關閉點數功能時，claimResponse 回 null，不發點也不綁客人', async () => {
+    const rulesBefore = await getRules(storeId)
+    await saveRules(storeId, { ...rulesBefore, enabled: false })
+    try {
+      const cid = await freshCustomer('disabled')
+      const rid = await insertResponse(1)
+      const r = await claimResponse(cid, rid)
+      expect(r).toBeNull()
+      expect(await ledgerCount(cid, 'survey_completed')).toBe(0)
+      expect(await voucherCount(cid)).toBe(0)
+      const [row] = await sql`SELECT customer_id FROM responses WHERE id = ${rid}`
+      expect(row.customer_id).toBeNull()
+    } finally {
+      await saveRules(storeId, { ...rulesBefore, enabled: true })
+    }
   })
 
   test('超過 30 分鐘的回答不能認領', async () => {

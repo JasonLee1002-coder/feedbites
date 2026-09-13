@@ -9,7 +9,7 @@ import { Resend } from 'resend'
 import { checkAndPushUrgentAlert } from '@/lib/line/urgent-alert'
 import { logger, newRequestId, maskPhone } from '@/lib/logger'
 import { CUSTOMER_COOKIE, customerSecret, readCustomerId, signClaimToken } from '@/lib/customer-session'
-import { awardSurveyCompleted } from '@/lib/ledger/service'
+import { awardSurveyCompleted, getRules } from '@/lib/ledger/service'
 import { voucherLabel } from '@/lib/ledger/rules'
 import { BASE_PATH, BRAND_FULL } from '@/lib/brand'
 
@@ -108,12 +108,20 @@ export async function POST(
       })
       .returning()
 
+    // 該店有沒有開放點數功能；讀規則失敗就當作沒開放，不能讓問卷失敗。
+    let ledgerEnabled = false
+    try {
+      ledgerEnabled = (await getRules(survey.store_id)).enabled
+    } catch (err) {
+      logger.error('points.rules_read.failed', { request_id, survey_id: id }, err)
+    }
+
     let points: {
       awarded: number
       first_voucher: { code: string; label: string; expires_at: Date } | null
       wallet_url: string
     } | null = null
-    if (customerId) {
+    if (customerId && ledgerEnabled) {
       try {
         const r = await awardSurveyCompleted({
           customerId,
@@ -134,9 +142,9 @@ export async function POST(
       }
     }
 
-    // 匿名客人：發認領憑證，登入時帶回來認領這一筆。已登入者不需要。
+    // 匿名客人：發認領憑證，登入時帶回來認領這一筆。已登入者不需要；該店沒開放點數功能也不用發。
     let claimToken: string | null = null
-    if (!customerId) {
+    if (!customerId && ledgerEnabled) {
       try {
         claimToken = signClaimToken(response.id, customerSecret())
       } catch (err) {

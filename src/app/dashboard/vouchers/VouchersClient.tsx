@@ -82,6 +82,24 @@ export default function VouchersClient({ initialRules, canEdit, issued, used }: 
       <h1 className="text-xl font-bold">點數與餐券</h1>
 
       <section className="rounded-2xl border border-[#E8E2D8] bg-white p-5">
+        <div className="flex items-center justify-between gap-4">
+          <label htmlFor="point-rules-enabled" className="font-bold">開放常來點點數與餐券</label>
+          <input
+            id="point-rules-enabled"
+            type="checkbox"
+            role="switch"
+            aria-checked={rules.enabled}
+            checked={rules.enabled}
+            disabled={!canEdit}
+            onChange={e => setRules({ ...rules, enabled: e.target.checked })}
+            className="h-6 w-11 shrink-0 accent-[#C5A55A] disabled:opacity-40"
+          />
+        </div>
+        <p className="mt-1 text-xs text-[#8A8585]">打開後，客人填完問卷可以用 LINE 或 Google 登入領點數與見面禮券</p>
+        {!rules.enabled && <p className="mt-2 text-xs font-medium text-[#B5453D]">目前未開放，客人看不到</p>}
+      </section>
+
+      <section className="rounded-2xl border border-[#E8E2D8] bg-white p-5">
         <h2 className="font-bold">核銷餐券</h2>
         <p className="mt-1 text-xs text-[#8A8585]">客人出示 8 碼，輸入後核銷。每張只能用一次。</p>
         <div className="mt-3 flex gap-2">

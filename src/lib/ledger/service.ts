@@ -149,6 +149,7 @@ export async function awardSurveyCompleted(p: {
   submittedAt: Date
 }): Promise<{ pointsAwarded: number; firstVoucher: VoucherRow | null }> {
   const rules = await getRules(p.storeId)
+  if (!rules.enabled) return { pointsAwarded: 0, firstVoucher: null }
   return db.transaction(async tx => {
     await lockWallet(tx, p.customerId, p.storeId)
 
@@ -192,6 +193,12 @@ export async function awardSurveyCompleted(p: {
 // 認領：只認領「本次」這一筆、仍是匿名（或已是本人）、且在 30 分鐘內送出的回答。
 // 本人重試時會再跑一次發點，發點靠唯一約束保證不重複。
 export async function claimResponse(customerId: string, responseId: string, now: Date = new Date()) {
+  // 該店沒開放點數功能時，不綁定 customer_id、不發點。
+  const storeId = await getStoreIdForResponse(responseId)
+  if (!storeId) return null
+  const rules = await getRules(storeId)
+  if (!rules.enabled) return null
+
   const cutoff = new Date(now.getTime() - CLAIM_WINDOW_MS)
   const claimed = await db
     .update(responses)
@@ -204,20 +211,13 @@ export async function claimResponse(customerId: string, responseId: string, now:
     .returning({ survey_id: responses.survey_id, submitted_at: responses.submitted_at })
   if (!claimed.length) return null
 
-  const [s] = await db
-    .select({ store_id: surveys.store_id })
-    .from(surveys)
-    .where(eq(surveys.id, claimed[0].survey_id))
-    .limit(1)
-  if (!s) return null
-
   const award = await awardSurveyCompleted({
     customerId,
-    storeId: s.store_id,
+    storeId,
     responseId,
     submittedAt: claimed[0].submitted_at ?? now,
   })
-  return { storeId: s.store_id, surveyId: claimed[0].survey_id, ...award }
+  return { storeId, surveyId: claimed[0].survey_id, ...award }
 }
 
 export async function getStoreIdForResponse(responseId: string): Promise<string | null> {
@@ -258,6 +258,7 @@ export type ExchangeResult =
 
 export async function exchangeVoucher(customerId: string, storeId: string, catalogId: string): Promise<ExchangeResult> {
   const rules = await getRules(storeId)
+  if (!rules.enabled) return { ok: false, reason: 'not_found' }
   const item = rules.catalog.find(c => c.id === catalogId)
   if (!item) return { ok: false, reason: 'not_found' }
 
