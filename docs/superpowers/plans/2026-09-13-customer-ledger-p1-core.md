@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 客人填完問卷後用 LINE 登入領點數與一張見面禮餐券，點數累積在「客人 × 店」的帳本上，可換餐券，店員一鍵核銷。
+**Goal:** 客人填完問卷後用 LINE 登入（沒有 LINE 的外國客改用 Google）領點數與一張見面禮餐券，點數累積在「客人 × 店」的帳本上，可換餐券，店員一鍵核銷；全站對外品牌換成「常來點 EatAgain」。
 
-**Architecture:** 在既有問卷層下新增「顧客帳本層」：純函式規則（`src/lib/ledger/rules.ts`，可單元測試）＋資料庫服務（`src/lib/ledger/service.ts`，交易內用 advisory lock 防並發）。顧客身分走手寫 LINE Login OAuth（約百行），用 HMAC 簽章 cookie `fb_customer`，與店長端 NextAuth 完全分開。
+**Architecture:** 在既有問卷層下新增「顧客帳本層」：純函式規則（`src/lib/ledger/rules.ts`，可單元測試）＋資料庫服務（`src/lib/ledger/service.ts`，交易內用 advisory lock 防並發）。顧客身分走手寫 OAuth（LINE 為主、Google 為輔），一位客人可綁多個登入方式（`customer_identities` 表），用 HMAC 簽章 cookie `fb_customer`，與店長端 NextAuth 完全分開。
 
 **Tech Stack:** Next.js 16 App Router、drizzle-orm 0.45 + postgres.js、Playwright test runner（專案現有，單元測試也用它）、LINE Login v2.1。
 
@@ -18,6 +18,8 @@
 
 1. **LINE Login 不用 NextAuth provider，改手寫 OAuth。** 同一個 app 起第二個 NextAuth 實例會共用 `AUTH_URL`、basePath 與 `authjs.*` cookie 命名空間，和店長端互相干擾的風險高；手寫流程只有 start／callback 兩支路由，完全隔離且可測。
 2. **扣點事件名稱改為 `voucher_exchanged`**（spec 原寫 `voucher_redeemed`），避免和「店員核銷」混淆。另新增 `voucher_issued`（0 點，記錄見面禮券發放）。
+3. **身分改成多登入方式**（Jason 2026-09-13：外國觀光客沒有 LINE 怎麼辦）。`customers` 不放 `line_user_id`，改用 `customer_identities(provider, subject)`。LINE 服務台灣、日本、泰國客人；Google 服務韓國與歐美客人。完全不想登入的觀光客照舊拿刮刮卡折扣，只是不累積點數。
+4. **全站品牌換成「常來點 EatAgain」，FeedBites 字樣從畫面上消失**（Jason 2026-09-13）。網址路徑 `/feedbites` 暫不改：欣殿萬飲桌上已印的 QR 碼指向這個路徑，改了會全部失效；換正式網域時一起處理。
 
 ## 前置條件（Task 0，需要 Jason 或 CTO 手動）
 
@@ -25,9 +27,10 @@
   - 正式：`https://poc.mcstation.ai/feedbites/api/customer/line/callback`
   - 本機：`http://localhost:3000/feedbites/api/customer/line/callback`
 - [ ] 同一 Provider 下的平台級 Messaging API channel（官方帳號）連結到此 Login channel，`bot_prompt=aggressive` 才會邀客人加好友。沒有 OA 時登入仍可用，只是不會出現加好友畫面。
+- [ ] 在 Google Cloud Console 既有的 OAuth client（`global.env` 的 `GOOGLE_CLIENT_ID`）加兩個已授權重新導向 URI：`https://poc.mcstation.ai/feedbites/api/customer/google/callback`、`http://localhost:3000/feedbites/api/customer/google/callback`；OAuth 同意畫面的應用程式名稱改成「常來點 EatAgain」。
 - [ ] 把 Channel ID 與 Channel secret 寫入 `~/.credentials/global.env`（`FEEDBITES_LINE_LOGIN_CHANNEL_ID`、`FEEDBITES_LINE_LOGIN_CHANNEL_SECRET`），並登記到 `shared_intel/CTO_RESOURCES.md`。
 
-Task 1–10 不依賴 Task 0，可以先做。Task 11 的端到端驗證需要 Task 0。
+Task 1–12 不依賴 Task 0，可以先做。Task 13 的端到端驗證需要 Task 0。
 
 ## 檔案地圖
 
@@ -42,8 +45,11 @@ Task 1–10 不依賴 Task 0，可以先做。Task 11 的端到端驗證需要 T
 | `src/lib/ledger/service.ts` | Create | 所有帳本讀寫 |
 | `src/lib/customer-session.ts` | Create | HMAC 簽章、cookie 設定、安全轉址 |
 | `src/lib/line-login.ts` | Create | LINE OAuth URL、換 token、驗 id_token |
+| `src/lib/google-login.ts` | Create | Google OAuth URL、換 token、驗 id_token |
+| `src/lib/customer-login.ts` | Create | 兩種登入共用的 start 與 callback 收尾 |
+| `src/app/api/customer/google/start/route.ts`、`callback/route.ts` | Create | Google 登入 |
 | `src/app/api/customer/line/start/route.ts` | Create | 導向 LINE |
-| `src/app/api/customer/line/callback/route.ts` | Create | LINE 回呼、建客人、認領問卷、發點 |
+| `src/app/api/customer/line/callback/route.ts` | Create | LINE 回呼 |
 | `src/app/api/customer/logout/route.ts` | Create | 清 cookie |
 | `src/app/api/customer/vouchers/route.ts` | Create | 客人用點數換券 |
 | `src/app/api/vouchers/[code]/redeem/route.ts` | Create | 店員核銷 |
@@ -56,7 +62,8 @@ Task 1–10 不依賴 Task 0，可以先做。Task 11 的端到端驗證需要 T
 | `src/app/dashboard/vouchers/page.tsx`、`VouchersClient.tsx` | Create | 店長：核銷、見面禮券、兌換目錄 |
 | `src/components/dashboard/Sidebar.tsx` | Modify | 加導覽項 |
 | `src/app/privacy/page.tsx` | Modify | LINE 登入個資說明 |
-| `tests/unit/ledger-rules.spec.ts`、`customer-session.spec.ts`、`line-login.spec.ts` | Create | 單元測試 |
+| `tests/unit/ledger-rules.spec.ts`、`customer-session.spec.ts`、`line-login.spec.ts`、`google-login.spec.ts` | Create | 單元測試 |
+| 畫面上所有 FeedBites 字樣、`public/brand/`、`public/manifest.webmanifest`、`public/icons/` | Modify | 品牌換成常來點 EatAgain（Task 12） |
 | `tests/api/ledger-service.spec.ts` | Create | 對本機測試資料庫的整合測試 |
 
 ## 測試環境
@@ -99,7 +106,6 @@ Create `supabase/migrations/021_customer_ledger.sql`:
 
 CREATE TABLE IF NOT EXISTS customers (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  line_user_id     TEXT UNIQUE NOT NULL,
   display_name     TEXT,
   picture_url      TEXT,
   birthday         DATE,
@@ -111,6 +117,16 @@ CREATE TABLE IF NOT EXISTS customers (
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- 一位客人可以有多個登入方式：line、google（之後可加 kakao、apple）
+CREATE TABLE IF NOT EXISTS customer_identities (
+  provider     TEXT NOT NULL,
+  subject      TEXT NOT NULL,
+  customer_id  UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (provider, subject)
+);
+CREATE INDEX IF NOT EXISTS idx_customer_identities_customer ON customer_identities(customer_id);
 
 -- 只追加：UPDATE 由 trigger 擋下。DELETE 不擋，讓刪除客人時 CASCADE 能清掉個資。
 CREATE TABLE IF NOT EXISTS point_ledger (
@@ -194,7 +210,7 @@ docker exec feedbites-testdb psql -U postgres -d feedbites -v ON_ERROR_STOP=1 -c
 BEGIN;
 INSERT INTO users (email) VALUES ('append-only-check@example.com') RETURNING id \gset u_
 INSERT INTO stores (user_id, email) VALUES (:'u_id', 'append-only-check@example.com') RETURNING id \gset s_
-INSERT INTO customers (line_user_id) VALUES ('append-only-check') RETURNING id \gset c_
+INSERT INTO customers (display_name) VALUES ('append-only-check') RETURNING id \gset c_
 INSERT INTO point_ledger (customer_id, store_id, event_type, points) VALUES (:'c_id', :'s_id', 'survey_completed', 50);
 UPDATE point_ledger SET points = 999 WHERE customer_id = :'c_id';
 ROLLBACK;"
@@ -220,6 +236,7 @@ import {
   unique,
   index,
   bigserial,
+  primaryKey,
 } from 'drizzle-orm/pg-core'
 ```
 
@@ -235,7 +252,6 @@ import {
 // ── customers（021）──────────────────────────────────────────────────────────
 export const customers = pgTable('customers', {
   id:              uuid('id').primaryKey().default(sql`gen_random_uuid()`),
-  line_user_id:    text('line_user_id').unique().notNull(),
   display_name:    text('display_name'),
   picture_url:     text('picture_url'),
   birthday:        date('birthday'),
@@ -247,6 +263,16 @@ export const customers = pgTable('customers', {
   created_at:      timestamp('created_at', { withTimezone: true }).notNull().default(sql`NOW()`),
   updated_at:      timestamp('updated_at', { withTimezone: true }).notNull().default(sql`NOW()`),
 })
+
+// ── customer_identities（021）───────────────────────────────────────────────
+export const customer_identities = pgTable('customer_identities', {
+  provider:    text('provider').notNull(),
+  subject:     text('subject').notNull(),
+  customer_id: uuid('customer_id').notNull().references(() => customers.id, { onDelete: 'cascade' }),
+  created_at:  timestamp('created_at', { withTimezone: true }).notNull().default(sql`NOW()`),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.provider, t.subject] }),
+}))
 
 // ── point_ledger（021，只追加）────────────────────────────────────────────────
 export const point_ledger = pgTable('point_ledger', {
@@ -297,7 +323,7 @@ Expected: 無新增錯誤（若有既存錯誤，只確認沒有 `schema.ts` 相
 
 ```bash
 git add supabase/migrations/021_customer_ledger.sql scripts/feedbites-pg-schema.sql src/lib/db/schema.ts
-git commit -m "feat(ledger): add customers, point_ledger, vouchers, store_point_rules schema"
+git commit -m "feat(ledger): add customers, identities, point_ledger, vouchers, store_point_rules schema"
 ```
 
 ---
@@ -698,7 +724,7 @@ Create `src/lib/customer-session.ts`:
 import { createHmac, timingSafeEqual } from 'crypto'
 
 export const CUSTOMER_COOKIE = 'fb_customer'
-export const LINE_STATE_COOKIE = 'fb_line_state'
+export const OAUTH_STATE_COOKIE = 'fb_oauth_state'
 export const SESSION_TTL_MS = 90 * 24 * 60 * 60 * 1000
 
 export type CustomerSession = { cid: string; exp: number }
@@ -766,7 +792,7 @@ export function isUuid(v: string | null | undefined): v is string {
 - [ ] **Step 4: 跑測試確認通過**
 
 Run: `npx playwright test tests/unit/customer-session.spec.ts`
-Expected: 7 passed。
+Expected: 8 passed。
 
 - [ ] **Step 5: Commit**
 
@@ -950,7 +976,7 @@ test.beforeAll(async () => {
   sql = postgres(DB!, { max: 2 })
   const [s] = await sql`SELECT store_id FROM surveys WHERE id = ${SURVEY!}`
   storeId = s.store_id
-  customerId = await upsertCustomer({ lineUserId: `test-${Date.now()}`, displayName: '測試客人', pictureUrl: null })
+  customerId = await upsertCustomer({ provider: 'line', subject: `test-${Date.now()}`, displayName: '測試客人', pictureUrl: null })
 })
 
 test.afterAll(async () => {
@@ -961,6 +987,17 @@ test.afterAll(async () => {
 })
 
 test.describe.serial('顧客帳本', () => {
+  test('同一個登入方式再登入，拿到同一位客人', async () => {
+    const subject = `test-same-${Date.now()}`
+    const a = await upsertCustomer({ provider: 'line', subject, displayName: '甲', pictureUrl: null })
+    const b = await upsertCustomer({ provider: 'line', subject, displayName: '甲改名', pictureUrl: null })
+    try {
+      expect(b).toBe(a)
+    } finally {
+      await sql`DELETE FROM customers WHERE id = ${a}`
+    }
+  })
+
   test('窗口內認領：發問卷點數與一張見面禮券', async () => {
     const rules = await getRules(storeId)
     const rid = await insertResponse(1)
@@ -990,7 +1027,7 @@ test.describe.serial('顧客帳本', () => {
   test('已被認領的回答不能被第二個人認領', async () => {
     const rid = await insertResponse(1)
     await claimResponse(customerId, rid)
-    const other = await upsertCustomer({ lineUserId: `test-other-${Date.now()}`, displayName: null, pictureUrl: null })
+    const other = await upsertCustomer({ provider: 'google', subject: `test-other-${Date.now()}`, displayName: null, pictureUrl: null })
     try {
       expect(await claimResponse(other, rid)).toBeNull()
     } finally {
@@ -1058,7 +1095,7 @@ Create `src/lib/ledger/service.ts`:
 ```ts
 // 顧客帳本資料庫服務。所有會改餘額的寫入都在交易內，並以 advisory lock 鎖住「客人 × 店」。
 import { db } from '@/lib/db'
-import { customers, point_ledger, store_point_rules, vouchers, responses, surveys } from '@/lib/db/schema'
+import { customers, customer_identities, point_ledger, store_point_rules, vouchers, responses, surveys } from '@/lib/db/schema'
 import { and, desc, eq, gt, isNull, lte, sql } from 'drizzle-orm'
 import { createVoucherCode } from './code'
 import {
@@ -1121,16 +1158,36 @@ export async function saveRules(storeId: string, rules: PointRules): Promise<voi
     .onConflictDoUpdate({ target: store_point_rules.store_id, set: { rules, updated_at: new Date() } })
 }
 
-export async function upsertCustomer(p: { lineUserId: string; displayName: string | null; pictureUrl: string | null }): Promise<string> {
-  const [row] = await db
-    .insert(customers)
-    .values({ line_user_id: p.lineUserId, display_name: p.displayName, picture_url: p.pictureUrl })
-    .onConflictDoUpdate({
-      target: customers.line_user_id,
-      set: { display_name: p.displayName, picture_url: p.pictureUrl, updated_at: new Date() },
-    })
-    .returning({ id: customers.id })
-  return row.id
+export type IdentityProvider = 'line' | 'google'
+
+// 同一個 (provider, subject) 永遠對應同一位客人；第一次登入時建客人。
+export async function upsertCustomer(p: {
+  provider: IdentityProvider
+  subject: string
+  displayName: string | null
+  pictureUrl: string | null
+}): Promise<string> {
+  return db.transaction(async tx => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`identity:${p.provider}:${p.subject}`}, 0))`)
+    const [existing] = await tx
+      .select({ customer_id: customer_identities.customer_id })
+      .from(customer_identities)
+      .where(and(eq(customer_identities.provider, p.provider), eq(customer_identities.subject, p.subject)))
+      .limit(1)
+    if (existing) {
+      await tx
+        .update(customers)
+        .set({ display_name: p.displayName, picture_url: p.pictureUrl, updated_at: new Date() })
+        .where(eq(customers.id, existing.customer_id))
+      return existing.customer_id
+    }
+    const [created] = await tx
+      .insert(customers)
+      .values({ display_name: p.displayName, picture_url: p.pictureUrl })
+      .returning({ id: customers.id })
+    await tx.insert(customer_identities).values({ provider: p.provider, subject: p.subject, customer_id: created.id })
+    return created.id
+  })
 }
 
 export async function awardSurveyCompleted(p: {
@@ -1354,98 +1411,211 @@ git commit -m "feat(ledger): ledger service with claim window, welcome voucher, 
 
 ---
 
-### Task 6: LINE 登入路由
+### Task 6: 登入路由（LINE 為主、Google 為輔）
 
 **Files:**
-- Create: `src/app/api/customer/line/start/route.ts`
-- Create: `src/app/api/customer/line/callback/route.ts`
+- Create: `src/lib/google-login.ts`
+- Test: `tests/unit/google-login.spec.ts`
+- Create: `src/lib/customer-login.ts`
+- Create: `src/app/api/customer/line/start/route.ts`、`src/app/api/customer/line/callback/route.ts`
+- Create: `src/app/api/customer/google/start/route.ts`、`src/app/api/customer/google/callback/route.ts`
 - Create: `src/app/api/customer/logout/route.ts`
 
-- [ ] **Step 1: start**
+- [ ] **Step 1: Google 用戶端的失敗測試**
 
-Create `src/app/api/customer/line/start/route.ts`:
+Create `tests/unit/google-login.spec.ts`:
 
 ```ts
-import { NextRequest, NextResponse } from 'next/server'
-import { randomBytes } from 'crypto'
-import { buildAuthorizeUrl, lineConfig } from '@/lib/line-login'
-import { LINE_STATE_COOKIE, cookieOptions, customerSecret, isUuid, signPayload } from '@/lib/customer-session'
-import { logger } from '@/lib/logger'
+import { test, expect } from '@playwright/test'
+import { buildGoogleAuthorizeUrl, checkGoogleClaims } from '../../src/lib/google-login'
 
-export type LineState = { state: string; nonce: string; claim: string | null; store: string | null; exp: number }
+test('Google authorize URL 帶齊參數', () => {
+  const url = new URL(buildGoogleAuthorizeUrl({
+    clientId: 'cid.apps.googleusercontent.com',
+    redirectUri: 'https://poc.mcstation.ai/feedbites/api/customer/google/callback',
+    state: 'st', nonce: 'nc',
+  }))
+  expect(url.origin + url.pathname).toBe('https://accounts.google.com/o/oauth2/v2/auth')
+  expect(url.searchParams.get('response_type')).toBe('code')
+  expect(url.searchParams.get('scope')).toBe('openid profile')
+  expect(url.searchParams.get('state')).toBe('st')
+  expect(url.searchParams.get('nonce')).toBe('nc')
+  expect(url.searchParams.get('prompt')).toBe('select_account')
+})
 
-// GET /api/customer/line/start?claim=<responseId>&store=<storeId>
-export async function GET(req: NextRequest) {
-  const claimParam = req.nextUrl.searchParams.get('claim')
-  const storeParam = req.nextUrl.searchParams.get('store')
-  const claim = isUuid(claimParam) ? claimParam : null
-  const store = isUuid(storeParam) ? storeParam : null
+test('checkGoogleClaims 驗 aud、iss、nonce、exp', () => {
+  const now = 1_800_000_000
+  const ok = { aud: 'cid', iss: 'https://accounts.google.com', nonce: 'n', exp: String(now + 60), sub: '123', name: '甲', picture: 'p' }
+  expect(checkGoogleClaims(ok, 'cid', 'n', now)).toEqual({ sub: '123', name: '甲', picture: 'p' })
+  expect(() => checkGoogleClaims({ ...ok, aud: 'other' }, 'cid', 'n', now)).toThrow(/aud/)
+  expect(() => checkGoogleClaims({ ...ok, iss: 'evil' }, 'cid', 'n', now)).toThrow(/iss/)
+  expect(() => checkGoogleClaims({ ...ok, nonce: 'x' }, 'cid', 'n', now)).toThrow(/nonce/)
+  expect(() => checkGoogleClaims({ ...ok, exp: String(now - 1) }, 'cid', 'n', now)).toThrow(/expired/)
+})
+```
 
-  try {
-    const cfg = lineConfig()
-    const payload: LineState = {
-      state: randomBytes(16).toString('hex'),
-      nonce: randomBytes(16).toString('hex'),
-      claim,
-      store,
-      exp: Date.now() + 10 * 60 * 1000,
-    }
-    const res = NextResponse.redirect(buildAuthorizeUrl({
-      channelId: cfg.channelId,
-      redirectUri: cfg.redirectUri,
-      state: payload.state,
-      nonce: payload.nonce,
-    }))
-    res.cookies.set(LINE_STATE_COOKIE, signPayload(payload, customerSecret()), cookieOptions(600))
-    return res
-  } catch (err) {
-    logger.error('customer.line.start.failed', {}, err)
-    return NextResponse.json({ error: 'LINE 登入暫時無法使用' }, { status: 503 })
+Run: `npx playwright test tests/unit/google-login.spec.ts`
+Expected: FAIL，找不到模組。
+
+- [ ] **Step 2: Google 用戶端**
+
+Create `src/lib/google-login.ts`:
+
+```ts
+// Google OAuth 2.0 / OpenID Connect — 給沒有 LINE 的外國客人。
+// 驗 id_token 用 Google 官方 tokeninfo 端點，不自行驗簽。
+import type { LineProfile } from './line-login'
+
+const AUTHORIZE_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
+const TOKEN_URL = 'https://oauth2.googleapis.com/token'
+const TOKENINFO_URL = 'https://oauth2.googleapis.com/tokeninfo'
+
+export interface GoogleConfig {
+  clientId: string
+  clientSecret: string
+  redirectUri: string
+}
+
+export function googleConfig(): GoogleConfig {
+  const clientId = process.env.CUSTOMER_GOOGLE_CLIENT_ID
+  const clientSecret = process.env.CUSTOMER_GOOGLE_CLIENT_SECRET
+  const base = process.env.PUBLIC_BASE_URL
+  if (!clientId || !clientSecret || !base) {
+    throw new Error('CUSTOMER_GOOGLE_CLIENT_ID / CUSTOMER_GOOGLE_CLIENT_SECRET / PUBLIC_BASE_URL not set')
   }
+  return { clientId, clientSecret, redirectUri: `${base.replace(/\/$/, '')}/api/customer/google/callback` }
+}
+
+export function buildGoogleAuthorizeUrl(p: { clientId: string; redirectUri: string; state: string; nonce: string }): string {
+  const u = new URL(AUTHORIZE_URL)
+  u.searchParams.set('response_type', 'code')
+  u.searchParams.set('client_id', p.clientId)
+  u.searchParams.set('redirect_uri', p.redirectUri)
+  u.searchParams.set('scope', 'openid profile')
+  u.searchParams.set('state', p.state)
+  u.searchParams.set('nonce', p.nonce)
+  u.searchParams.set('prompt', 'select_account')
+  return u.toString()
+}
+
+export function checkGoogleClaims(
+  c: { aud?: string; iss?: string; nonce?: string; exp?: string; sub?: string; name?: string; picture?: string },
+  clientId: string,
+  nonce: string,
+  nowSec: number = Math.floor(Date.now() / 1000),
+): LineProfile {
+  if (c.aud !== clientId) throw new Error('Google id_token aud mismatch')
+  if (c.iss !== 'https://accounts.google.com' && c.iss !== 'accounts.google.com') throw new Error('Google id_token iss mismatch')
+  if (c.nonce !== nonce) throw new Error('Google id_token nonce mismatch')
+  if (!c.exp || Number(c.exp) <= nowSec) throw new Error('Google id_token expired')
+  if (!c.sub) throw new Error('Google id_token has no sub')
+  return { sub: c.sub, name: c.name ?? null, picture: c.picture ?? null }
+}
+
+export async function googleProfileFromCode(code: string, nonce: string, cfg: GoogleConfig): Promise<LineProfile> {
+  const res = await fetch(TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: cfg.redirectUri,
+      client_id: cfg.clientId,
+      client_secret: cfg.clientSecret,
+    }),
+  })
+  if (!res.ok) throw new Error(`Google token exchange failed: ${res.status}`)
+  const { id_token } = (await res.json()) as { id_token?: string }
+  if (!id_token) throw new Error('Google token response has no id_token')
+
+  const info = await fetch(`${TOKENINFO_URL}?id_token=${encodeURIComponent(id_token)}`)
+  if (!info.ok) throw new Error(`Google tokeninfo failed: ${info.status}`)
+  return checkGoogleClaims(await info.json(), cfg.clientId, nonce)
 }
 ```
 
-- [ ] **Step 2: callback**
+Run: `npx playwright test tests/unit/google-login.spec.ts`
+Expected: 2 passed。
 
-Create `src/app/api/customer/line/callback/route.ts`:
+- [ ] **Step 3: 共用登入流程**
+
+Create `src/lib/customer-login.ts`:
 
 ```ts
+// LINE 與 Google 共用：start 產 state/nonce 並導向；callback 驗 state、建客人、認領問卷、設 session。
 import { NextRequest, NextResponse } from 'next/server'
-import { exchangeCodeForIdToken, lineConfig, verifyIdToken } from '@/lib/line-login'
+import { randomBytes } from 'crypto'
 import {
-  CUSTOMER_COOKIE, LINE_STATE_COOKIE, SESSION_TTL_MS,
-  cookieOptions, customerSecret, signPayload, verifyPayload,
+  CUSTOMER_COOKIE, OAUTH_STATE_COOKIE, SESSION_TTL_MS,
+  cookieOptions, customerSecret, isUuid, signPayload, verifyPayload,
 } from '@/lib/customer-session'
-import { claimResponse, getStoreIdForResponse, upsertCustomer } from '@/lib/ledger/service'
+import { claimResponse, getStoreIdForResponse, upsertCustomer, type IdentityProvider } from '@/lib/ledger/service'
+import type { LineProfile } from '@/lib/line-login'
 import { logger, newRequestId } from '@/lib/logger'
-import type { LineState } from '../start/route'
 
-export async function GET(req: NextRequest) {
+export type OAuthState = {
+  provider: IdentityProvider
+  state: string
+  nonce: string
+  claim: string | null
+  store: string | null
+  exp: number
+}
+
+export function startLogin(
+  req: NextRequest,
+  provider: IdentityProvider,
+  buildUrl: (state: string, nonce: string) => string,
+): NextResponse {
+  const claimParam = req.nextUrl.searchParams.get('claim')
+  const storeParam = req.nextUrl.searchParams.get('store')
+  try {
+    const payload: OAuthState = {
+      provider,
+      state: randomBytes(16).toString('hex'),
+      nonce: randomBytes(16).toString('hex'),
+      claim: isUuid(claimParam) ? claimParam : null,
+      store: isUuid(storeParam) ? storeParam : null,
+      exp: Date.now() + 10 * 60 * 1000,
+    }
+    const res = NextResponse.redirect(buildUrl(payload.state, payload.nonce))
+    res.cookies.set(OAUTH_STATE_COOKIE, signPayload(payload, customerSecret()), cookieOptions(600))
+    return res
+  } catch (err) {
+    logger.error('customer.login.start.failed', { provider }, err)
+    return NextResponse.json({ error: '登入暫時無法使用' }, { status: 503 })
+  }
+}
+
+export async function finishLogin(
+  req: NextRequest,
+  provider: IdentityProvider,
+  profileFromCode: (code: string, nonce: string) => Promise<LineProfile>,
+): Promise<NextResponse> {
   const request_id = newRequestId()
   const base = (process.env.PUBLIC_BASE_URL ?? '').replace(/\/$/, '')
-  const st = verifyPayload<LineState>(req.cookies.get(LINE_STATE_COOKIE)?.value, customerSecret())
+  const st = verifyPayload<OAuthState>(req.cookies.get(OAUTH_STATE_COOKIE)?.value, customerSecret())
   const code = req.nextUrl.searchParams.get('code')
   const state = req.nextUrl.searchParams.get('state')
-  const lineError = req.nextUrl.searchParams.get('error')
+  const providerError = req.nextUrl.searchParams.get('error')
 
   const walletUrl = (storeId: string | null, query: string) =>
     storeId ? `${base}/w/${storeId}?${query}` : `${base}/`
+  const retry = st?.claim ? `&claim=${st.claim}` : ''
 
-  if (lineError || !st || !code || state !== st.state) {
-    logger.warn('customer.line.callback.rejected', { request_id }, lineError ?? 'state mismatch or missing')
+  if (providerError || !st || st.provider !== provider || !code || state !== st.state) {
+    logger.warn('customer.login.rejected', { request_id, provider }, providerError ?? 'state mismatch or missing')
     const storeId = st?.store ?? (st?.claim ? await getStoreIdForResponse(st.claim) : null)
-    const retry = st?.claim ? `&claim=${st.claim}` : ''
     const res = NextResponse.redirect(walletUrl(storeId, `login=cancelled${retry}`))
-    res.cookies.delete(LINE_STATE_COOKIE)
+    res.cookies.delete(OAUTH_STATE_COOKIE)
     return res
   }
 
   try {
-    const cfg = lineConfig()
-    const idToken = await exchangeCodeForIdToken(code, cfg)
-    const profile = await verifyIdToken(idToken, cfg.channelId, st.nonce)
+    const profile = await profileFromCode(code, st.nonce)
     const customerId = await upsertCustomer({
-      lineUserId: profile.sub,
+      provider,
+      subject: profile.sub,
       displayName: profile.name,
       pictureUrl: profile.picture,
     })
@@ -1469,19 +1639,77 @@ export async function GET(req: NextRequest) {
       signPayload({ cid: customerId, exp: Date.now() + SESSION_TTL_MS }, customerSecret()),
       cookieOptions(SESSION_TTL_MS / 1000),
     )
-    res.cookies.delete(LINE_STATE_COOKIE)
-    logger.info('customer.line.login', { request_id }, st.claim ? 'with claim' : 'plain')
+    res.cookies.delete(OAUTH_STATE_COOKIE)
+    logger.info('customer.login', { request_id, provider }, st.claim ? 'with claim' : 'plain')
     return res
   } catch (err) {
-    logger.error('customer.line.callback.failed', { request_id }, err)
+    logger.error('customer.login.callback.failed', { request_id, provider }, err)
     const storeId = st.store ?? (st.claim ? await getStoreIdForResponse(st.claim) : null)
-    const retry = st.claim ? `&claim=${st.claim}` : ''
     return NextResponse.redirect(walletUrl(storeId, `login=failed${retry}`))
   }
 }
 ```
 
-- [ ] **Step 3: logout**
+- [ ] **Step 4: 四支登入路由與登出**
+
+Create `src/app/api/customer/line/start/route.ts`:
+
+```ts
+import { NextRequest } from 'next/server'
+import { buildAuthorizeUrl, lineConfig } from '@/lib/line-login'
+import { startLogin } from '@/lib/customer-login'
+
+// GET /api/customer/line/start?claim=<responseId>&store=<storeId>
+export async function GET(req: NextRequest) {
+  return startLogin(req, 'line', (state, nonce) => {
+    const cfg = lineConfig()
+    return buildAuthorizeUrl({ channelId: cfg.channelId, redirectUri: cfg.redirectUri, state, nonce })
+  })
+}
+```
+
+Create `src/app/api/customer/line/callback/route.ts`:
+
+```ts
+import { NextRequest } from 'next/server'
+import { exchangeCodeForIdToken, lineConfig, verifyIdToken } from '@/lib/line-login'
+import { finishLogin } from '@/lib/customer-login'
+
+export async function GET(req: NextRequest) {
+  return finishLogin(req, 'line', async (code, nonce) => {
+    const cfg = lineConfig()
+    const idToken = await exchangeCodeForIdToken(code, cfg)
+    return verifyIdToken(idToken, cfg.channelId, nonce)
+  })
+}
+```
+
+Create `src/app/api/customer/google/start/route.ts`:
+
+```ts
+import { NextRequest } from 'next/server'
+import { buildGoogleAuthorizeUrl, googleConfig } from '@/lib/google-login'
+import { startLogin } from '@/lib/customer-login'
+
+export async function GET(req: NextRequest) {
+  return startLogin(req, 'google', (state, nonce) => {
+    const cfg = googleConfig()
+    return buildGoogleAuthorizeUrl({ clientId: cfg.clientId, redirectUri: cfg.redirectUri, state, nonce })
+  })
+}
+```
+
+Create `src/app/api/customer/google/callback/route.ts`:
+
+```ts
+import { NextRequest } from 'next/server'
+import { googleConfig, googleProfileFromCode } from '@/lib/google-login'
+import { finishLogin } from '@/lib/customer-login'
+
+export async function GET(req: NextRequest) {
+  return finishLogin(req, 'google', (code, nonce) => googleProfileFromCode(code, nonce, googleConfig()))
+}
+```
 
 Create `src/app/api/customer/logout/route.ts`:
 
@@ -1496,13 +1724,15 @@ export async function POST() {
 }
 ```
 
-- [ ] **Step 4: 本機 smoke test（不需要真的 LINE channel）**
+- [ ] **Step 5: 本機 smoke test（不需要真的 channel）**
 
-`.env.local` 暫時加：
+`.env.local` 加：
 
 ```
 LINE_LOGIN_CHANNEL_ID=0000000000
 LINE_LOGIN_CHANNEL_SECRET=dummy
+CUSTOMER_GOOGLE_CLIENT_ID=<global.env 的 GOOGLE_CLIENT_ID>
+CUSTOMER_GOOGLE_CLIENT_SECRET=<global.env 的 GOOGLE_CLIENT_SECRET>
 PUBLIC_BASE_URL=http://localhost:3000/feedbites
 CUSTOMER_SESSION_SECRET=local-dev-secret
 ```
@@ -1511,16 +1741,17 @@ Run: `npm run dev`，另一個終端：
 
 ```bash
 curl -s -o /dev/null -w "%{http_code} %{redirect_url}\n" "http://localhost:3000/feedbites/api/customer/line/start?claim=36759bb5-7786-47bf-a5e2-ce78b3e27dc7"
+curl -s -o /dev/null -w "%{http_code} %{redirect_url}\n" "http://localhost:3000/feedbites/api/customer/google/start?store=36759bb5-7786-47bf-a5e2-ce78b3e27dc7"
 curl -s -o /dev/null -w "%{http_code} %{redirect_url}\n" "http://localhost:3000/feedbites/api/customer/line/callback?code=x&state=y"
 ```
 
-Expected: 第一行 `307 https://access.line.me/oauth2/v2.1/authorize?...client_id=0000000000...bot_prompt=aggressive`；第二行 `307 http://localhost:3000/feedbites/`（沒有 state cookie，被拒絕後導回首頁，不是 500）。
+Expected: 第一行 `307 https://access.line.me/oauth2/v2.1/authorize?...bot_prompt=aggressive`；第二行 `307 https://accounts.google.com/o/oauth2/v2/auth?...prompt=select_account`；第三行 `307 http://localhost:3000/feedbites/`（沒有 state cookie，被拒絕後導回，不是 500）。
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/app/api/customer
-git commit -m "feat(ledger): LINE Login start/callback with response claim, and customer logout"
+git add src/lib/google-login.ts src/lib/customer-login.ts tests/unit/google-login.spec.ts src/app/api/customer
+git commit -m "feat(ledger): LINE and Google customer login with response claim"
 ```
 
 ---
@@ -1683,7 +1914,7 @@ export async function GET(request: NextRequest) {
 }
 ```
 
-`vercel.json` 的 `crons` 陣列加一項（正式站在 EC2，這項只是保持設定一致；EC2 排程在 Task 11 設）：
+`vercel.json` 的 `crons` 陣列加一項（正式站在 EC2，這項只是保持設定一致；EC2 排程在 Task 13 設）：
 
 ```json
     {
@@ -1895,6 +2126,13 @@ export default function ClaimPointsCard({
       >
         用 LINE 登入領取
       </a>
+      <a
+        href={`/feedbites/api/customer/google/start?claim=${responseId}`}
+        className="mt-3 block text-xs underline underline-offset-2"
+        style={{ color: colors.textLight }}
+      >
+        No LINE? Continue with Google
+      </a>
       <p className="mt-2 text-[10px]" style={{ color: colors.textLight }}>
         請在 30 分鐘內領取
       </p>
@@ -1949,7 +2187,7 @@ import ClaimPointsCard, { type AwardedPoints } from '@/components/survey/ClaimPo
 - [ ] **Step 5: 本機看畫面**
 
 `npm run dev`，開測試問卷 `/feedbites/s/<TEST_SURVEY_A_ID>` 填完。
-Expected: 完成頁出現綠色「用 LINE 登入領取」卡片；按鈕網址含 `claim=<responseId>`。
+Expected: 完成頁出現綠色「用 LINE 登入領取」卡片，下方有「No LINE? Continue with Google」；兩個連結都含 `claim=<responseId>`。
 
 - [ ] **Step 6: lint 與 commit**
 
@@ -2014,7 +2252,9 @@ export default async function WalletPage({
   const rules = await getRules(storeId)
   const now = Date.now()
   const retryClaim = isUuid(sp.claim) ? sp.claim : null
-  const loginHref = `/feedbites/api/customer/line/start?store=${storeId}${retryClaim ? `&claim=${retryClaim}` : ''}`
+  const loginQuery = `store=${storeId}${retryClaim ? `&claim=${retryClaim}` : ''}`
+  const loginHref = `/feedbites/api/customer/line/start?${loginQuery}`
+  const googleHref = `/feedbites/api/customer/google/start?${loginQuery}`
 
   if (!customerId) {
     return (
@@ -2024,6 +2264,8 @@ export default async function WalletPage({
         storeName={store.store_name}
         logoUrl={store.logo_url}
         loginHref={loginHref}
+      googleHref={googleHref}
+        googleHref={googleHref}
         notice={sp.login === 'failed' || sp.login === 'cancelled' ? '登入沒有完成，可以再試一次' : null}
         wallet={null}
         catalog={rules.catalog.map(c => ({ id: c.id, label: voucherLabel(c), cost_points: c.cost_points }))}
@@ -2045,6 +2287,7 @@ export default async function WalletPage({
       storeName={store.store_name}
       logoUrl={store.logo_url}
       loginHref={loginHref}
+      googleHref={googleHref}
       notice={claimedNotice}
       catalog={rules.catalog.map(c => ({ id: c.id, label: voucherLabel(c), cost_points: c.cost_points }))}
       wallet={{
@@ -2091,11 +2334,12 @@ export default function WalletClient(props: {
   storeName: string
   logoUrl: string | null
   loginHref: string
+  googleHref: string
   notice: string | null
   wallet: Wallet | null
   catalog: { id: string; label: string; cost_points: number }[]
 }) {
-  const { brand, storeId, storeName, logoUrl, loginHref, notice, wallet, catalog } = props
+  const { brand, storeId, storeName, logoUrl, loginHref, googleHref, notice, wallet, catalog } = props
   const router = useRouter()
   const [busy, setBusy] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
@@ -2143,6 +2387,9 @@ export default function WalletClient(props: {
             <p className="text-base font-bold">用 LINE 登入，看你的點數和餐券</p>
             <a href={loginHref} className="mt-4 inline-block rounded-full bg-[#06C755] px-6 py-3 text-sm font-bold text-white">
               用 LINE 登入
+            </a>
+            <a href={googleHref} className="mt-3 block text-xs text-[#A07850] underline underline-offset-2">
+              No LINE? Continue with Google
             </a>
           </section>
         ) : (
@@ -2394,9 +2641,9 @@ import { LogOut, Menu, Plus, LayoutDashboard, UtensilsCrossed, ClipboardList, Sp
 
 ```tsx
           <section>
-            <h2 className="text-lg font-bold mb-2">LINE 登入與點數</h2>
+            <h2 className="text-lg font-bold mb-2">常來點的登入與點數</h2>
             <p className="text-[#8A8585]">
-              您用 LINE 登入領取點數時，我們只取得 LINE 使用者識別碼、顯示名稱與頭像，不取得您的 LINE 好友、訊息或電話。
+              您用 LINE 或 Google 登入領取點數時，我們只取得該服務的使用者識別碼、顯示名稱與頭像，不取得您的好友、訊息、電話或 Email。
               這些資料只用於記錄您在各店家的點數與餐券，不會提供給第三方。
               店家只看得到您在該店的填答與點數紀錄。刪除請求處理方式同下方「資料刪除」。
             </p>
@@ -2442,7 +2689,78 @@ git commit -m "feat(ledger): customer wallet page and staff vouchers dashboard"
 
 ---
 
-### Task 11: 審查、稽核與上線
+### Task 12: 全站品牌換成「常來點 EatAgain」
+
+**Files:**
+- Modify: `src/lib/brand.ts`
+- Create: `public/brand/changlaidian-icon-1024.png`、`public/brand/changlaidian-lockup.png`（從 `docs/brand/` 複製）
+- Modify: `public/manifest.webmanifest`、`public/icons/*`（重新產生）
+- Modify: `src/` 內所有畫面上看得到的 FeedBites 字樣
+
+**規則（逐一判斷，不要全域取代）：**
+
+| 類型 | 處理 |
+|---|---|
+| 畫面文字、`<title>`、metadata、email 主旨與內文、LINE 推播文字、「Powered by FeedBites」 | 換成「常來點」；需要英文處換 `EatAgain`；對客與店長端都換 |
+| Logo 圖檔引用（`feedbites-logo.png`） | 換成 `/feedbites/brand/changlaidian-lockup.png`（橫式）或 `changlaidian-icon-1024.png`（方形） |
+| 網址 basePath `/feedbites`、API 路徑、cookie 名稱（`feedbites_store_id`）、logger 服務名、資料庫、環境變數、`package.json` name | **不動**。改了會讓已印的 QR 碼失效或登入掉線 |
+| 寄件地址 `noreply@feedbites.app` | 只改顯示名稱：`常來點 EatAgain <noreply@feedbites.app>`，地址等有新網域再換 |
+
+- [ ] **Step 1: 品牌常數**
+
+`src/lib/brand.ts` 改為：
+
+```ts
+// 對客與店長端品牌（Jason 2026-09-13 定案）。改名只改這裡。
+export const CUSTOMER_BRAND = '常來點'
+export const CUSTOMER_BRAND_EN = 'EatAgain'
+export const BRAND_FULL = `${CUSTOMER_BRAND} ${CUSTOMER_BRAND_EN}`
+export const BRAND_LOGO_LOCKUP = '/feedbites/brand/changlaidian-lockup.png'
+export const BRAND_ICON = '/feedbites/brand/changlaidian-icon-1024.png'
+```
+
+- [ ] **Step 2: 圖檔**
+
+```bash
+mkdir -p public/brand
+cp docs/brand/changlaidian-icon-1024.png docs/brand/changlaidian-lockup.png public/brand/
+sed -n 1,40p scripts/generate-icons.mjs
+```
+
+依 `scripts/generate-icons.mjs` 的輸入參數，用 `public/brand/changlaidian-icon-1024.png` 當來源重新產生 `public/icons/`。`public/manifest.webmanifest` 的 `name` 改 `常來點 EatAgain`、`short_name` 改 `常來點`、`theme_color` 改 `#D9541E`。
+
+- [ ] **Step 3: 列出所有出現處**
+
+```bash
+grep -rn "FeedBites\|Feedbites" src --include=*.tsx --include=*.ts
+grep -rn "feedbites-logo" src public
+```
+
+逐筆依上表判斷，每一處改完再往下。
+
+- [ ] **Step 4: 驗證畫面上已無 FeedBites**
+
+```bash
+grep -rn "FeedBites\|Feedbites" src --include=*.tsx --include=*.ts | grep -v "^src/lib/logger"
+```
+
+Expected: 只剩上表「不動」類型（例如程式註解、內部識別）。剩下的每一筆在 commit 訊息裡列出保留理由。
+
+`npm run dev` 後打開：登入頁、`/feedbites/dashboard`、一份問卷 `/feedbites/s/<id>` 完成頁、`/feedbites/w/<storeId>`、`/feedbites/m/<storeId>`。Expected: 看得到的地方全部是常來點與新 logo，瀏覽器分頁標題也是。
+
+- [ ] **Step 5: build 與 commit**
+
+Run: `npx tsc --noEmit && npm run build`
+Expected: 成功。
+
+```bash
+git add src public
+git commit -m "feat(brand): rebrand all visible FeedBites text and logo to 常來點 EatAgain"
+```
+
+---
+
+### Task 13: 審查、稽核與上線
 
 **需要 Jason 確認的步驟有標 🔴。**
 
@@ -2466,6 +2784,8 @@ EC2 `/home/jason/feedbites/.env.prod` 加入：
 ```
 LINE_LOGIN_CHANNEL_ID=<Task 0>
 LINE_LOGIN_CHANNEL_SECRET=<Task 0>
+CUSTOMER_GOOGLE_CLIENT_ID=<global.env 的 GOOGLE_CLIENT_ID>
+CUSTOMER_GOOGLE_CLIENT_SECRET=<global.env 的 GOOGLE_CLIENT_SECRET>
 PUBLIC_BASE_URL=https://poc.mcstation.ai/feedbites
 CUSTOMER_SESSION_SECRET=<openssl rand -base64 48 產生，另存 global.env 為 FEEDBITES_CUSTOMER_SESSION_SECRET>
 ```
@@ -2506,7 +2826,8 @@ EC2 crontab 加一行（每天台北 03:00）：
 3. Expected: 回到 `/feedbites/w/<欣殿萬飲 store id>?claimed=50`，看到 50 點與一張見面禮券。
 4. 店長後台核銷該券，第二次核銷被拒。
 5. 同一支手機再填一次問卷。Expected: 完成頁直接顯示「今天已經領過點數囉」，不再出現 LINE 按鈕。
-6. 測完在正式庫刪除這位測試客人（`DELETE FROM customers WHERE line_user_id = '<你的 sub>'`），以免污染欣殿萬飲的數據。
+6. 用另一支沒登入過的手機，改按「No LINE? Continue with Google」走一次，Expected 同第 3 步。
+7. 測完在正式庫刪除這兩位測試客人（`DELETE FROM customers WHERE id IN (SELECT customer_id FROM customer_identities WHERE subject IN ('<LINE sub>', '<Google sub>'))`），以免污染欣殿萬飲的數據。
 
 - [ ] **Step 9: 三端截圖**
 
@@ -2516,12 +2837,13 @@ EC2 crontab 加一行（每天台北 03:00）：
 
 - `shared_intel/PROGRESS_LOG.md` 最上方加一行完成紀錄。
 - `shared_intel/DELIVERABLES_CHECKLIST.md` 加一行待 Jason 看：帳本頁網址、見面禮券預設面額仍待阿水確認。
-- `shared_intel/CTO_RESOURCES.md` 登記 LINE Login channel 與新 env。
+- `shared_intel/CTO_RESOURCES.md` 登記 LINE Login channel、Google OAuth 新增的 redirect URI 與新 env。
+- 通知欣殿萬飲試用負責人鄭子民（吧台主管）：店長後台核銷教學、見面禮券面額待阿水確認。
 
 ---
 
 ## Self-review 紀錄
 
-- **Spec 覆蓋**：§一 驗收表 1、2、6 → Task 5、8、9、10、11；§三 資料模型（本包範圍）→ Task 1；§四 點數規則、首張券、兌換目錄、到期 → Task 2、5、7；§五 身分與登入 → Task 3、4、6、9；§九 核銷與錯誤 → Task 5、7；§十 安全個資 → Task 3、7、10 Step 6、11 Step 2；§十一 測試 → Task 2–5、11。
+- **Spec 覆蓋**：§一 驗收表 1、2、6 → Task 5、8、9、10、13；多登入方式與品牌更名 → Task 1、5、6、12；§三 資料模型（本包範圍）→ Task 1；§四 點數規則、首張券、兌換目錄、到期 → Task 2、5、7；§五 身分與登入 → Task 3、4、6、9；§九 核銷與錯誤 → Task 5、7；§十 安全個資 → Task 3、6、7、10 Step 6、13 Step 2；§十一 測試 → Task 2–6、13。
 - **不在本包**：許願、補資料、推播（P2）；素材庫、菜品 ID、時段分析、集團與總部視角（P3）。`customers` 的補資料欄位本包已建，P2 直接用。
-- **命名一致**：`awardSurveyCompleted`、`claimResponse`、`exchangeVoucher`、`redeemVoucher`、`runExpiry`、`getWallet`、`getRules`、`saveRules`、`upsertCustomer`、`getStoreIdForResponse` 在 Task 5 定義，Task 6–10 引用名稱相同。
+- **命名一致**：`awardSurveyCompleted`、`claimResponse`、`exchangeVoucher`、`redeemVoucher`、`runExpiry`、`getWallet`、`getRules`、`saveRules`、`upsertCustomer`、`IdentityProvider`、`getStoreIdForResponse` 在 Task 5 定義；`startLogin`、`finishLogin`、`OAUTH_STATE_COOKIE` 在 Task 3、6 定義；Task 6–12 引用名稱相同。
