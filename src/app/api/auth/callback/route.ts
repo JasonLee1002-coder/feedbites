@@ -97,6 +97,11 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  const next = req.nextUrl.searchParams.get('next') ?? '/dashboard'
-  return NextResponse.redirect(new URL(next, req.url))
+  // next 只接受站內相對路徑（擋 //evil.com 這類 open redirect），並補上 basePath
+  const nextParam = req.nextUrl.searchParams.get('next')
+  const next =
+    nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//') && !nextParam.startsWith('/\\')
+      ? nextParam
+      : '/dashboard'
+  return NextResponse.redirect(new URL(`${BASE_PATH}${next}`, req.url))
 }
