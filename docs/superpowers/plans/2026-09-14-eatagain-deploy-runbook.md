@@ -119,3 +119,93 @@ curl -s -o /dev/null -w "%{http_code}\n" https://poc.mcstation.ai/eatagain/api/c
 - 欣殿萬飲 QR 立牌用 `https://poc.mcstation.ai/eatagain/s/<surveyId>` 重新產生後再印。
 - 通知鄭子民：核銷怎麼做、兌換目錄怎麼改。
 - `CTO_RESOURCES.md` 登記 LINE Login channel、Google redirect URI、新 env 與排程。
+
+## 10. 店長 Google 登入部署（分支 `fix/staff-google-login`）
+
+> 每一個 🔴 步驟都要 Jason 當次確認後才做。
+
+### 10.1 🔴 環境變數（只追加，不覆寫）
+
+在步驟 1 找到的 env 檔（`.env.production`）追加：
+
+```
+AUTH_GOOGLE_ID=<Google OAuth client ID>
+AUTH_GOOGLE_SECRET=<Google OAuth client secret>
+STAFF_EMAIL_LOGIN_ENABLED=true
+```
+
+並確認：
+
+```
+AUTH_URL=https://poc.mcstation.ai/eatagain/api/auth
+```
+
+- **`AUTH_URL` 一定要帶 `/api/auth`**。Auth.js 的 basePath 取自 AUTH_URL 的 pathname（`next-auth/lib/env.js` setEnvDefaults），寫成 `https://poc.mcstation.ai/eatagain` 時所有 `/eatagain/api/auth/*` 都會回 400 UnknownAction，Google 登入整個壞掉。`scripts/deploy-ec2.sh` 裡寫的就是不帶 `/api/auth` 的舊值，不要照抄。
+- **`AUTH_URL` 不可缺**。正式環境沒有 AUTH_URL 時 Auth.js 會拒絕所有登入請求（UntrustedHost，刻意 fail-closed，不再信任請求的 Host 標頭）。
+- `ALLOWED_LOGIN_EMAILS` 沿用步驟 4；名單內每個 email 都要是店長實際用來登入 Google 的帳號。
+- 部署前在正式庫檢查有沒有大小寫或空白不一致的舊帳號（Google 登入一律用小寫 email 對應，對不上會建出新帳號、被導去建店）：
+
+```sql
+SELECT id, email FROM users WHERE email <> lower(trim(email));
+```
+
+有結果先停下來回報，不要直接改。
+
+### 10.2 🔴 套用 migration 022（新容器啟動前）
+
+```bash
+docker cp supabase/migrations/022_users_google_sub.sql <db 容器>:/tmp/022.sql
+docker exec <db 容器> psql -U <db 使用者> -d feedbites -1 -v ON_ERROR_STOP=1 -f /tmp/022.sql
+docker exec <db 容器> psql -U <db 使用者> -d feedbites -c "\d users"
+```
+
+`users` 要看到 `google_sub` 欄位與 `uq_users_google_sub` 索引。可重跑。舊版程式不讀這個欄位，回滾容器不必回滾資料庫。
+
+### 10.3 🔴 Google Cloud Console
+
+OAuth client 的「已授權的重新導向 URI」加上：
+
+```
+https://poc.mcstation.ai/eatagain/api/auth/callback/google
+```
+
+### 10.4 🔴 建置與搬運映像檔（這台 EC2 不可以 build）
+
+不要在 EC2 上跑 `docker build`，一律在本機建好再搬過去：
+
+```bash
+# 本機
+docker build --platform linux/amd64 -t feedbites:staff-google .
+docker save feedbites:staff-google | gzip > feedbites_staff-google_20260914.tar.gz
+aws s3 cp feedbites_staff-google_20260914.tar.gz s3://transtep-rd/deploy/
+
+# EC2（走 SSM）
+aws s3 cp s3://transtep-rd/deploy/feedbites_staff-google_20260914.tar.gz /tmp/
+gunzip -c /tmp/feedbites_staff-google_20260914.tar.gz | docker load
+docker images | grep staff-google
+```
+
+換容器沿用步驟 5 的 `docker stop` / `rename` / `run` 參數與回滾方式，只是映像檔名改成 `feedbites:staff-google`（步驟 5 的 `docker build` 那一行不要在 EC2 上跑）。
+
+### 10.5 驗證順序（照順序，前一步沒過不往下）
+
+1. `STAFF_EMAIL_LOGIN_ENABLED=true` 狀態部署完成，`docker logs feedbites --tail 50` 沒有 `UntrustedHost`、`UnknownAction`。
+2. 用**已經有店家**的白名單帳號，按「使用 Google 登入」完整走一次：進得去原本的店，**沒有**被導去建店頁。
+3. 登出，再用同一個 Google 帳號登入一次，仍然進得去原本的店。
+4. 白名單外的 Google 帳號登入：回到登入頁並顯示「這個 Google 帳號沒有登入權限」。
+5. 開無痕視窗：登入頁仍有 email 表單，用白名單內 email 登入仍可用。
+6. 以上都通過，才把 env 檔改成 `STAFF_EMAIL_LOGIN_ENABLED=false`。
+7. **重啟容器**（`docker restart feedbites`）。環境變數只在啟動時讀，不重啟等於沒改。
+8. 確認：
+   - 登入頁**沒有** email 表單，只剩 Google 按鈕。
+   - `curl -s -o /dev/null -w "%{http_code}\n" -X POST -H "Content-Type: application/json" -d '{"email":"x@example.com"}' https://poc.mcstation.ai/eatagain/api/auth/login` 回 `403`。
+   - 步驟 2 那個 Google 登入的分頁重新整理後仍在後台（Google session 不受開關影響）；用 email 登入取得的舊 session 會被登出，屬正常。
+
+### 10.6 Google 帳號綁定（上線後的維運）
+
+- 店長**第一次**用 Google 登入時，系統會把該 Google 帳號的不可變 ID（`sub`）寫進 `users.google_sub`。之後同一個 email 換成別的 Google 帳號（例如 Workspace 管理員把 email 重新指派給另一個人）會被拒絕，登入頁顯示沒有登入權限，log 事件是 `staff_google_signin_rejected`（`reason` 為 `sub_mismatch` 或 `sub_taken`，只記 sub 前 4 碼）。
+- 店長確實換了 Google 帳號時，確認本人後人工清除綁定，下次登入會重新綁定：
+
+```sql
+UPDATE users SET google_sub = NULL, updated_at = NOW() WHERE email = '<店長 email>';
+```
