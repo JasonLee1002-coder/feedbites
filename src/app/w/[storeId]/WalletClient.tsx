@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { BASE_PATH } from '@/lib/brand'
 
@@ -27,10 +27,15 @@ export default function WalletClient(props: {
   const router = useRouter()
   const [busy, setBusy] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [needsLogin, setNeedsLogin] = useState(false)
+  const exchangingRef = useRef(false)
 
   async function exchange(catalogId: string) {
+    if (exchangingRef.current) return
+    exchangingRef.current = true
     setBusy(catalogId)
     setMessage(null)
+    setNeedsLogin(false)
     try {
       const res = await fetch(`${BASE_PATH}/api/customer/vouchers`, {
         method: 'POST',
@@ -41,6 +46,9 @@ export default function WalletClient(props: {
       if (res.status === 201) {
         setMessage(`換到了：${data.voucher.label}`)
         router.refresh()
+      } else if (res.status === 401) {
+        setNeedsLogin(true)
+        setMessage('登入已過期')
       } else {
         setMessage(data.error ?? '兌換失敗，請再試一次')
       }
@@ -48,6 +56,7 @@ export default function WalletClient(props: {
       setMessage('網路不穩，請再試一次')
     } finally {
       setBusy(null)
+      exchangingRef.current = false
     }
   }
 
@@ -55,8 +64,8 @@ export default function WalletClient(props: {
     <main className="min-h-screen bg-[#FFF8F0] px-4 py-8 text-[#3A2A1A]">
       <div className="mx-auto max-w-md">
         <header className="flex items-center gap-3">
-          {logoUrl && <img src={logoUrl} alt="" className="h-12 w-12 rounded-full object-cover" />}
-          <div>
+          {logoUrl && <img src={logoUrl} alt="" className="h-12 w-12 shrink-0 rounded-full object-cover" />}
+          <div className="min-w-0 break-words">
             <div className="text-xs text-[#A07850]">{brand}</div>
             <h1 className="text-xl font-bold">{storeName}</h1>
           </div>
@@ -92,8 +101,8 @@ export default function WalletClient(props: {
                     key={v.code}
                     className={`rounded-xl border bg-white p-4 ${v.status === 'active' ? 'border-[#FF8C00]' : 'border-[#E8E2D8] opacity-50'}`}
                   >
-                    <div className="font-bold">{v.label}</div>
-                    <div className="mt-1 font-mono text-2xl tracking-widest text-[#CC5500]">{v.code}</div>
+                    <div className="min-w-0 break-words font-bold">{v.label}</div>
+                    <div className="mt-1 min-w-0 break-words font-mono text-2xl tracking-widest text-[#CC5500]">{v.code}</div>
                     <div className="mt-1 text-xs text-[#A07850]">
                       {v.status === 'active' ? `結帳時給店員看，${fmtDate(v.expires_at)} 前有效` : v.status === 'used' ? '已使用' : '已過期'}
                     </div>
@@ -106,22 +115,31 @@ export default function WalletClient(props: {
               <h2 className="text-sm font-bold text-[#A07850]">用點數換</h2>
               <ul className="mt-2 space-y-2">
                 {catalog.map(c => (
-                  <li key={c.id} className="flex items-center justify-between rounded-xl bg-white p-4">
-                    <div>
+                  <li key={c.id} className="flex items-center justify-between gap-3 rounded-xl bg-white p-4">
+                    <div className="min-w-0 break-words">
                       <div className="font-medium">{c.label}</div>
                       <div className="text-xs text-[#A07850]">{c.cost_points} 點</div>
                     </div>
                     <button
                       onClick={() => exchange(c.id)}
                       disabled={busy !== null || wallet.balance < c.cost_points}
-                      className="rounded-full bg-[#FF8C00] px-4 py-2 text-sm font-bold text-white disabled:opacity-30"
+                      className="shrink-0 rounded-full bg-[#FF8C00] px-4 py-2 text-sm font-bold text-white disabled:opacity-30"
                     >
                       {busy === c.id ? '處理中' : '兌換'}
                     </button>
                   </li>
                 ))}
               </ul>
-              {message && <p className="mt-2 text-sm text-[#CC5500]">{message}</p>}
+              {message && (
+                <p className="mt-2 text-sm text-[#CC5500]">
+                  {message}
+                  {needsLogin && (
+                    <a href={loginHref} className="ml-2 underline underline-offset-2">
+                      重新登入
+                    </a>
+                  )}
+                </p>
+              )}
             </section>
 
             <section className="mt-6 mb-10">

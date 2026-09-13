@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import type { CatalogItem, PointRules } from '@/lib/ledger/rules'
 import { BASE_PATH } from '@/lib/brand'
 
 const input = 'w-full rounded-lg border border-[#E8E2D8] bg-white px-3 py-2 text-sm focus:outline-none focus:border-[#C5A55A]'
+const fieldLabel = 'block text-xs font-medium text-[#8A8585] mb-1'
 
 export default function VouchersClient({ initialRules, canEdit, issued, used }: {
   initialRules: PointRules
@@ -12,34 +14,55 @@ export default function VouchersClient({ initialRules, canEdit, issued, used }: 
   issued: number
   used: number
 }) {
+  const router = useRouter()
   const [rules, setRules] = useState<PointRules>(initialRules)
+  const [existingIds, setExistingIds] = useState<Set<string>>(() => new Set(initialRules.catalog.map(c => c.id)))
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState<string | null>(null)
   const [code, setCode] = useState('')
+  const [redeeming, setRedeeming] = useState(false)
   const [redeemMsg, setRedeemMsg] = useState<string | null>(null)
 
   async function redeem() {
     const c = code.trim().toUpperCase()
-    if (!c) return
+    if (!c || redeeming) return
     setRedeemMsg(null)
-    const res = await fetch(`${BASE_PATH}/api/vouchers/${encodeURIComponent(c)}/redeem`, { method: 'POST' })
-    const data = await res.json().catch(() => ({}))
-    setRedeemMsg(res.ok ? '✓ 核銷成功' : data.error ?? '核銷失敗')
-    if (res.ok) setCode('')
+    setRedeeming(true)
+    try {
+      const res = await fetch(`${BASE_PATH}/api/vouchers/${encodeURIComponent(c)}/redeem`, { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      setRedeemMsg(res.ok ? '✓ 核銷成功' : data.error ?? '核銷失敗')
+      if (res.ok) {
+        setCode('')
+        router.refresh()
+      }
+    } catch {
+      setRedeemMsg('網路不穩，請再試一次')
+    } finally {
+      setRedeeming(false)
+    }
   }
 
   async function save() {
     setSaving(true)
     setSaveMsg(null)
-    const res = await fetch(`${BASE_PATH}/api/store-point-rules`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rules }),
-    })
-    const data = await res.json().catch(() => ({}))
-    setSaveMsg(res.ok ? '✓ 已儲存' : data.error ?? '儲存失敗')
-    if (res.ok) setRules(data.rules)
-    setSaving(false)
+    try {
+      const res = await fetch(`${BASE_PATH}/api/store-point-rules`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rules }),
+      })
+      const data = await res.json().catch(() => ({}))
+      setSaveMsg(res.ok ? '✓ 已儲存' : data.error ?? '儲存失敗')
+      if (res.ok) {
+        setRules(data.rules)
+        setExistingIds(new Set((data.rules as PointRules).catalog.map(c => c.id)))
+      }
+    } catch {
+      setSaveMsg('網路不穩，請再試一次')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const fv = rules.first_voucher
@@ -50,6 +73,8 @@ export default function VouchersClient({ initialRules, canEdit, issued, used }: 
   }
   const setItem = (idx: number, patch: Partial<CatalogItem>) =>
     setRules({ ...rules, catalog: rules.catalog.map((c, i) => (i === idx ? { ...c, ...patch } : c)) })
+  const removeItem = (idx: number) =>
+    setRules({ ...rules, catalog: rules.catalog.filter((_, i) => i !== idx) })
   const num = (v: string) => (v === '' ? null : Number(v))
 
   return (
@@ -60,9 +85,23 @@ export default function VouchersClient({ initialRules, canEdit, issued, used }: 
         <h2 className="font-bold">核銷餐券</h2>
         <p className="mt-1 text-xs text-[#8A8585]">客人出示 8 碼，輸入後核銷。每張只能用一次。</p>
         <div className="mt-3 flex gap-2">
-          <input value={code} onChange={e => setCode(e.target.value.toUpperCase())} onKeyDown={e => e.key === 'Enter' && redeem()}
-            maxLength={8} placeholder="8 碼餐券代碼" className={`${input} font-mono tracking-widest`} />
-          <button onClick={redeem} className="shrink-0 rounded-lg bg-[#C5A55A] px-4 text-sm font-bold text-white">核銷</button>
+          <input
+            value={code}
+            onChange={e => setCode(e.target.value.toUpperCase())}
+            onKeyDown={e => e.key === 'Enter' && redeem()}
+            maxLength={8}
+            placeholder="8 碼餐券代碼"
+            aria-label="8 碼餐券代碼"
+            disabled={redeeming}
+            className={`${input} font-mono tracking-widest`}
+          />
+          <button
+            onClick={redeem}
+            disabled={redeeming || !code.trim()}
+            className="shrink-0 rounded-lg bg-[#C5A55A] px-4 text-sm font-bold text-white disabled:opacity-40"
+          >
+            {redeeming ? '處理中' : '核銷'}
+          </button>
         </div>
         {redeemMsg && <p className="mt-2 text-sm">{redeemMsg}</p>}
         <p className="mt-3 text-xs text-[#8A8585]">已發出 {issued} 張，已核銷 {used} 張</p>
@@ -85,20 +124,47 @@ export default function VouchersClient({ initialRules, canEdit, issued, used }: 
       <section className="rounded-2xl border border-[#E8E2D8] bg-white p-5">
         <h2 className="font-bold">兌換目錄</h2>
         <p className="mt-1 text-xs text-[#8A8585]">已上架的項目只能降點數、不能移除或漲點數，避免客人覺得越集越沒用。</p>
-        <ul className="mt-3 space-y-3">
-          {rules.catalog.map((c, i) => (
-            <li key={c.id} className="grid grid-cols-4 gap-2 text-sm">
-              <select disabled={!canEdit} value={c.kind} onChange={e => setItem(i, { kind: e.target.value as CatalogItem['kind'] })} className={input}>
-                <option value="amount">折抵金額</option>
-                <option value="item">指定品項</option>
-              </select>
-              {c.kind === 'amount'
-                ? <input type="number" disabled={!canEdit} value={c.value ?? ''} onChange={e => setItem(i, { value: num(e.target.value) })} placeholder="金額" className={input} />
-                : <input disabled={!canEdit} value={c.item_label ?? ''} onChange={e => setItem(i, { item_label: e.target.value })} placeholder="品項名稱" className={input} />}
-              <input type="number" disabled={!canEdit} value={c.cost_points} onChange={e => setItem(i, { cost_points: Number(e.target.value) })} placeholder="所需點數" className={input} />
-              <input type="number" disabled={!canEdit} value={c.valid_days} onChange={e => setItem(i, { valid_days: Number(e.target.value) })} placeholder="有效天數" className={input} />
-            </li>
-          ))}
+        <ul className="mt-3 space-y-4">
+          {rules.catalog.map((c, i) => {
+            const isNew = !existingIds.has(c.id)
+            return (
+              <li key={c.id} className="rounded-xl border border-[#F0E6DA] p-3">
+                <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+                  <div>
+                    <label htmlFor={`cat-kind-${c.id}`} className={fieldLabel}>券種</label>
+                    <select
+                      id={`cat-kind-${c.id}`}
+                      aria-label="券種"
+                      disabled={!canEdit || !isNew}
+                      value={c.kind}
+                      onChange={e => setItem(i, { kind: e.target.value as CatalogItem['kind'] })}
+                      className={input}
+                    >
+                      <option value="amount">折抵金額</option>
+                      <option value="item">指定品項</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor={`cat-value-${c.id}`} className={fieldLabel}>{c.kind === 'amount' ? '面額' : '品項名稱'}</label>
+                    {c.kind === 'amount'
+                      ? <input id={`cat-value-${c.id}`} type="number" disabled={!canEdit} value={c.value ?? ''} onChange={e => setItem(i, { value: num(e.target.value) })} placeholder="金額" aria-label="面額" className={input} />
+                      : <input id={`cat-value-${c.id}`} disabled={!canEdit} value={c.item_label ?? ''} onChange={e => setItem(i, { item_label: e.target.value })} placeholder="品項名稱" aria-label="品項名稱" className={input} />}
+                  </div>
+                  <div>
+                    <label htmlFor={`cat-points-${c.id}`} className={fieldLabel}>所需點數</label>
+                    <input id={`cat-points-${c.id}`} type="number" disabled={!canEdit} value={c.cost_points} onChange={e => setItem(i, { cost_points: Number(e.target.value) })} placeholder="所需點數" aria-label="所需點數" className={input} />
+                  </div>
+                  <div>
+                    <label htmlFor={`cat-days-${c.id}`} className={fieldLabel}>有效天數</label>
+                    <input id={`cat-days-${c.id}`} type="number" disabled={!canEdit} value={c.valid_days} onChange={e => setItem(i, { valid_days: Number(e.target.value) })} placeholder="有效天數" aria-label="有效天數" className={input} />
+                  </div>
+                </div>
+                {canEdit && isNew && (
+                  <button onClick={() => removeItem(i)} className="mt-2 text-xs font-bold text-[#B5453D]">移除</button>
+                )}
+              </li>
+            )
+          })}
         </ul>
         {canEdit && <button onClick={addItem} className="mt-3 text-sm font-bold text-[#C5A55A]">＋ 新增兌換項目</button>}
       </section>

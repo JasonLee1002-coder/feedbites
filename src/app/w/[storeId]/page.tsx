@@ -56,10 +56,15 @@ export default async function WalletPage({
   }
 
   const w = await getWallet(customerId, storeId)
+  // claimed 只接受 0–10000 的整數，超出範圍或格式不對就當作沒有這個參數
+  const claimedNum = sp.claimed !== undefined && sp.claimed !== 'none' && /^\d{1,5}$/.test(sp.claimed)
+    ? Number(sp.claimed)
+    : null
+  const claimedValid = claimedNum !== null && claimedNum >= 0 && claimedNum <= 10000 ? claimedNum : null
   const claimedNotice =
     sp.claimed === 'none' ? '這份問卷已經領過或超過 30 分鐘，下次填問卷記得登入'
-    : sp.claimed && Number(sp.claimed) > 0 ? `+${sp.claimed} 點已入帳`
-    : sp.claimed === '0' ? '今天已經領過點數囉'
+    : claimedValid !== null && claimedValid > 0 ? `+${claimedValid} 點已入帳`
+    : claimedValid === 0 ? '今天已經領過點數囉'
     : null
 
   return (
