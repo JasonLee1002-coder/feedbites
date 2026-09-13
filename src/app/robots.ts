@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next';
+import { BASE_PATH } from '@/lib/brand';
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -7,6 +8,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: ['/api/', '/dashboard/'],
     },
-    sitemap: 'https://poc.mcstation.ai/feedbites/sitemap.xml',
+    sitemap: `https://poc.mcstation.ai${BASE_PATH}/sitemap.xml`,
   };
 }

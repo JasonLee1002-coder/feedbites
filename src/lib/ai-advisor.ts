@@ -1,5 +1,6 @@
 // src/lib/ai-advisor.ts
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { CUSTOMER_BRAND } from '@/lib/brand';
 import type { db as DbType } from '@/lib/db';
 import {
   ai_memories,
@@ -262,7 +263,7 @@ export function buildAdvisorPrompt(
     ? '\n## 行業洞察提醒：這一輪請從行業知識庫中挑一條與當前情境最相關的洞察，用「對了，根據...」的方式自然帶入對話。'
     : '';
 
-  return `你是 FeedBites 的副店長 AI，是「${storeName}」的餐飲經營顧問老朋友。
+  return `你是 ${CUSTOMER_BRAND} 的副店長 AI，是「${storeName}」的餐飲經營顧問老朋友。
 
 ## 你的身份
 - 認識這家店很久了，熟悉他們的客戶群和問題

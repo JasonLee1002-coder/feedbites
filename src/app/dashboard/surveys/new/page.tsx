@@ -7,6 +7,7 @@ import { templateList } from '@/lib/templates';
 import { surveyTemplates } from '@/lib/survey-templates';
 import { ArrowLeft, Check, ChevronUp, ChevronDown, X, Plus, GripVertical, Upload, Sparkles, Loader2, FileText, LayoutTemplate } from 'lucide-react';
 import type { TemplateId, Question, DiscountTier } from '@/types/survey';
+import { BASE_PATH, CUSTOMER_BRAND } from '@/lib/brand'
 
 // Animated progress for survey upload
 function SurveyUploadProgress() {
@@ -15,7 +16,7 @@ function SurveyUploadProgress() {
     { text: '正在讀取文件...', icon: '📄' },
     { text: '辨識問題和選項中...', icon: '🔍' },
     { text: '分析問題類型（評分、選擇、開放）...', icon: '🧠' },
-    { text: '快好了！整理成 FeedBites 格式...', icon: '✨' },
+    { text: `快好了！整理成 ${CUSTOMER_BRAND} 格式...`, icon: '✨' },
   ];
 
   useEffect(() => {
@@ -321,7 +322,7 @@ export default function NewSurveyPage() {
     if (storeDishes.length > 0) return storeDishes;
     setLoadingDishes(true);
     try {
-      const res = await fetch('/feedbites/api/dishes');
+      const res = await fetch(`${BASE_PATH}/api/dishes`);
       if (res.ok) {
         const data = await res.json();
         setStoreDishes(data);
@@ -401,7 +402,7 @@ export default function NewSurveyPage() {
         formData.append('image0', file);
       }
 
-      const res = await fetch('/feedbites/api/ai/parse-survey', {
+      const res = await fetch(`${BASE_PATH}/api/ai/parse-survey`, {
         method: 'POST',
         body: formData,
       });
@@ -606,7 +607,7 @@ export default function NewSurveyPage() {
         discount_tiers: discountMode === 'advanced' ? discountTiers : null,
       };
 
-      const res = await fetch('/feedbites/api/surveys', {
+      const res = await fetch(`${BASE_PATH}/api/surveys`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -688,7 +689,7 @@ export default function NewSurveyPage() {
               <div className="flex-1">
                 <h3 className="text-base font-bold text-[#3A3A3A] mb-1">已有現成問卷？</h3>
                 <p className="text-xs text-[#8A8585] mb-3">
-                  上傳你的 PDF、圖片或 Word 問卷，副店長會自動幫你把問題轉換成 FeedBites 格式！
+                  上傳你的 PDF、圖片或 Word 問卷，副店長會自動幫你把問題轉換成 {CUSTOMER_BRAND} 格式！
                 </p>
 
                 {surveyUploadError && (

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import type { ThemeColors } from '@/types/survey';
 import PrizeWheel from './PrizeWheel';
+import { BASE_PATH, BRAND_FULL } from '@/lib/brand'
 
 const DEFAULT_PRIZES = [
   { label: '9折優惠', emoji: '🎫', color: '#FF8C00' },
@@ -201,7 +202,7 @@ function PhoneCollect({
             }
             // Save email via API too
             if (email && responseId) {
-              fetch(`/feedbites/api/surveys/${surveyId}/responses`, {
+              fetch(`${BASE_PATH}/api/surveys/${surveyId}/responses`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -699,7 +700,7 @@ export default function DiscountCodeDisplay({
         🌟 期待你的下次光臨，{storeName} 會一直進步！
       </p>
 
-      {/* ---- FeedBites Branding ---- */}
+      {/* ---- Brand watermark ---- */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -712,13 +713,13 @@ export default function DiscountCodeDisplay({
           className="text-xs font-medium"
           style={{ color: colors.primary }}
         >
-          FeedBites
+          {BRAND_FULL}
         </a>
         <div
           className="text-[10px] mt-0.5"
           style={{ color: colors.textLight }}
         >
-          Bite. Rate. Save.
+          Eat. Earn. Eat again.
         </div>
       </motion.div>
 

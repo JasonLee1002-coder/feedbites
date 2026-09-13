@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { BRAND_FULL, BRAND_LOGO_LOCKUP } from '@/lib/brand';
 
 const floatingIcons = ['🍕', '🍣', '🍜', '🥗', '🍰', '☕', '🍔', '🌮', '🍱', '🥘', '🧁', '🍷'];
 
@@ -70,8 +71,8 @@ export default function HeroSection() {
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       >
         <motion.img
-          src="/feedbites-logo.png"
-          alt="FeedBites"
+          src={BRAND_LOGO_LOCKUP}
+          alt={BRAND_FULL}
           className="h-24 md:h-32 mx-auto object-contain drop-shadow-2xl"
           whileHover={{
             scale: 1.05,
@@ -123,7 +124,7 @@ export default function HeroSection() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.7, duration: 0.6 }}
       >
-        FeedBites 讓你的問卷和你的餐廳一樣有質感。<br />
+        {BRAND_FULL} 讓你的問卷和你的餐廳一樣有質感。<br />
         客人掃碼填問卷，填完自動拿折扣碼。
       </motion.p>
 
@@ -134,7 +135,7 @@ export default function HeroSection() {
         animate={{ opacity: 1, letterSpacing: '0.3em' }}
         transition={{ delay: 0.9, duration: 0.8 }}
       >
-        Bite. Rate. Save.
+        Eat. Earn. Eat again.
       </motion.p>
 
       {/* CTA Buttons */}

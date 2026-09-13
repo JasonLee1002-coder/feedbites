@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { BASE_PATH } from '@/lib/brand'
 
 // Force-clear all auth cookies and redirect to login
-// Visit /feedbites/api/auth/clear to reset session
+// Visit /eatagain/api/auth/clear to reset session
 export async function GET(req: NextRequest) {
-  const res = NextResponse.redirect(new URL('/feedbites/login', req.url))
+  const res = NextResponse.redirect(new URL(`${BASE_PATH}/login`, req.url))
 
   const cookieNames = [
     '__Secure-authjs.session-token',
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
 
   for (const name of cookieNames) {
     res.cookies.set(name, '', { maxAge: 0, path: '/' })
-    res.cookies.set(name, '', { maxAge: 0, path: '/feedbites' })
+    res.cookies.set(name, '', { maxAge: 0, path: `${BASE_PATH}` })
   }
 
   return res

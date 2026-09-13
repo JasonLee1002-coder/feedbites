@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { surveys, stores } from '@/lib/db/schema';
 import { and, eq } from 'drizzle-orm';
 import type { Metadata } from 'next';
+import { BRAND_FULL, BASE_PATH } from '@/lib/brand';
 import SurveyClient from './SurveyClient';
 
 interface Props {
@@ -19,7 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .limit(1);
 
   if (!row) {
-    return { title: '問卷不存在 — FeedBites' };
+    return { title: `問卷不存在 — ${BRAND_FULL}` };
   }
 
   const [store] = await db
@@ -69,11 +70,11 @@ export default async function PublicSurveyPage({ params }: Props) {
           或連結有誤，請向店家確認。
         </p>
         <div className="mt-8 text-center">
-          <a href="/" className="text-xs font-medium text-[#C5A55A]">
-            FeedBites
+          <a href={`${BASE_PATH}/`} className="text-xs font-medium text-[#C5A55A]">
+            {BRAND_FULL}
           </a>
           <div className="text-[10px] mt-0.5 text-[#8A8585]">
-            Bite. Rate. Save.
+            Eat. Earn. Eat again.
           </div>
         </div>
       </div>

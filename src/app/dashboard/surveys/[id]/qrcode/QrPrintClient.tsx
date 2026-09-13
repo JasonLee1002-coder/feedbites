@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { qrFrames, type QrFrame } from '@/lib/qr-frames';
 import { Printer, Check, Sparkles } from 'lucide-react';
+import { BRAND_FULL } from '@/lib/brand';
 
 interface Props {
   surveyId: string;
@@ -237,7 +238,7 @@ export default function QrPrintClient({ surveyId, surveyTitle, storeName, public
               className="text-center text-[9px] mt-3 opacity-30"
               style={{ color: selectedFrame.textColor }}
             >
-              Powered by FeedBites
+              Powered by {BRAND_FULL}
             </p>
           </div>
         </div>

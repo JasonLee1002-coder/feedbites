@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LogOut, Menu, Plus, LayoutDashboard, UtensilsCrossed, ClipboardList, Sparkles, Settings } from 'lucide-react';
+import { LogOut, Menu, Plus, LayoutDashboard, UtensilsCrossed, ClipboardList, Sparkles, Settings, Ticket } from 'lucide-react';
 import { useState } from 'react';
 import { signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { BASE_PATH, BRAND_ICON, CUSTOMER_BRAND } from '@/lib/brand'
 
 interface StoreInfo {
   id: string;
@@ -25,6 +26,7 @@ const navItems = [
   { href: '/dashboard',          label: '總覽',    icon: LayoutDashboard },
   { href: '/dashboard/menu',     label: '菜單管理', icon: UtensilsCrossed },
   { href: '/dashboard/surveys',  label: '問卷管理', icon: ClipboardList },
+  { href: '/dashboard/vouchers', label: '點數與餐券', icon: Ticket },
   { href: '/dashboard/insights', label: 'AI 洞察', icon: Sparkles },
   { href: '/dashboard/settings', label: '店家設定', icon: Settings },
 ];
@@ -37,7 +39,7 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
   const handleLogout = async () => {
     await signOut({ redirect: false });
     router.refresh();
-    window.location.href = '/feedbites/login';
+    window.location.href = `${BASE_PATH}/login`;
   };
 
   const handleSwitchStore = (newStoreId: string, name: string) => {
@@ -63,7 +65,7 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
     `;
     document.body.appendChild(overlay);
     setTimeout(() => {
-      window.location.href = `/feedbites/api/stores/select?id=${newStoreId}&returnTo=${encodeURIComponent(pathname)}`;
+      window.location.href = `${BASE_PATH}/api/stores/select?id=${newStoreId}&returnTo=${encodeURIComponent(pathname)}`;
     }, 1500);
   };
 
@@ -79,11 +81,11 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
       <div className="px-5 py-5 border-b border-white/[0.07]">
         <Link href="/dashboard" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/30">
-            <span className="text-white font-black text-sm">F</span>
+            <img src={BRAND_ICON} alt="" className="w-8 h-8 rounded-lg" />
           </div>
           <div>
-            <span className="text-white font-black text-lg tracking-tight">Feed<span className="text-orange-400">Bites</span></span>
-            <p className="text-white/30 text-[9px] font-medium tracking-widest uppercase leading-none">智慧餐飲問卷</p>
+            <span className="text-white font-black text-lg tracking-tight">常來<span className="text-orange-400">點</span></span>
+            <p className="text-white/30 text-[9px] font-medium tracking-widest uppercase leading-none">餐廳顧客帳本</p>
           </div>
         </Link>
       </div>
@@ -127,7 +129,7 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
             );
           })}
         </div>
-        <a href="/dashboard/new-store"
+        <a href={`${BASE_PATH}/dashboard/new-store`}
           className="flex items-center gap-2 px-3 py-2 mt-1.5 text-xs font-semibold text-orange-400/70 hover:text-orange-400 hover:bg-orange-500/10 rounded-xl transition-all border border-dashed border-orange-500/20 hover:border-orange-500/40">
           <Plus className="w-3.5 h-3.5" />
           新增店家
@@ -182,8 +184,8 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
           </button>
         </div>
         <div className="text-center">
-          <a href="/dashboard/feedback" className="text-[9px] text-white/20 hover:text-white/40 transition-colors">
-            意見回饋給 FeedBites
+          <a href={`${BASE_PATH}/dashboard/feedback`} className="text-[9px] text-white/20 hover:text-white/40 transition-colors">
+            意見回饋給 {CUSTOMER_BRAND}
           </a>
         </div>
       </div>
@@ -200,9 +202,9 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
         </button>
         <div className="ml-3 flex items-center gap-2">
           <div className="w-6 h-6 rounded-md bg-orange-500 flex items-center justify-center">
-            <span className="text-white font-black text-xs">F</span>
+            <img src={BRAND_ICON} alt="" className="w-6 h-6 rounded-md" />
           </div>
-          <span className="text-white font-black text-lg">Feed<span className="text-orange-400">Bites</span></span>
+          <span className="text-white font-black text-lg">常來<span className="text-orange-400">點</span></span>
         </div>
       </div>
 

@@ -6,7 +6,9 @@ import type { Survey, ThemeColors, TemplateId, DiscountTier } from '@/types/surv
 import { getTemplate } from '@/lib/templates';
 import SurveyRenderer from '@/components/survey/SurveyRenderer';
 import DiscountCodeDisplay from '@/components/survey/DiscountCodeDisplay';
+import ClaimPointsCard, { type AwardedPoints } from '@/components/survey/ClaimPointsCard';
 import { getTextureStyle } from '@/lib/textures';
+import { BASE_PATH, BRAND_FULL } from '@/lib/brand'
 
 type SurveyStep = 'already-submitted' | 'survey' | 'submitting' | 'discount' | 'phone-prompt';
 
@@ -103,6 +105,8 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
   const [phoneError, setPhoneError] = useState('');
   const [discountResult, setDiscountResult] = useState<DiscountResult | null>(null);
   const [responseId, setResponseId] = useState<string | null>(null);
+  const [awardedPoints, setAwardedPoints] = useState<AwardedPoints | null>(null);
+  const [claimToken, setClaimToken] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState('');
 
   const template = getTemplate(survey.template_id as TemplateId);
@@ -156,7 +160,7 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
     }
 
     try {
-      const res = await fetch(`/feedbites/api/surveys/${survey.id}/responses`, {
+      const res = await fetch(`${BASE_PATH}/api/surveys/${survey.id}/responses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -178,6 +182,8 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
       if (data.response?.id) {
         setResponseId(data.response.id);
       }
+      if (data.points) setAwardedPoints(data.points);
+      if (typeof data.claim_token === 'string') setClaimToken(data.claim_token);
 
       if (data.discount_code) {
         setDiscountResult({
@@ -211,7 +217,7 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
     setPhoneError('');
     // Update phone on existing response via PATCH
     if (responseId) {
-      fetch(`/feedbites/api/surveys/${survey.id}/responses`, {
+      fetch(`${BASE_PATH}/api/surveys/${survey.id}/responses`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -345,37 +351,42 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
 
   // ─── Step: Discount / Thank You ───
   if (step === 'discount' && discountResult) {
+    // 領點列是 fixed bottom，蓋在 DiscountCodeDisplay 上方；留出等高 padding 避免遮住內容。
+    const showClaimBar = Boolean(claimToken || awardedPoints);
     return (
       <>
       {isPreview && <PreviewBar surveyId={survey.id} />}
-      <DiscountCodeDisplay
-        code={discountResult.code}
-        discountValue={discountResult.discount_value || survey.discount_value}
-        expiresAt={discountResult.expires_at}
-        storeName={storeName}
-        colors={colors}
-        discountMode={survey.discount_mode || 'basic'}
-        tierName={discountResult.tier_name}
-        tierEmoji={discountResult.tier_emoji}
-        xpEarned={xpEarned}
-        responseId={responseId || undefined}
-        surveyId={survey.id}
-        prizeItems={survey.prize_items}
-        prizeValidToday={survey.prize_same_day_valid !== false}
-        onPhoneSubmit={(phoneNumber) => {
-          // Update phone on existing response via PATCH
-          if (responseId) {
-            fetch(`/feedbites/api/surveys/${survey.id}/responses`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                response_id: responseId,
-                phone: phoneNumber,
-              }),
-            }).catch(() => {});
-          }
-        }}
-      />
+      <div style={{ paddingBottom: showClaimBar ? 88 : 0 }}>
+        <DiscountCodeDisplay
+          code={discountResult.code}
+          discountValue={discountResult.discount_value || survey.discount_value}
+          expiresAt={discountResult.expires_at}
+          storeName={storeName}
+          colors={colors}
+          discountMode={survey.discount_mode || 'basic'}
+          tierName={discountResult.tier_name}
+          tierEmoji={discountResult.tier_emoji}
+          xpEarned={xpEarned}
+          responseId={responseId || undefined}
+          surveyId={survey.id}
+          prizeItems={survey.prize_items}
+          prizeValidToday={survey.prize_same_day_valid !== false}
+          onPhoneSubmit={(phoneNumber) => {
+            // Update phone on existing response via PATCH
+            if (responseId) {
+              fetch(`${BASE_PATH}/api/surveys/${survey.id}/responses`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  response_id: responseId,
+                  phone: phoneNumber,
+                }),
+              }).catch(() => {});
+            }
+          }}
+        />
+      </div>
+      <ClaimPointsCard claimToken={claimToken} points={awardedPoints} colors={colors} variant="bar" />
       </>
     );
   }
@@ -414,9 +425,11 @@ export default function SurveyClient({ survey }: { survey: SurveyWithStore }) {
         </p>
       </div>
 
+      <ClaimPointsCard claimToken={claimToken} points={awardedPoints} colors={colors} />
+
       <div className="mt-6 text-center">
         <div className="text-[10px]" style={{ color: colors.textLight }}>
-          Powered by FeedBites
+          Powered by {BRAND_FULL}
         </div>
       </div>
 

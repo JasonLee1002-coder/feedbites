@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
+import { BASE_PATH } from '@/lib/brand'
 
 interface DishStats {
   mentions: number;
@@ -12,7 +13,7 @@ export default function DishRatingBadge({ dishId }: { dishId: string }) {
   const [stats, setStats] = useState<DishStats | null>(null);
 
   useEffect(() => {
-    fetch(`/feedbites/api/dishes/${dishId}/stats`)
+    fetch(`${BASE_PATH}/api/dishes/${dishId}/stats`)
       .then(r => r.ok ? r.json() : null)
       .then(d => d && setStats(d))
       .catch(() => {});

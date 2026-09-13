@@ -5,7 +5,7 @@ import { writeFile, mkdir, unlink } from 'fs/promises'
 import { join, dirname } from 'path'
 
 const UPLOADS_DIR = process.env.UPLOADS_DIR ?? '/uploads'
-const UPLOADS_BASE_URL = (process.env.UPLOADS_BASE_URL ?? 'https://poc.mcstation.ai/feedbites/uploads').replace(/\/$/, '')
+const UPLOADS_BASE_URL = (process.env.UPLOADS_BASE_URL ?? 'https://poc.mcstation.ai/eatagain/uploads').replace(/\/$/, '')
 
 export async function saveToLocal(
   buffer: ArrayBuffer | Uint8Array,

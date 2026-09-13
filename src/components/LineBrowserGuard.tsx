@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { ExternalLink } from 'lucide-react';
+import { BRAND_FULL } from '@/lib/brand';
 
 /**
  * Detects LINE / Facebook in-app browser and BLOCKS the page.
@@ -105,7 +106,7 @@ export default function LineBrowserGuard() {
       </div>
 
       {/* Bottom watermark */}
-      <p className="mt-4 text-xs text-white/60">FeedBites — 確保最佳填寫體驗</p>
+      <p className="mt-4 text-xs text-white/60">{BRAND_FULL} — 確保最佳填寫體驗</p>
     </div>
   );
 }

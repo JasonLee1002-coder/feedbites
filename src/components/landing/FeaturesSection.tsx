@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { BRAND_FULL } from '@/lib/brand';
 
 const features = [
   {
@@ -69,7 +70,7 @@ export default function FeaturesSection() {
         transition={{ duration: 0.6 }}
       >
         <h2 className="text-3xl font-bold text-[#3A3A3A] font-serif mb-3">
-          為什麼選 FeedBites？
+          為什麼選 {BRAND_FULL}？
         </h2>
         <p className="text-[#8A8585]">不只是問卷，是完整的餐飲回饋系統</p>
       </motion.div>

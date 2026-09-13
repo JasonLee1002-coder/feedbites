@@ -14,6 +14,8 @@ import {
   timestamp,
   unique,
   index,
+  bigserial,
+  primaryKey,
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 
@@ -85,6 +87,7 @@ export const responses = pgTable('responses', {
   email:           text('email'),
   xp_earned:       integer('xp_earned'),
   device_key:      text('device_key'),
+  customer_id:     uuid('customer_id'),
   submitted_at:    timestamp('submitted_at', { withTimezone: true }).default(sql`NOW()`),
 })
 
@@ -313,3 +316,67 @@ export type AiMemory           = typeof ai_memories.$inferSelect
 export type ChatHistory        = typeof assistant_chat_history.$inferSelect
 export type DomainKnowledge    = typeof domain_knowledge.$inferSelect
 export type KnowledgeGap       = typeof knowledge_gaps.$inferSelect
+
+// ── customers（021）──────────────────────────────────────────────────────────
+export const customers = pgTable('customers', {
+  id:              uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+  display_name:    text('display_name'),
+  picture_url:     text('picture_url'),
+  birthday:        date('birthday'),
+  home_area:       text('home_area'),
+  visit_freq:      text('visit_freq'),
+  gender:          text('gender'),
+  age_band:        text('age_band'),
+  profile_awarded: jsonb('profile_awarded').notNull().default(sql`'{}'::jsonb`),
+  created_at:      timestamp('created_at', { withTimezone: true }).notNull().default(sql`NOW()`),
+  updated_at:      timestamp('updated_at', { withTimezone: true }).notNull().default(sql`NOW()`),
+})
+
+// ── customer_identities（021）───────────────────────────────────────────────
+export const customer_identities = pgTable('customer_identities', {
+  provider:    text('provider').notNull(),
+  subject:     text('subject').notNull(),
+  customer_id: uuid('customer_id').notNull().references(() => customers.id, { onDelete: 'cascade' }),
+  created_at:  timestamp('created_at', { withTimezone: true }).notNull().default(sql`NOW()`),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.provider, t.subject] }),
+}))
+
+// ── point_ledger（021，只追加）────────────────────────────────────────────────
+export const point_ledger = pgTable('point_ledger', {
+  id:          bigserial('id', { mode: 'number' }).primaryKey(),
+  customer_id: uuid('customer_id').notNull().references(() => customers.id, { onDelete: 'cascade' }),
+  store_id:    uuid('store_id').notNull().references(() => stores.id, { onDelete: 'cascade' }),
+  event_type:  text('event_type').notNull(),
+  points:      integer('points').notNull(),
+  ref_type:    text('ref_type'),
+  ref_id:      text('ref_id'),
+  award_day:   date('award_day'),
+  expires_at:  timestamp('expires_at', { withTimezone: true }),
+  created_at:  timestamp('created_at', { withTimezone: true }).notNull().default(sql`NOW()`),
+})
+
+// ── store_point_rules（021）──────────────────────────────────────────────────
+export const store_point_rules = pgTable('store_point_rules', {
+  store_id:   uuid('store_id').primaryKey().references(() => stores.id, { onDelete: 'cascade' }),
+  rules:      jsonb('rules').notNull().default(sql`'{}'::jsonb`),
+  updated_at: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`NOW()`),
+})
+
+// ── vouchers（021）───────────────────────────────────────────────────────────
+export const vouchers = pgTable('vouchers', {
+  id:          uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+  store_id:    uuid('store_id').notNull().references(() => stores.id, { onDelete: 'cascade' }),
+  customer_id: uuid('customer_id').notNull().references(() => customers.id, { onDelete: 'cascade' }),
+  code:        text('code').unique().notNull(),
+  kind:        text('kind').notNull(),
+  value:       integer('value'),
+  item_label:  text('item_label'),
+  min_spend:   integer('min_spend'),
+  cost_points: integer('cost_points').notNull(),
+  status:      text('status').notNull().default('active'),
+  used_at:     timestamp('used_at', { withTimezone: true }),
+  used_by:     uuid('used_by').references(() => users.id, { onDelete: 'set null' }),
+  expires_at:  timestamp('expires_at', { withTimezone: true }).notNull(),
+  created_at:  timestamp('created_at', { withTimezone: true }).notNull().default(sql`NOW()`),
+})

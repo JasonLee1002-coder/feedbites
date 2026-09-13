@@ -2,6 +2,7 @@
  * LINE Push Message via Yuzu-san Bot
  * Uses LINE Messaging API to send push messages to store owners
  */
+import { BRAND_FULL, BASE_PATH } from '@/lib/brand';
 
 const LINE_API_URL = 'https://api.line.me/v2/bot/message/push';
 
@@ -84,7 +85,7 @@ export function buildStatusChangeMessage(params: {
           type: 'box',
           layout: 'vertical',
           contents: [
-            { type: 'text', text: '🍽️ FeedBites', size: 'sm', color: '#FFFFFF', weight: 'bold' },
+            { type: 'text', text: `🍽️ ${BRAND_FULL}`, size: 'sm', color: '#FFFFFF', weight: 'bold' },
             { type: 'text', text: isResolved ? '問題已解決！' : '回報進度更新', size: 'xs', color: '#FFFFFFCC' },
           ],
         },
@@ -164,7 +165,7 @@ export function buildStatusChangeMessage(params: {
           action: {
             type: 'uri',
             label: isResolved ? '查看並評分' : '查看回報歷史',
-            uri: 'https://poc.mcstation.ai/feedbites/dashboard/feedback',
+            uri: `https://poc.mcstation.ai${BASE_PATH}/dashboard/feedback`,
           },
           style: 'primary',
           color: isResolved ? '#10B981' : '#3B82F6',
@@ -179,7 +180,7 @@ export function buildStatusChangeMessage(params: {
   };
 }
 
-/** Build a FeedBites notification Flex Message bubble */
+/** Build a brand notification Flex Message bubble */
 export function buildFeedbackResolvedMessage(params: {
   storeName: string;
   reportTitle: string;
@@ -195,7 +196,7 @@ export function buildFeedbackResolvedMessage(params: {
           type: 'box',
           layout: 'vertical',
           contents: [
-            { type: 'text', text: '🍽️ FeedBites', size: 'sm', color: '#FFFFFF', weight: 'bold' },
+            { type: 'text', text: `🍽️ ${BRAND_FULL}`, size: 'sm', color: '#FFFFFF', weight: 'bold' },
             { type: 'text', text: '問題回報已處理', size: 'xs', color: '#FFFFFFCC' },
           ],
         },
@@ -245,7 +246,7 @@ export function buildFeedbackResolvedMessage(params: {
           action: {
             type: 'uri',
             label: '查看回報歷史',
-            uri: 'https://poc.mcstation.ai/feedbites/dashboard/feedback',
+            uri: `https://poc.mcstation.ai${BASE_PATH}/dashboard/feedback`,
           },
           style: 'primary',
           color: '#C5A55A',

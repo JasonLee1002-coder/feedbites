@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { BASE_PATH, BRAND_FULL } from '@/lib/brand'
 import {
   Shield, Bug, Lightbulb, HelpCircle, Clock, ArrowRight, CheckCircle2,
   AlertCircle, MessageCircle, Send, Loader2, Image as ImageIcon, Filter,
@@ -76,7 +77,7 @@ export default function AdminFeedbackPage() {
       const params = new URLSearchParams();
       if (filterStatus) params.set('status', filterStatus);
       if (filterCategory) params.set('category', filterCategory);
-      const res = await fetch(`/feedbites/api/admin/feedback?${params}`);
+      const res = await fetch(`${BASE_PATH}/api/admin/feedback?${params}`);
       if (!res.ok) {
         if (res.status === 403) { setError('需要管理員權限'); return; }
         throw new Error();
@@ -95,7 +96,7 @@ export default function AdminFeedbackPage() {
     setDetail(null);
     setReplyText('');
     try {
-      const res = await fetch(`/feedbites/api/feedback/${id}`);
+      const res = await fetch(`${BASE_PATH}/api/feedback/${id}`);
       if (res.ok) setDetail(await res.json());
     } catch { /* ignore */ } finally {
       setDetailLoading(false);
@@ -106,7 +107,7 @@ export default function AdminFeedbackPage() {
     if (!replyText.trim() || !selectedId) return;
     setReplying(true);
     try {
-      const res = await fetch(`/feedbites/api/feedback/${selectedId}/respond`, {
+      const res = await fetch(`${BASE_PATH}/api/feedback/${selectedId}/respond`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: replyText.trim() }),
@@ -125,7 +126,7 @@ export default function AdminFeedbackPage() {
     if (!selectedId) return;
     setUpdatingStatus(true);
     try {
-      await fetch(`/feedbites/api/feedback/${selectedId}`, {
+      await fetch(`${BASE_PATH}/api/feedback/${selectedId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
@@ -158,11 +159,11 @@ export default function AdminFeedbackPage() {
             <Shield className="w-4 h-4 text-[#C5A55A]" />
           </div>
           <div>
-            <h1 className="font-bold text-[#3A3A3A]">FeedBites Admin</h1>
+            <h1 className="font-bold text-[#3A3A3A]">{BRAND_FULL} Admin</h1>
             <p className="text-[10px] text-[#8A8585]">意見回報管理</p>
           </div>
         </div>
-        <a href="/dashboard" className="text-xs text-[#C5A55A] hover:text-[#A08735]">
+        <a href={`${BASE_PATH}/dashboard`} className="text-xs text-[#C5A55A] hover:text-[#A08735]">
           回到 Dashboard →
         </a>
       </div>

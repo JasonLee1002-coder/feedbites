@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
+import { BASE_PATH } from '@/lib/brand';
 
-const baseUrl = 'https://poc.mcstation.ai/feedbites';
+const baseUrl = `https://poc.mcstation.ai${BASE_PATH}`;
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [

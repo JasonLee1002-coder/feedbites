@@ -7,7 +7,7 @@ export const maxDuration = 60;
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-// POST: Parse survey image(s) into FeedBites questions
+// POST: Parse survey image(s) into structured survey questions
 // Frontend converts PDF to images before uploading
 export async function POST(request: NextRequest) {
   try {
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     const parts = [
       ...images.map((img) => ({ inlineData: img })),
       {
-        text: `你是問卷分析 AI。請分析這些問卷圖片（可能有多頁），將所有問題轉換成 FeedBites 格式。
+        text: `你是問卷分析 AI。請分析這些問卷圖片（可能有多頁），將所有問題轉換成標準問卷格式。
 
 問題類型：emoji-rating(1-5分)、rating(1-5分)、radio(單選+options)、checkbox(多選+options)、text(短文字)、textarea(長文字)、number(數字)、radio-with-reason(單選+原因)
 

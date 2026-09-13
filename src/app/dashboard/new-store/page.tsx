@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Store } from 'lucide-react';
+import { BASE_PATH } from '@/lib/brand'
 
 export default function NewStorePage() {
   const [storeName, setStoreName] = useState('');
@@ -21,7 +22,7 @@ export default function NewStorePage() {
     setError('');
 
     try {
-      const res = await fetch('/feedbites/api/auth/setup-store', {
+      const res = await fetch(`${BASE_PATH}/api/auth/setup-store`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ storeName: storeName.trim() }),
@@ -32,7 +33,7 @@ export default function NewStorePage() {
         setError(data.error);
       } else {
         // The setup-store API auto-selects the new store via cookie
-        window.location.href = '/feedbites/dashboard';
+        window.location.href = `${BASE_PATH}/dashboard`;
       }
     } catch {
       setError('發生錯誤，請稍後再試');

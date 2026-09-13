@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { pushTextMessage } from '@/lib/line/push';
+import { BRAND_FULL } from '@/lib/brand';
 
 // POST: Send test push notification to verify LINE binding
 export async function POST(request: NextRequest) {
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
 
     const ok = await pushTextMessage(
       line_user_id.trim(),
-      '🍽️ FeedBites 通知測試\n\n恭喜！LINE 通知綁定成功 ✅\n之後有問題回報的處理進度，會即時通知你。',
+      `🍽️ ${BRAND_FULL} 通知測試\n\n恭喜！LINE 通知綁定成功 ✅\n之後有問題回報的處理進度，會即時通知你。`,
     );
 
     if (!ok) {

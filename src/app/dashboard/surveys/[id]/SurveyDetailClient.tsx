@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Download, Copy, Eye } from 'lucide-react';
+import { BASE_PATH } from '@/lib/brand'
 
 interface Props {
   surveyId: string;
@@ -21,7 +22,7 @@ export default function SurveyDetailClient({ surveyId, isActive: initialActive, 
     setToggling(true);
 
     try {
-      const res = await fetch(`/feedbites/api/surveys/${surveyId}`, {
+      const res = await fetch(`${BASE_PATH}/api/surveys/${surveyId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: !isActive }),
@@ -43,7 +44,7 @@ export default function SurveyDetailClient({ surveyId, isActive: initialActive, 
     setCloning(true);
 
     try {
-      const res = await fetch(`/feedbites/api/surveys/${surveyId}/clone`, {
+      const res = await fetch(`${BASE_PATH}/api/surveys/${surveyId}/clone`, {
         method: 'POST',
       });
 
@@ -61,7 +62,7 @@ export default function SurveyDetailClient({ surveyId, isActive: initialActive, 
   const handleExport = () => {
     // Download as Excel file
     const link = document.createElement('a');
-    link.href = `/feedbites/api/surveys/${surveyId}/export?format=xlsx`;
+    link.href = `${BASE_PATH}/api/surveys/${surveyId}/export?format=xlsx`;
     link.click();
   };
 
@@ -104,7 +105,7 @@ export default function SurveyDetailClient({ surveyId, isActive: initialActive, 
 
       {/* Preview as Customer */}
       <a
-        href={`/feedbites/s/${surveyId}?preview=1`}
+        href={`${BASE_PATH}/s/${surveyId}?preview=1`}
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-emerald-500 border border-emerald-400 rounded-full hover:bg-emerald-600 transition-colors"

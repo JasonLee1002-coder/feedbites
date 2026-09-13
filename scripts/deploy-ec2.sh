@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# Feedbites — EC2 部署腳本
+# 常來點 EatAgain（原 Feedbites）— EC2 部署腳本
 # 執行方式：bash scripts/deploy-ec2.sh
 # 需求：aws cli 已設定，SSM plugin 已安裝
 # ============================================================
@@ -30,21 +30,21 @@ aws ssm send-command \
 mkdir -p $APP_DIR && cat > $APP_DIR/.env.production << 'ENVEOF'
 DATABASE_URL=postgresql://omnicore:R2LRtWQgMQIGkiJ5dXWTeo9BliHvjlrf@omnicore-postgres:5432/feedbites
 AUTH_SECRET=$AUTH_SECRET
-AUTH_URL=https://poc.mcstation.ai/feedbites
-NEXTAUTH_URL=https://poc.mcstation.ai/feedbites
-NEXT_PUBLIC_BASE_PATH=/feedbites
+AUTH_URL=https://poc.mcstation.ai/eatagain
+NEXTAUTH_URL=https://poc.mcstation.ai/eatagain
+NEXT_PUBLIC_BASE_PATH=/eatagain
 
 GEMINI_API_KEY=${GEMINI_API_KEY:-}
 ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
 LINE_CHANNEL_ACCESS_TOKEN=${LINE_CHANNEL_ACCESS_TOKEN:-}
 OWNER_LINE_USER_ID=${OWNER_LINE_USER_ID:-}
-PROJECT_DISPLAY_NAME=FeedBites
+PROJECT_DISPLAY_NAME=常來點 EatAgain
 
 RESEND_API_KEY=${RESEND_API_KEY:-}
-EMAIL_FROM=FeedBites <noreply@mcstation.ai>
+EMAIL_FROM=常來點 EatAgain <noreply@mcstation.ai>
 
 UPLOADS_DIR=/uploads
-UPLOADS_BASE_URL=https://poc.mcstation.ai/feedbites/uploads
+UPLOADS_BASE_URL=https://poc.mcstation.ai/eatagain/uploads
 CRON_SECRET=$CRON_SECRET
 SUPER_ADMIN_EMAILS=jason@mcstation.ai
 YUZU_LINE_WEBHOOK_URL=https://poc.mcstation.ai/yuzu/api/line/webhook
@@ -114,14 +114,20 @@ aws ssm send-command \
   --parameters commands=["
 # nginx 設定片段
 cat > /home/jason/feedbites-nginx.conf << 'NGINXEOF'
-location /feedbites/uploads/ {
+location ^~ /eatagain/uploads/ {
     alias /home/jason/feedbites-uploads/;
     expires 30d;
     add_header Cache-Control \"public, immutable\";
 }
 
-location /feedbites/ {
-    proxy_pass http://feedbites:3200/feedbites/;
+location ^~ /feedbites/uploads/ {
+    alias /home/jason/feedbites-uploads/;
+    expires 30d;
+    add_header Cache-Control \"public, immutable\";
+}
+
+location /eatagain/ {
+    proxy_pass http://feedbites:3200/eatagain/;
     proxy_http_version 1.1;
     proxy_set_header Upgrade \$http_upgrade;
     proxy_set_header Connection 'upgrade';
@@ -130,6 +136,14 @@ location /feedbites/ {
     proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto \$scheme;
     proxy_cache_bypass \$http_upgrade;
+}
+
+location = /feedbites {
+    return 301 /eatagain/;
+}
+
+location ~ ^/feedbites/(.*)\$ {
+    return 308 /eatagain/\$1\$is_args\$args;
 }
 NGINXEOF
 echo '>>> nginx 設定已寫入 /home/jason/feedbites-nginx.conf'
@@ -143,5 +157,5 @@ echo ""
 echo "下一步（手動）："
 echo "  1. 將 /home/jason/feedbites-nginx.conf 內容加入 omnicore-nginx 設定"
 echo "  2. docker exec omnicore-nginx nginx -s reload"
-echo "  3. 測試：https://poc.mcstation.ai/feedbites/"
+echo "  3. 測試：https://poc.mcstation.ai/eatagain/"
 echo "  4. 管理員帳號：jason@mcstation.ai / feedbites2026"

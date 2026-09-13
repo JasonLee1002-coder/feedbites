@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { BASE_PATH } from '@/lib/brand'
 
 type Result =
   | { kind: 'ok'; alreadyUsed: boolean }
@@ -29,7 +30,7 @@ export default function RedeemCodeBox() {
     setResult(null);
     try {
       const res = await fetch(
-        `/feedbites/api/discounts/${encodeURIComponent(trimmed)}/mark`,
+        `${BASE_PATH}/api/discounts/${encodeURIComponent(trimmed)}/mark`,
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },

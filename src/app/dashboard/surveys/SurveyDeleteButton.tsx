@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Trash2, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { BASE_PATH } from '@/lib/brand'
 
 export default function SurveyDeleteButton({ surveyId, surveyTitle }: { surveyId: string; surveyTitle: string }) {
   const [deleting, setDeleting] = useState(false);
@@ -13,7 +14,7 @@ export default function SurveyDeleteButton({ surveyId, surveyTitle }: { surveyId
 
     setDeleting(true);
     try {
-      const res = await fetch(`/feedbites/api/surveys/${surveyId}`, { method: 'DELETE' });
+      const res = await fetch(`${BASE_PATH}/api/surveys/${surveyId}`, { method: 'DELETE' });
       if (res.ok) {
         router.refresh();
       }

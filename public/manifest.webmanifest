@@ -1,15 +1,21 @@
 {
-  "name": "FeedBites — 問卷回饋系統",
-  "short_name": "FeedBites",
+  "name": "常來點 EatAgain — 問卷回饋系統",
+  "short_name": "常來點",
   "description": "Bite. Rate. Save. 掃碼填問卷，立即拿折扣",
-  "start_url": "/",
+  "start_url": "/eatagain",
   "display": "standalone",
   "background_color": "#FAF7F2",
-  "theme_color": "#FF8C00",
+  "theme_color": "#DB5620",
   "icons": [
     {
-      "src": "/icon",
+      "src": "/eatagain/brand/changlaidian-icon-512.png",
       "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/eatagain/brand/changlaidian-icon-192.png",
+      "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     }

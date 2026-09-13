@@ -7,6 +7,7 @@ import { ArrowLeft, Save, Loader2, Plus, Trash2, Check, Palette, Sparkles, X } f
 import { templateList, templates } from '@/lib/templates';
 import type { Question, TemplateId, ThemeColors } from '@/types/survey';
 import { TEXTURE_DEFS, getTextureStyle } from '@/lib/textures';
+import { BASE_PATH } from '@/lib/brand'
 
 const TYPE_OPTIONS: { value: Question['type']; label: string }[] = [
   { value: 'emoji-rating', label: '表情評分' },
@@ -247,7 +248,7 @@ export default function EditClient({
     setAiError('');
     setAiVariants([]);
     try {
-      const res = await fetch('/feedbites/api/ai/generate-template', {
+      const res = await fetch(`${BASE_PATH}/api/ai/generate-template`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ description: combined }),
@@ -303,7 +304,7 @@ export default function EditClient({
     setSaving(true);
     setSaved(false);
     try {
-      const res = await fetch(`/feedbites/api/surveys/${surveyId}`, {
+      const res = await fetch(`${BASE_PATH}/api/surveys/${surveyId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -1,13 +1,17 @@
 import { auth } from '@/auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { surveys, responses, discount_codes, stores } from '@/lib/db/schema'
+import { surveys, responses, discount_codes, stores, customers } from '@/lib/db/schema'
 import { eq, and, desc } from 'drizzle-orm'
 import { createDiscountCode, getExpiryDate } from '@/lib/discount'
 import { getSelectedStore } from '@/lib/store-context'
 import { Resend } from 'resend'
 import { checkAndPushUrgentAlert } from '@/lib/line/urgent-alert'
 import { logger, newRequestId, maskPhone } from '@/lib/logger'
+import { CUSTOMER_COOKIE, customerSecret, readCustomerId, signClaimToken } from '@/lib/customer-session'
+import { awardSurveyCompleted, getRules } from '@/lib/ledger/service'
+import { voucherLabel } from '@/lib/ledger/rules'
+import { BASE_PATH, BRAND_FULL } from '@/lib/brand'
 
 // GET: List responses (owner only)
 export async function GET(
@@ -77,6 +81,19 @@ export async function POST(
       return NextResponse.json({ error: '缺少回答內容' }, { status: 400 })
     }
 
+    // 已用 LINE 登入的客人（第二次以後來店），填完直接入帳；匿名客人在完成頁認領。
+    let customerId: string | null = null
+    try {
+      customerId = readCustomerId(request.cookies.get(CUSTOMER_COOKIE)?.value)
+      if (customerId) {
+        // session 效期 90 天，期間客人可能已被刪除；不存在就當匿名，避免外鍵錯誤讓整份問卷失敗
+        const [exists] = await db.select({ id: customers.id }).from(customers).where(eq(customers.id, customerId)).limit(1)
+        if (!exists) customerId = null
+      }
+    } catch {
+      customerId = null
+    }
+
     // Create response
     const [response] = await db
       .insert(responses)
@@ -87,8 +104,53 @@ export async function POST(
         phone: phone || null,
         xp_earned: typeof xp_earned === 'number' ? xp_earned : null,
         device_key: typeof device_key === 'string' && device_key.length <= 64 ? device_key : null,
+        customer_id: customerId,
       })
       .returning()
+
+    // 該店有沒有開放點數功能；讀規則失敗就當作沒開放，不能讓問卷失敗。
+    let ledgerEnabled = false
+    try {
+      ledgerEnabled = (await getRules(survey.store_id)).enabled
+    } catch (err) {
+      logger.error('points.rules_read.failed', { request_id, survey_id: id }, err)
+    }
+
+    let points: {
+      awarded: number
+      first_voucher: { code: string; label: string; expires_at: Date } | null
+      wallet_url: string
+    } | null = null
+    if (customerId && ledgerEnabled) {
+      try {
+        const r = await awardSurveyCompleted({
+          customerId,
+          storeId: survey.store_id,
+          responseId: response.id,
+          submittedAt: response.submitted_at ?? new Date(),
+        })
+        points = {
+          awarded: r.pointsAwarded,
+          first_voucher: r.firstVoucher
+            ? { code: r.firstVoucher.code, label: voucherLabel(r.firstVoucher), expires_at: r.firstVoucher.expires_at }
+            : null,
+          wallet_url: `${BASE_PATH}/w/${survey.store_id}`,
+        }
+      } catch (err) {
+        // 發點失敗不能讓問卷失敗
+        logger.error('points.award.failed', { request_id, survey_id: id }, err)
+      }
+    }
+
+    // 匿名客人：發認領憑證，登入時帶回來認領這一筆。已登入者不需要；該店沒開放點數功能也不用發。
+    let claimToken: string | null = null
+    if (!customerId && ledgerEnabled) {
+      try {
+        claimToken = signClaimToken(response.id, customerSecret())
+      } catch (err) {
+        logger.error('points.claim_token.failed', { request_id, survey_id: id }, err)
+      }
+    }
 
     // Trigger urgent alert (non-blocking) — fetch store for line_user_id
     const [storeRow] = await db
@@ -158,6 +220,8 @@ export async function POST(
 
       return NextResponse.json({
         response,
+        points,
+        ...(claimToken ? { claim_token: claimToken } : {}),
         discount_code: discountCode
           ? {
               code: discountCode.code,
@@ -171,7 +235,12 @@ export async function POST(
       }, { status: 201 })
     }
 
-    return NextResponse.json({ response, discount_code: null }, { status: 201 })
+    return NextResponse.json({
+      response,
+      points,
+      ...(claimToken ? { claim_token: claimToken } : {}),
+      discount_code: null,
+    }, { status: 201 })
   } catch (err) {
     logger.error('response.submit.failed', { request_id }, err)
     return NextResponse.json({ error: '伺服器錯誤', request_id }, { status: 500 })
@@ -274,7 +343,7 @@ export async function PATCH(
 
           const resend = new Resend(process.env.RESEND_API_KEY)
           await resend.emails.send({
-            from: process.env.EMAIL_FROM ?? 'FeedBites <noreply@feedbites.app>',
+            from: process.env.EMAIL_FROM ?? `${BRAND_FULL} <noreply@feedbites.app>`,
             to: email,
             subject: emailSubject,
             html: `
@@ -323,8 +392,8 @@ export async function PATCH(
         </tr>
         <tr>
           <td style="background:#faf7f4;padding:20px 32px;text-align:center;border-radius:0 0 24px 24px;border-top:1px solid #f0ebe5">
-            <p style="margin:0 0 4px;color:#bbb;font-size:11px">此優惠券由 <strong style="color:#FF8C00">FeedBites</strong> 智慧問卷系統產生</p>
-            <p style="margin:0;color:#ccc;font-size:10px">Bite · Rate · Save &nbsp;|&nbsp; ${today}</p>
+            <p style="margin:0 0 4px;color:#bbb;font-size:11px">此優惠券由 <strong style="color:#FF8C00">${BRAND_FULL}</strong> 智慧問卷系統產生</p>
+            <p style="margin:0;color:#ccc;font-size:10px">Eat · Earn · Eat again &nbsp;|&nbsp; ${today}</p>
           </td>
         </tr>
       </table>

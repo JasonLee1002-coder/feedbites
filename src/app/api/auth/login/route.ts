@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true })
   } catch (err) {
     if (err instanceof AuthError) {
-      return NextResponse.json({ error: '登入失敗，請重試' }, { status: 401 })
+      return NextResponse.json({ error: '這個信箱沒有登入權限，請聯絡常來點管理員' }, { status: 401 })
     }
     console.error('Login error:', err)
     return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 })

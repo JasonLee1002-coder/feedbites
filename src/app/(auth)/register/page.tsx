@@ -1,7 +1,9 @@
 'use client';
+import { BRAND_ICON } from '@/lib/brand';
 
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
+import { BASE_PATH } from '@/lib/brand'
 
 export default function RegisterPage() {
   return (
@@ -24,7 +26,7 @@ function RegisterForm() {
     setMessage('');
 
     try {
-      const res = await fetch('/feedbites/api/auth/register', {
+      const res = await fetch(`${BASE_PATH}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -47,12 +49,13 @@ function RegisterForm() {
   return (
     <div className="w-full max-w-md">
       <div className="text-center mb-8">
-        <Link href="/" className="inline-block">
+        <Link href="/" className="inline-flex flex-col items-center gap-3">
+          <img src={BRAND_ICON} alt="" className="w-16 h-16 rounded-2xl" />
           <h1 className="text-3xl font-bold text-[#3A3A3A] font-serif">
-            Feed<span className="text-[#C5A55A]">Bites</span>
+            常來<span className="text-[#C5A55A]">點</span>
           </h1>
         </Link>
-        <p className="text-xs text-[#C5A55A] tracking-[0.3em] mt-1">Bite. Rate. Save.</p>
+        <p className="text-xs text-[#C5A55A] tracking-[0.3em] mt-1">Eat. Earn. Eat again.</p>
       </div>
 
       <div className="bg-white rounded-2xl p-8 border border-[#E8E2D8] shadow-sm">

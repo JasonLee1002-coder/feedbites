@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send } from 'lucide-react';
+import { BASE_PATH } from '@/lib/brand'
 
 interface FeedbackGenieProps {
   storeId: string;
@@ -37,7 +38,7 @@ export default function FeedbackGenie({
     if (!text.trim() || sending) return;
     setSending(true);
     try {
-      const res = await fetch('/feedbites/api/ai/feedback-chat', {
+      const res = await fetch(`${BASE_PATH}/api/ai/feedback-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

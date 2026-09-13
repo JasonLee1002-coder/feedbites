@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Smartphone, Share, Plus, MoreVertical, Download } from 'lucide-react';
+import { BRAND_FULL, BRAND_ICON } from '@/lib/brand';
 
 /**
  * PWA Install Prompt — 引導用戶將 Web App 加到手機桌面
@@ -42,8 +43,8 @@ function isStandalone(): boolean {
 }
 
 export default function PwaInstallPrompt({
-  appName = 'FeedBites',
-  appIcon = '/feedbites-logo.png',
+  appName = BRAND_FULL,
+  appIcon = BRAND_ICON,
   accentColor = '#C5A55A',
 }: PwaInstallPromptProps) {
   const [show, setShow] = useState(false);

@@ -6,45 +6,46 @@ import FeaturesSection from '@/components/landing/FeaturesSection';
 import StepsSection from '@/components/landing/StepsSection';
 import TemplatesSection from '@/components/landing/TemplatesSection';
 import HomeHero from '@/components/landing/HomeHero';
+import { BRAND_FULL, BRAND_LOGO_LOCKUP, BASE_PATH } from '@/lib/brand';
 
 export const metadata: Metadata = {
-  title: 'FeedBites — 免費餐廳問卷系統｜掃碼填問卷，自動送折扣碼',
-  description: '餐廳問卷不該長得像 Google 表單。FeedBites 提供 5 種高質感模板、QR Code 掃碼、XP 遊戲化體驗、自動折扣碼。免費註冊，5 分鐘上線。',
+  title: `${BRAND_FULL} — 免費餐廳問卷系統｜掃碼填問卷，自動送折扣碼`,
+  description: `餐廳問卷不該長得像 Google 表單。${BRAND_FULL} 提供 5 種高質感模板、QR Code 掃碼、XP 遊戲化體驗、自動折扣碼。免費註冊，5 分鐘上線。`,
   alternates: {
-    canonical: 'https://poc.mcstation.ai/feedbites',
+    canonical: `https://poc.mcstation.ai${BASE_PATH}`,
   },
   openGraph: {
-    title: 'FeedBites — 免費餐廳問卷系統｜Bite. Rate. Save.',
+    title: `${BRAND_FULL} — 免費餐廳問卷系統｜Eat. Earn. Eat again.`,
     description: '高質感餐飲問卷，填完自動送折扣碼。5 種模板、QR Code 列印、即時數據分析。永久免費。',
-    url: 'https://poc.mcstation.ai/feedbites',
+    url: `https://poc.mcstation.ai${BASE_PATH}`,
   },
 };
 
 const faqData = [
   {
-    question: 'FeedBites 是什麼？',
-    answer: 'FeedBites 是一款免費的餐飲問卷系統，讓餐廳老闆可以建立有質感的品牌問卷，客人掃 QR Code 即可填寫，填完自動獲得折扣碼。支援 5 種模板、XP 積分、菜品評分等功能。',
+    question: `${BRAND_FULL} 是什麼？`,
+    answer: `${BRAND_FULL} 是一款免費的餐飲問卷系統，讓餐廳老闆可以建立有質感的品牌問卷，客人掃 QR Code 即可填寫，填完自動獲得折扣碼。支援 5 種模板、XP 積分、菜品評分等功能。`,
   },
   {
-    question: 'FeedBites 要收費嗎？',
-    answer: 'FeedBites 目前完全免費，不需要綁定信用卡。註冊後即可建立問卷、收集回覆、查看統計數據。',
+    question: `${BRAND_FULL} 要收費嗎？`,
+    answer: `${BRAND_FULL} 目前完全免費，不需要綁定信用卡。註冊後即可建立問卷、收集回覆、查看統計數據。`,
   },
   {
     question: '客人怎麼填寫問卷？',
     answer: '餐廳老闆只需列印 QR Code 放在桌上或櫃台，客人用手機掃碼就能填寫問卷，不需要下載任何 App。填完還能自動獲得折扣碼。',
   },
   {
-    question: 'FeedBites 支援哪些問卷模板？',
-    answer: 'FeedBites 提供 5 種專為不同餐飲風格設計的模板：奶油金（西餐 Fine Dining）、和風（日料壽司）、工業風（酒吧燒烤）、清新（咖啡廳輕食）、古典紅（中餐火鍋）。',
+    question: `${BRAND_FULL} 支援哪些問卷模板？`,
+    answer: `${BRAND_FULL} 提供 5 種專為不同餐飲風格設計的模板：奶油金（西餐 Fine Dining）、和風（日料壽司）、工業風（酒吧燒烤）、清新（咖啡廳輕食）、古典紅（中餐火鍋）。`,
   },
   {
     question: '可以管理多家分店嗎？',
-    answer: '可以。FeedBites 支援多店管理，一個帳號可以管理多家餐廳，每家店有獨立的問卷、數據和設定。',
+    answer: `可以。${BRAND_FULL} 支援多店管理，一個帳號可以管理多家餐廳，每家店有獨立的問卷、數據和設定。`,
   },
 ];
 
-// 上帝模式密鑰 — 加在網址後面 ?m=feedbites2026 才會顯示招商頁面
-const GOD_MODE_KEY = 'feedbites2026';
+// 上帝模式密鑰 — 加在網址後面 ?m=eatagain2026 才會顯示招商頁面；舊密鑰 feedbites2026 仍有效，避免已分享的連結失效
+const GOD_MODE_KEYS = ['eatagain2026', 'feedbites2026'];
 
 export default async function LandingPage({
   searchParams,
@@ -52,7 +53,7 @@ export default async function LandingPage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const params = await searchParams;
-  const isGodMode = params.m === GOD_MODE_KEY;
+  const isGodMode = typeof params.m === 'string' && GOD_MODE_KEYS.includes(params.m);
 
   const faqJsonLd = {
     '@context': 'https://schema.org',
@@ -70,7 +71,7 @@ export default async function LandingPage({
   const softwareJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
-    name: 'FeedBites',
+    name: BRAND_FULL,
     applicationCategory: 'BusinessApplication',
     operatingSystem: 'Web',
     offers: {
@@ -107,8 +108,8 @@ export default async function LandingPage({
       <nav className="relative z-50 flex items-center justify-between px-6 py-4 max-w-6xl mx-auto">
         <div className="flex items-center gap-2">
           <Image
-            src="/feedbites-logo.png"
-            alt="FeedBites — 免費餐廳問卷系統"
+            src={BRAND_LOGO_LOCKUP}
+            alt={`${BRAND_FULL} — 免費餐廳問卷系統`}
             width={160}
             height={40}
             className="h-10 w-auto object-contain"
@@ -179,8 +180,8 @@ export default async function LandingPage({
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-6">
             <Image
-              src="/feedbites-logo.png"
-              alt="FeedBites"
+              src={BRAND_LOGO_LOCKUP}
+              alt={BRAND_FULL}
               width={160}
               height={40}
               className="h-10 w-auto mx-auto mb-4 object-contain"

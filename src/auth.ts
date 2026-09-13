@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { authConfig } from './auth.config'
+import { isEmailAllowed } from '@/lib/auth-allowlist'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -16,6 +17,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         const email = (credentials?.email as string | undefined)?.toLowerCase().trim()
         if (!email || !email.includes('@')) return null
+        if (!isEmailAllowed(email, process.env.ALLOWED_LOGIN_EMAILS)) return null
 
         // Upsert — create user on first login, no password needed
         const [user] = await db

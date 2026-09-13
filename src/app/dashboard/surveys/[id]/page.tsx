@@ -11,6 +11,7 @@ import type { TemplateId, Question, SurveyResponse, DiscountTier } from '@/types
 import SurveyDetailClient from './SurveyDetailClient';
 import RedeemCodeBox from './RedeemCodeBox';
 import { getSelectedStore } from '@/lib/store-context';
+import { BASE_PATH } from '@/lib/brand';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -59,7 +60,7 @@ export default async function SurveyDetailPage({ params }: PageProps) {
 
   const template = templates[survey.template_id as TemplateId];
   const questions: Question[] = (survey.questions as Question[]) || [];
-  const publicUrl = `https://poc.mcstation.ai/feedbites/s/${survey.id}`;
+  const publicUrl = `https://poc.mcstation.ai${BASE_PATH}/s/${survey.id}`;
 
   const deviceRows = await db
     .select({ device_key: responses.device_key })

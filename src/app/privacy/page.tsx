@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { BRAND_FULL } from '@/lib/brand';
 
 export default function PrivacyPage() {
   return (
@@ -6,7 +7,7 @@ export default function PrivacyPage() {
       <div className="max-w-2xl mx-auto">
         <Link href="/" className="inline-block mb-8">
           <span className="text-2xl font-bold text-[#3A3A3A] font-serif">
-            Feed<span className="text-[#C5A55A]">Bites</span>
+            常來<span className="text-[#C5A55A]">點</span>
           </span>
         </Link>
 
@@ -18,7 +19,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-bold mb-2">資料收集</h2>
             <p className="text-[#8A8585]">
-              FeedBites 僅收集提供服務所需的最少資料：
+              {BRAND_FULL} 僅收集提供服務所需的最少資料：
             </p>
             <ul className="list-disc pl-5 mt-2 space-y-1 text-[#8A8585]">
               <li>店長帳號：Email、店家名稱（透過 Google 登入或 Email 註冊）</li>
@@ -47,8 +48,17 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-bold mb-2">Cookie 與第三方服務</h2>
             <p className="text-[#8A8585]">
-              FeedBites 使用 Supabase Auth 管理登入狀態，可能使用 Google OAuth 進行身份驗證。
+              {BRAND_FULL} 使用 Supabase Auth 管理登入狀態，可能使用 Google OAuth 進行身份驗證。
               我們不使用追蹤型 Cookie 或廣告追蹤。
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-bold mb-2">常來點的登入與點數</h2>
+            <p className="text-[#8A8585]">
+              您用 LINE 或 Google 登入領取點數時，我們只取得該服務的使用者識別碼、顯示名稱與頭像，不取得您的好友、訊息、電話或 Email。
+              這些資料只用於記錄您在各店家的點數與餐券，不會提供給第三方。
+              店家只看得到您在該店的填答與點數紀錄。刪除請求處理方式同下方「資料刪除」。
             </p>
           </section>
 

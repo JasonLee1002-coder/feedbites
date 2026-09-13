@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { BASE_PATH, BRAND_FULL, CUSTOMER_BRAND } from '@/lib/brand'
 import {
   MessageSquareWarning, Bug, Frown, Lightbulb, HelpCircle, Send,
   Image as ImageIcon, X, Loader2, ChevronRight,
@@ -79,7 +80,7 @@ export default function FeedbackPage() {
 
   async function fetchReports() {
     try {
-      const res = await fetch('/feedbites/api/feedback');
+      const res = await fetch(`${BASE_PATH}/api/feedback`);
       if (res.ok) setReports(await res.json());
     } catch { /* ignore */ } finally {
       setLoading(false);
@@ -91,7 +92,7 @@ export default function FeedbackPage() {
     if (!text) return;
     setReplying(prev => ({ ...prev, [reportId]: true }));
     try {
-      const res = await fetch(`/feedbites/api/feedback/${reportId}/respond`, {
+      const res = await fetch(`${BASE_PATH}/api/feedback/${reportId}/respond`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text }),
@@ -110,7 +111,7 @@ export default function FeedbackPage() {
     if (!rating) return;
     setRatingSubmitting(prev => ({ ...prev, [reportId]: true }));
     try {
-      const res = await fetch(`/feedbites/api/feedback/${reportId}/rate`, {
+      const res = await fetch(`${BASE_PATH}/api/feedback/${reportId}/rate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rating, comment: ratingComment[reportId] || '' }),
@@ -133,7 +134,7 @@ export default function FeedbackPage() {
     if (selectedForDelete.size === 0) return;
     setDeleting(true);
     try {
-      const res = await fetch('/feedbites/api/feedback/delete', {
+      const res = await fetch(`${BASE_PATH}/api/feedback/delete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: Array.from(selectedForDelete) }),
@@ -151,7 +152,7 @@ export default function FeedbackPage() {
   async function handleDeleteSingle(id: string) {
     if (!window.confirm('確定要刪除這則回報嗎？')) return;
     try {
-      const res = await fetch('/feedbites/api/feedback/delete', {
+      const res = await fetch(`${BASE_PATH}/api/feedback/delete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: [id] }),
@@ -204,7 +205,7 @@ export default function FeedbackPage() {
 
     try {
       const catInfo = CATEGORIES.find(c => c.id === category);
-      const res = await fetch('/feedbites/api/feedback', {
+      const res = await fetch(`${BASE_PATH}/api/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -222,7 +223,7 @@ export default function FeedbackPage() {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('report_id', report.id);
-        await fetch('/feedbites/api/feedback/upload', { method: 'POST', body: formData });
+        await fetch(`${BASE_PATH}/api/feedback/upload`, { method: 'POST', body: formData });
       }
 
       setSubmitted(true);
@@ -561,7 +562,7 @@ export default function FeedbackPage() {
                   <span className="text-base">🛡️</span>
                 </motion.div>
                 <div>
-                  <h3 className="text-sm font-bold tracking-wide">FeedBites 服務儀表板</h3>
+                  <h3 className="text-sm font-bold tracking-wide">{BRAND_FULL} 服務儀表板</h3>
                   <p className="text-[10px] text-white/40">我們重視每一則回饋</p>
                 </div>
               </div>
@@ -862,7 +863,7 @@ export default function FeedbackPage() {
                         <div className="w-4 h-4 rounded-full bg-[#C5A55A]/20 flex items-center justify-center">
                           <span className="text-[8px]">💬</span>
                         </div>
-                        <span className="text-[10px] font-bold text-[#C5A55A]">FeedBites 餐飲顧問</span>
+                        <span className="text-[10px] font-bold text-[#C5A55A]">{CUSTOMER_BRAND} 餐飲顧問</span>
                         <span className="text-[9px] text-[#8A8585]">
                           {new Date(latestResponse.created_at).toLocaleDateString('zh-TW')}
                         </span>
@@ -1092,7 +1093,7 @@ export default function FeedbackPage() {
                                       <span className="text-[10px]">{isTeam ? '🍽️' : '💬'}</span>
                                     </div>
                                     <span className={`text-[10px] font-bold ${isTeam ? 'text-[#C5A55A]' : 'text-blue-600'}`}>
-                                      {isTeam ? 'FeedBites 餐飲顧問' : '我的回覆'}
+                                      {isTeam ? `${CUSTOMER_BRAND} 餐飲顧問` : '我的回覆'}
                                     </span>
                                     <span className="text-[9px] text-[#8A8585]">
                                       {new Date(resp.created_at).toLocaleString('zh-TW')}

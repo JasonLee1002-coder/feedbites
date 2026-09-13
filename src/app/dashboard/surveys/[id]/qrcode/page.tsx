@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import QrPrintClient from './QrPrintClient';
 import { getSelectedStore } from '@/lib/store-context';
+import { BASE_PATH } from '@/lib/brand';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -30,7 +31,7 @@ export default async function QrCodePage({ params }: PageProps) {
 
   if (!survey) notFound();
 
-  const publicUrl = `https://poc.mcstation.ai/feedbites/s/${survey.id}`;
+  const publicUrl = `https://poc.mcstation.ai${BASE_PATH}/s/${survey.id}`;
 
   return (
     <div className="p-4 lg:p-8 max-w-6xl mx-auto">
