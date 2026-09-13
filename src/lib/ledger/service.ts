@@ -1,7 +1,7 @@
 // 顧客帳本資料庫服務。所有會改餘額的寫入都在交易內，並以 advisory lock 鎖住「客人 × 店」。
 import { db } from '@/lib/db'
 import { customers, customer_identities, point_ledger, store_point_rules, vouchers, responses, surveys } from '@/lib/db/schema'
-import { and, desc, eq, gt, isNull, lte, sql } from 'drizzle-orm'
+import { and, desc, eq, gt, isNull, lte, or, sql } from 'drizzle-orm'
 import { createVoucherCode } from './code'
 import {
   addDays, addMonths, effectiveBalance, computeExpiryRows, mergeRules, taipeiDay,
@@ -33,11 +33,54 @@ async function loadRows(ex: Executor, customerId: string, storeId: string): Prom
   return rows.map(r => ({ ...r, id: String(r.id) }))
 }
 
-function voucherValues(t: VoucherTemplate, p: { customerId: string; storeId: string; costPoints: number }) {
+let generateVoucherCode: () => string = createVoucherCode
+
+// 只給測試用：固定代碼產生器以驗證撞號重試。傳 undefined 還原。
+export function setVoucherCodeGeneratorForTest(fn?: () => string) {
+  generateVoucherCode = fn ?? createVoucherCode
+}
+
+export const VOUCHER_CODE_ATTEMPTS = 5
+
+function isVoucherCodeConflict(err: unknown): boolean {
+  for (let e: unknown = err, i = 0; e && i < 5; e = (e as { cause?: unknown }).cause, i++) {
+    const pg = e as { code?: string; constraint_name?: string; constraint?: string }
+    if (pg.code === '23505' && (pg.constraint_name ?? pg.constraint) === 'vouchers_code_key') return true
+  }
+  return false
+}
+
+// 代碼撞號時換一組重試。每次嘗試包在 savepoint 裡，失敗不會讓外層交易作廢。
+async function insertVoucher(
+  tx: Tx,
+  t: VoucherTemplate,
+  p: { customerId: string; storeId: string; costPoints: number },
+  opts: { welcome: boolean },
+): Promise<VoucherRow | null> {
+  for (let attempt = 1; ; attempt++) {
+    const values = voucherValues(t, p, generateVoucherCode())
+    try {
+      return await tx.transaction(async sp => {
+        const q = sp.insert(vouchers).values(values)
+        const rows = opts.welcome
+          ? await q
+            .onConflictDoNothing({ target: [vouchers.customer_id, vouchers.store_id], where: sql`cost_points = 0` })
+            .returning()
+          : await q.returning()
+        return rows[0] ?? null
+      })
+    } catch (err) {
+      if (attempt < VOUCHER_CODE_ATTEMPTS && isVoucherCodeConflict(err)) continue
+      throw err
+    }
+  }
+}
+
+function voucherValues(t: VoucherTemplate, p: { customerId: string; storeId: string; costPoints: number }, code: string) {
   return {
     store_id: p.storeId,
     customer_id: p.customerId,
-    code: createVoucherCode(),
+    code,
     kind: t.kind,
     value: t.value,
     item_label: t.item_label,
@@ -82,7 +125,11 @@ export async function upsertCustomer(p: {
     if (existing) {
       await tx
         .update(customers)
-        .set({ display_name: p.displayName, picture_url: p.pictureUrl, updated_at: new Date() })
+        .set({
+          display_name: sql`COALESCE(${p.displayName}::text, ${customers.display_name})`,
+          picture_url: sql`COALESCE(${p.pictureUrl}::text, ${customers.picture_url})`,
+          updated_at: new Date(),
+        })
         .where(eq(customers.id, existing.customer_id))
       return existing.customer_id
     }
@@ -120,12 +167,12 @@ export async function awardSurveyCompleted(p: {
       .onConflictDoNothing()
       .returning({ id: point_ledger.id })
 
-    const issued = await tx
-      .insert(vouchers)
-      .values(voucherValues(rules.first_voucher, { customerId: p.customerId, storeId: p.storeId, costPoints: 0 }))
-      .onConflictDoNothing()
-      .returning()
-    const firstVoucher = issued[0] ?? null
+    const firstVoucher = await insertVoucher(
+      tx,
+      rules.first_voucher,
+      { customerId: p.customerId, storeId: p.storeId, costPoints: 0 },
+      { welcome: true },
+    )
 
     if (firstVoucher) {
       await tx.insert(point_ledger).values({
@@ -142,13 +189,18 @@ export async function awardSurveyCompleted(p: {
   })
 }
 
-// 認領：只認領「本次」這一筆、仍是匿名、且在 30 分鐘內送出的回答。
+// 認領：只認領「本次」這一筆、仍是匿名（或已是本人）、且在 30 分鐘內送出的回答。
+// 本人重試時會再跑一次發點，發點靠唯一約束保證不重複。
 export async function claimResponse(customerId: string, responseId: string, now: Date = new Date()) {
   const cutoff = new Date(now.getTime() - CLAIM_WINDOW_MS)
   const claimed = await db
     .update(responses)
     .set({ customer_id: customerId })
-    .where(and(eq(responses.id, responseId), isNull(responses.customer_id), gt(responses.submitted_at, cutoff)))
+    .where(and(
+      eq(responses.id, responseId),
+      or(isNull(responses.customer_id), eq(responses.customer_id, customerId)),
+      gt(responses.submitted_at, cutoff),
+    ))
     .returning({ survey_id: responses.survey_id, submitted_at: responses.submitted_at })
   if (!claimed.length) return null
 
@@ -215,10 +267,8 @@ export async function exchangeVoucher(customerId: string, storeId: string, catal
     if (balance < item.cost_points) {
       return { ok: false as const, reason: 'insufficient' as const, shortBy: item.cost_points - balance }
     }
-    const [voucher] = await tx
-      .insert(vouchers)
-      .values(voucherValues(item, { customerId, storeId, costPoints: item.cost_points }))
-      .returning()
+    const voucher = await insertVoucher(tx, item, { customerId, storeId, costPoints: item.cost_points }, { welcome: false })
+    if (!voucher) throw new Error('voucher insert returned no row')
     await tx.insert(point_ledger).values({
       customer_id: customerId,
       store_id: storeId,
@@ -232,26 +282,31 @@ export async function exchangeVoucher(customerId: string, storeId: string, catal
 }
 
 // 以單一條件式 UPDATE 的影響列數判斷，不做先查再改，並發下只有一個成功。
-export async function redeemVoucher(code: string, storeId: string, staffUserId: string): Promise<'ok' | 'not_found' | 'unavailable'> {
+export type RedeemResult = 'ok' | 'not_found' | 'used' | 'expired'
+
+export async function redeemVoucher(code: string, storeId: string, staffUserId: string): Promise<RedeemResult> {
   const normalized = code.trim().toUpperCase()
+  const now = new Date()
   const updated = await db
     .update(vouchers)
-    .set({ status: 'used', used_at: new Date(), used_by: staffUserId })
+    .set({ status: 'used', used_at: now, used_by: staffUserId })
     .where(and(
       eq(vouchers.code, normalized),
       eq(vouchers.store_id, storeId),
       eq(vouchers.status, 'active'),
-      gt(vouchers.expires_at, new Date()),
+      gt(vouchers.expires_at, now),
     ))
     .returning({ id: vouchers.id })
   if (updated.length) return 'ok'
 
-  const [exists] = await db
-    .select({ id: vouchers.id })
+  const [existing] = await db
+    .select({ status: vouchers.status, expires_at: vouchers.expires_at })
     .from(vouchers)
     .where(and(eq(vouchers.code, normalized), eq(vouchers.store_id, storeId)))
     .limit(1)
-  return exists ? 'unavailable' : 'not_found'
+  if (!existing) return 'not_found'
+  if (existing.status === 'active' && existing.expires_at.getTime() <= now.getTime()) return 'expired'
+  return 'used'
 }
 
 export async function runExpiry(now: Date = new Date()): Promise<number> {

@@ -17,7 +17,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ co
   try {
     const r = await redeemVoucher(code, store.id, session.user.id)
     if (r === 'ok') return NextResponse.json({ ok: true, request_id })
-    if (r === 'unavailable') return NextResponse.json({ error: '這張餐券已使用或已過期', request_id }, { status: 409 })
+    if (r === 'used') return NextResponse.json({ error: '這張餐券已經用過了', request_id }, { status: 409 })
+    if (r === 'expired') return NextResponse.json({ error: '這張餐券已過期', request_id }, { status: 409 })
     return NextResponse.json({ error: '找不到這張餐券', request_id }, { status: 404 })
   } catch (err) {
     logger.error('voucher.redeem.failed', { request_id, store_id: store.id }, err)
