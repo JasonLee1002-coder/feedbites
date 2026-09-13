@@ -179,7 +179,7 @@ answers 內 dish-group 的回答
 <tr><td>profile_field_added</td><td>每欄 20（生日、居住區、來店頻率、性別、年齡層）</td><td><code>customers.profile_awarded</code> 記錄，每欄一生一次</td></tr>
 <tr><td>wish_created</td><td>10</td><td>每 customer 每店每日最多 3 則；少於 4 個字不給</td></tr>
 <tr><td>wish_adopted</td><td>200</td><td>店長後台手動標記，每則願望一次</td></tr>
-<tr><td>voucher_redeemed</td><td>−(cost_points)</td><td>餘額不足拒絕</td></tr>
+<tr><td>voucher_exchanged</td><td>−(cost_points)</td><td>餘額不足拒絕；另有 voucher_issued（0 點）記錄見面禮券發放</td></tr>
 <tr><td>expired</td><td>−剩餘</td><td>每日 cron 掃 <code>expires_at &lt; now()</code> 的賺點行，扣未用餘額</td></tr>
 </table>
 <p><strong>到期。</strong>賺點行 12 個月到期。到期前 7 天，由平台 LINE 官方帳號推播提醒（見 §六）。麥當勞被罵最兇的就是點數默默過期，這條不可省。</p>
@@ -190,7 +190,7 @@ answers 內 dish-group 的回答
 <ul>
 <li><strong>匿名先填。</strong>掃 QR 進 <code>/s/[surveyId]</code> 不要求登入，沿用現有 <code>device_key</code>。</li>
 <li><strong>完成頁領點。</strong>完成頁出現「用 LINE 登入，領取 50 點與一張餐券」。登入成功後：把本次 response 的 <code>customer_id</code> 回填、寫 ledger、發首張券。只回填<strong>本次</strong>這一筆，不回溯同 device_key 的歷史匿名回答，避免把別人的手機填答歸到自己帳上。</li>
-<li><strong>LINE Login 實作。</strong>NextAuth v5 的 LINE provider，scope <code>profile openid</code>。顧客 session 用獨立 cookie 名稱（<code>fb_customer</code>），與店長的 Google session 互不影響；<code>src/lib/auth-allowlist.ts</code> 的 email 白名單只管店長端，顧客端不套。</li>
+<li><strong>LINE Login 實作。</strong>手寫 LINE Login v2.1 OAuth（start／callback 兩支路由），scope <code>profile openid</code>。不用 NextAuth 第二實例，因為會和店長端共用 <code>AUTH_URL</code>、basePath 與 <code>authjs.*</code> cookie。顧客 session 是 HMAC 簽章的獨立 cookie <code>fb_customer</code>；<code>src/lib/auth-allowlist.ts</code> 的 email 白名單只管店長端，顧客端不套。</li>
 <li><strong>LINE 內建瀏覽器。</strong>LINE Login 在 LINE 內開最順，這是選 LINE 而非 Google 的原因之一。既有的 <code>webview-detect</code> 提示只保留給店長端 Google 登入頁。</li>
 <li><strong>我的帳本頁</strong> <code>/w/[storeId]</code>：餘額、最近 10 筆進出、我的餐券（含 QR／代碼給店員看）、許願入口、補資料入口（每補一欄即時顯示加點）。</li>
 </ul>
