@@ -300,7 +300,7 @@ export default function MenuClient({ store, dishes }: { store: Store; dishes: Di
           Powered by {BRAND_FULL}
         </a>
         <p className="text-[10px] mt-1 tracking-widest" style={{ color: colors.textLight }}>
-          Bite. Rate. Save.
+          Eat. Earn. Eat again.
         </p>
       </footer>
 

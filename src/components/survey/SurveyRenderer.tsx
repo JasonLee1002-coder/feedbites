@@ -6,7 +6,7 @@ import confetti from 'canvas-confetti';
 import type { Question, ThemeColors, DiscountTier } from '@/types/survey';
 import { getFrame } from '@/lib/qr-frames';
 import { getTextureStyle } from '@/lib/textures';
-import { BRAND_FULL, BASE_PATH } from '@/lib/brand';
+import { BRAND_FULL, BASE_PATH, BRAND_ICON } from '@/lib/brand';
 
 const EMOJI_LABELS = ['😫', '😕', '😐', '😊', '🤩'];
 const EMOJI_TEXTS = ['不太行', '還好', '普通', '不錯', '超讚！'];
@@ -1012,7 +1012,7 @@ export default function SurveyRenderer({
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={ownerAvatarUrl} alt="副店長" className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-lg font-bold" style={{ color: colors.primary }}>F</span>
+                  <img src={BRAND_ICON} alt="" className="w-full h-full object-cover" />
                 )}
               </motion.div>
               {/* Sparkle */}
@@ -1707,7 +1707,7 @@ export default function SurveyRenderer({
                 </a>
               </span>
               <div className="text-[10px] mt-1" style={{ color: colors.textLight }}>
-                Bite. Rate. Save.
+                Eat. Earn. Eat again.
               </div>
             </div>
           </motion.div>

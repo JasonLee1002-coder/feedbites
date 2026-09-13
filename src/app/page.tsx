@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     canonical: `https://poc.mcstation.ai${BASE_PATH}`,
   },
   openGraph: {
-    title: `${BRAND_FULL} — 免費餐廳問卷系統｜Bite. Rate. Save.`,
+    title: `${BRAND_FULL} — 免費餐廳問卷系統｜Eat. Earn. Eat again.`,
     description: '高質感餐飲問卷，填完自動送折扣碼。5 種模板、QR Code 列印、即時數據分析。永久免費。',
     url: `https://poc.mcstation.ai${BASE_PATH}`,
   },

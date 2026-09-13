@@ -74,7 +74,7 @@ export default async function PublicSurveyPage({ params }: Props) {
             {BRAND_FULL}
           </a>
           <div className="text-[10px] mt-0.5 text-[#8A8585]">
-            Bite. Rate. Save.
+            Eat. Earn. Eat again.
           </div>
         </div>
       </div>

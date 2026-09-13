@@ -6,7 +6,7 @@ import { X, Send, Loader2, ChevronDown } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import confetti from 'canvas-confetti';
-import { BASE_PATH, BRAND_FULL, CUSTOMER_BRAND } from '@/lib/brand'
+import { BASE_PATH, BRAND_FULL, CUSTOMER_BRAND, BRAND_ICON } from '@/lib/brand'
 
 interface BubbleMessage {
   text: string;
@@ -257,7 +257,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
                         /* eslint-disable-next-line @next/next/no-img-element */
                         <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <span className="text-[9px] font-black text-[#FF8C00]" style={{ fontFamily: 'Georgia, serif' }}>F</span>
+                        <img src={BRAND_ICON} alt="" className="w-full h-full object-cover" />
                       )}
                     </div>
                   )}
@@ -284,7 +284,7 @@ export default function AiAssistant({ storeName = '', hasLogo = false, dishCount
               {chatLoading && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-2">
                   <div className="w-5 h-5 rounded-full bg-[#FF8C00]/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="text-[9px] font-black text-[#FF8C00]" style={{ fontFamily: 'Georgia, serif' }}>F</span>
+                    <img src={BRAND_ICON} alt="" className="w-full h-full object-cover" />
                   </div>
                   <div className="bg-[#FAF7F2] rounded-2xl rounded-tl-md px-4 py-3">
                     <div className="flex gap-1">

@@ -719,7 +719,7 @@ export default function DiscountCodeDisplay({
           className="text-[10px] mt-0.5"
           style={{ color: colors.textLight }}
         >
-          Bite. Rate. Save.
+          Eat. Earn. Eat again.
         </div>
       </motion.div>
 

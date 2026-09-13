@@ -163,7 +163,7 @@ export default function InvitePage() {
         {/* Footer */}
         <div className="text-center mt-6">
           <a href={`${BASE_PATH}/`} className="text-xs text-[#C5A55A] font-medium">{BRAND_FULL}</a>
-          <p className="text-[10px] text-[#8A8585] mt-0.5">Bite. Rate. Save.</p>
+          <p className="text-[10px] text-[#8A8585] mt-0.5">Eat. Earn. Eat again.</p>
         </div>
       </div>
     </div>

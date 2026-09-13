@@ -135,7 +135,7 @@ export default function HeroSection() {
         animate={{ opacity: 1, letterSpacing: '0.3em' }}
         transition={{ delay: 0.9, duration: 0.8 }}
       >
-        Bite. Rate. Save.
+        Eat. Earn. Eat again.
       </motion.p>
 
       {/* CTA Buttons */}

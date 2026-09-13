@@ -6,7 +6,7 @@ import { LogOut, Menu, Plus, LayoutDashboard, UtensilsCrossed, ClipboardList, Sp
 import { useState } from 'react';
 import { signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { BASE_PATH, CUSTOMER_BRAND } from '@/lib/brand'
+import { BASE_PATH, BRAND_ICON, CUSTOMER_BRAND } from '@/lib/brand'
 
 interface StoreInfo {
   id: string;
@@ -81,11 +81,11 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
       <div className="px-5 py-5 border-b border-white/[0.07]">
         <Link href="/dashboard" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/30">
-            <span className="text-white font-black text-sm">F</span>
+            <img src={BRAND_ICON} alt="" className="w-8 h-8 rounded-lg" />
           </div>
           <div>
-            <span className="text-white font-black text-lg tracking-tight">Feed<span className="text-orange-400">Bites</span></span>
-            <p className="text-white/30 text-[9px] font-medium tracking-widest uppercase leading-none">智慧餐飲問卷</p>
+            <span className="text-white font-black text-lg tracking-tight">常來<span className="text-orange-400">點</span></span>
+            <p className="text-white/30 text-[9px] font-medium tracking-widest uppercase leading-none">餐廳顧客帳本</p>
           </div>
         </Link>
       </div>
@@ -202,9 +202,9 @@ export default function Sidebar({ storeName, storeId, allStores, avatarUrl }: Si
         </button>
         <div className="ml-3 flex items-center gap-2">
           <div className="w-6 h-6 rounded-md bg-orange-500 flex items-center justify-center">
-            <span className="text-white font-black text-xs">F</span>
+            <img src={BRAND_ICON} alt="" className="w-6 h-6 rounded-md" />
           </div>
-          <span className="text-white font-black text-lg">Feed<span className="text-orange-400">Bites</span></span>
+          <span className="text-white font-black text-lg">常來<span className="text-orange-400">點</span></span>
         </div>
       </div>
 

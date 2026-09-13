@@ -7,7 +7,7 @@ export default function PrivacyPage() {
       <div className="max-w-2xl mx-auto">
         <Link href="/" className="inline-block mb-8">
           <span className="text-2xl font-bold text-[#3A3A3A] font-serif">
-            Feed<span className="text-[#C5A55A]">Bites</span>
+            常來<span className="text-[#C5A55A]">點</span>
           </span>
         </Link>
 

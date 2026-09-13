@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     'restaurant survey', 'customer feedback', 'dining survey',
   ],
   openGraph: {
-    title: `${BRAND_FULL} — 餐廳問卷系統｜Bite. Rate. Save.`,
+    title: `${BRAND_FULL} — 餐廳問卷系統｜Eat. Earn. Eat again.`,
     description: '免費餐飲問卷系統，高質感品牌問卷模板，填完自動送折扣碼。5 分鐘上線，永久免費。',
     type: 'website',
     url: siteUrl,
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
         url: `https://poc.mcstation.ai${BRAND_ICON}`,
         width: 1200,
         height: 630,
-        alt: `${BRAND_FULL} — Bite. Rate. Save.`,
+        alt: `${BRAND_FULL} — Eat. Earn. Eat again.`,
       },
     ],
   },

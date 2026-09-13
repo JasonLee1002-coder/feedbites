@@ -385,7 +385,7 @@ export async function PATCH(
         <tr>
           <td style="background:#faf7f4;padding:20px 32px;text-align:center;border-radius:0 0 24px 24px;border-top:1px solid #f0ebe5">
             <p style="margin:0 0 4px;color:#bbb;font-size:11px">此優惠券由 <strong style="color:#FF8C00">${BRAND_FULL}</strong> 智慧問卷系統產生</p>
-            <p style="margin:0;color:#ccc;font-size:10px">Bite · Rate · Save &nbsp;|&nbsp; ${today}</p>
+            <p style="margin:0;color:#ccc;font-size:10px">Eat · Earn · Eat again &nbsp;|&nbsp; ${today}</p>
           </td>
         </tr>
       </table>
