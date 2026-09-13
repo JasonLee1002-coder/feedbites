@@ -138,6 +138,10 @@ location /eatagain/ {
     proxy_cache_bypass \$http_upgrade;
 }
 
+location = /feedbites {
+    return 301 /eatagain/;
+}
+
 location /feedbites/ {
     rewrite ^/feedbites/(.*)\$ /eatagain/\$1 permanent;
 }
