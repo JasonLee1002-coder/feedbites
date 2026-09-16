@@ -1,0 +1,347 @@
+<title>常來點是連鎖的地基</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+  :root{
+    --ground:#FDF8F3; --paper:#FFFFFF; --ink:#2E1F16; --soft:#7A6455; --line:#EBDFD2;
+    --orange:#DB5620; --orange-soft:#FDEADF;
+    --green:#2C7A5B; --green-soft:#E1F1EA;
+    --slate:#3F5A73; --slate-soft:#E5EDF4;
+    --shadow:0 1px 0 rgba(46,31,22,.05), 0 12px 32px -18px rgba(46,31,22,.3);
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --ground:#181210; --paper:#241A15; --ink:#F6ECE3; --soft:#BCA695; --line:#3A2B22;
+    --orange:#FF854B; --orange-soft:#3B2016;
+    --green:#6FC9A2; --green-soft:#17322A;
+    --slate:#9DBBD6; --slate-soft:#1B2732;
+    --shadow:0 1px 0 rgba(0,0,0,.4), 0 12px 32px -18px rgba(0,0,0,.8);
+  }}
+  :root[data-theme="dark"]{
+    --ground:#181210; --paper:#241A15; --ink:#F6ECE3; --soft:#BCA695; --line:#3A2B22;
+    --orange:#FF854B; --orange-soft:#3B2016;
+    --green:#6FC9A2; --green-soft:#17322A;
+    --slate:#9DBBD6; --slate-soft:#1B2732;
+    --shadow:0 1px 0 rgba(0,0,0,.4), 0 12px 32px -18px rgba(0,0,0,.8);
+  }
+  *{box-sizing:border-box}
+  body{background:var(--ground);color:var(--ink);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:16px;line-height:1.75;padding-inline:20px;padding-block:44px 84px}
+  main{max-width:1020px;margin:0 auto;display:grid;gap:68px}
+  h1,h2,.display{font-family:"Huninn","Noto Sans TC",sans-serif;font-weight:400;text-wrap:balance}
+  h2{font-size:clamp(26px,3.4vw,36px);margin:0 0 8px}
+  .sub{color:var(--soft);margin:0 0 26px;font-size:17px;max-width:40em}
+  .mono{font-family:"JetBrains Mono",monospace}
+
+  /* hero */
+  .eyebrow{display:inline-flex;gap:10px;color:var(--orange);font-weight:700;font-size:13px;letter-spacing:.14em}
+  h1{font-size:clamp(34px,5.6vw,56px);line-height:1.14;margin:12px 0 16px}
+  h1 em{font-style:normal;color:var(--orange)}
+  .lede{color:var(--soft);font-size:18px;margin:0;max-width:44em}
+
+  /* backbone diagram */
+  .diagram{background:var(--paper);border:1px solid var(--line);border-radius:24px;padding:26px 20px 20px;box-shadow:var(--shadow);overflow-x:auto}
+  .diagram svg{display:block;width:100%;min-width:640px;height:auto}
+  .diagram text{font-family:"Noto Sans TC",sans-serif;fill:var(--ink)}
+  .diagram .pill-label{font-family:"Huninn",sans-serif;font-size:23px}
+  .diagram .pill-note{font-size:12.5px;fill:var(--soft)}
+  .diagram .base-label{font-family:"Huninn",sans-serif;font-size:30px;fill:#fff}
+  .diagram .base-note{font-size:14px;fill:rgba(255,255,255,.82)}
+  .cap{margin:14px 2px 0;font-size:13.5px;color:var(--soft)}
+
+  /* before after */
+  .compare{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .col{border-radius:20px;padding:24px;min-width:0}
+  .col.before{background:var(--paper);border:1px solid var(--line)}
+  .col.after{background:var(--orange-soft);border:1px solid transparent}
+  .col h3{margin:0 0 4px;font-family:"Huninn",sans-serif;font-weight:400;font-size:21px}
+  .col .tag{font-family:"JetBrains Mono",monospace;font-size:11.5px;letter-spacing:.1em;color:var(--soft)}
+  .col.after .tag{color:var(--orange)}
+  .col ul{margin:14px 0 0;padding-left:0;list-style:none;display:grid;gap:10px}
+  .col li{display:grid;grid-template-columns:20px 1fr;gap:10px;font-size:15px;line-height:1.6}
+  .col li i{font-style:normal;color:var(--soft);text-align:center}
+  .col.after li i{color:var(--orange)}
+
+  /* currency */
+  .levers{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:14px}
+  .lever{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:20px;display:grid;gap:10px;min-width:0}
+  .lever .ic{width:44px;height:44px;color:var(--orange)}
+  .lever h3{margin:0;font-size:17px;font-weight:700;line-height:1.4}
+  .lever p{margin:0;font-size:14px;color:var(--soft);line-height:1.6}
+  .lever .who{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.08em;color:var(--soft);border-top:1px dashed var(--line);padding-top:10px}
+
+  /* esg flows */
+  .flows{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .flow{background:var(--green-soft);border-radius:20px;padding:24px;display:grid;gap:12px;min-width:0}
+  .flow .ic{width:48px;height:48px;color:var(--green)}
+  .flow h3{margin:0;font-family:"Huninn",sans-serif;font-weight:400;font-size:22px}
+  .flow p{margin:0;font-size:14.5px;color:var(--soft);line-height:1.65}
+  .flow .out{background:var(--paper);border-radius:12px;padding:12px 14px;font-size:13.5px;line-height:1.5}
+  .flow .out b{display:block;font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:.06em;color:var(--green);margin-bottom:3px}
+
+  /* hq sheets */
+  .sheets{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--line);border-radius:20px;overflow:hidden;background:var(--paper)}
+  .sheet{padding:24px;border-right:1px solid var(--line);display:grid;gap:8px;min-width:0}
+  .sheet:last-child{border-right:0}
+  .sheet .num{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--orange);letter-spacing:.1em}
+  .sheet h3{margin:0;font-size:19px;font-weight:700;line-height:1.35}
+  .sheet p{margin:0;font-size:14.5px;color:var(--soft);line-height:1.6}
+  .sheet .to{font-size:13px;color:var(--ink);background:var(--slate-soft);border-radius:10px;padding:8px 12px;margin-top:4px}
+
+  /* honesty */
+  .honesty{background:var(--ink);color:var(--ground);border-radius:24px;padding:32px;display:grid;grid-template-columns:auto 1fr;gap:26px;align-items:start}
+  .honesty svg{width:60px;height:60px;color:var(--orange)}
+  .honesty h2{color:var(--ground);margin-bottom:10px}
+  .honesty p{margin:0 0 12px;opacity:.86;font-size:16px;max-width:46em}
+  .honesty p:last-child{margin-bottom:0}
+  .honesty b{color:var(--orange)}
+
+  /* timeline */
+  .phases{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .phase{border-radius:18px;padding:22px;display:grid;gap:6px;min-width:0;border:1px solid var(--line);background:var(--paper)}
+  .phase.live{background:var(--orange-soft);border-color:transparent}
+  .phase.esg{background:var(--green-soft);border-color:transparent}
+  .phase .when{font-family:"JetBrains Mono",monospace;font-size:11.5px;letter-spacing:.1em;color:var(--soft)}
+  .phase.live .when{color:var(--orange)}
+  .phase.esg .when{color:var(--green)}
+  .phase h3{margin:0;font-size:18px;font-weight:700;line-height:1.35}
+  .phase p{margin:0;font-size:14px;color:var(--soft);line-height:1.6}
+
+  @media (max-width:860px){
+    .compare,.flows,.sheets,.phases{grid-template-columns:1fr}
+    .sheet{border-right:0;border-bottom:1px solid var(--line)}
+    .sheet:last-child{border-bottom:0}
+    .honesty{grid-template-columns:1fr}
+  }
+</style>
+
+<main>
+
+  <header>
+    <div class="eyebrow">常來點　EATAGAIN</div>
+    <h1>五套系統各自為政，<br>少的是<em>同一個客人</em></h1>
+    <p class="lede">會員、點數、QR 點餐、智能取餐櫃、ESG 慈善，在連鎖餐飲業向來是五個分開發包的專案、五套對不起來的資料。常來點不是第六套，它是那五套共用的地基：一個客人身分，一本只能追加的點數帳。</p>
+  </header>
+
+  <!-- BACKBONE -->
+  <section>
+    <div class="diagram">
+      <svg viewBox="0 0 900 430" role="img" aria-label="五個應用站在常來點這個地基上">
+        <!-- pillars -->
+        <g>
+          <!-- 1 會員 -->
+          <rect x="35" y="30" width="150" height="190" rx="18" fill="var(--paper)" stroke="var(--line)" stroke-width="2"/>
+          <g transform="translate(88 62)" fill="none" stroke="var(--orange)" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="22" cy="14" r="11"/><path d="M2 46c2-13 10-19 20-19s18 6 20 19"/>
+          </g>
+          <text x="110" y="160" text-anchor="middle" class="pill-label">會員</text>
+          <text x="110" y="184" text-anchor="middle" class="pill-note">一個帳號</text>
+          <text x="110" y="202" text-anchor="middle" class="pill-note">走遍所有門市</text>
+          <path d="M110 220 V280" stroke="var(--orange)" stroke-width="3" stroke-dasharray="6 6"/>
+
+          <!-- 2 點數 -->
+          <rect x="205" y="30" width="150" height="190" rx="18" fill="var(--paper)" stroke="var(--line)" stroke-width="2"/>
+          <g transform="translate(258 60)" fill="none" stroke="var(--orange)" stroke-width="3.4" stroke-linecap="round">
+            <circle cx="22" cy="22" r="20"/><path d="M22 9v26M15 15h10a6 6 0 0 1 0 12H15"/>
+          </g>
+          <text x="280" y="160" text-anchor="middle" class="pill-label">點數</text>
+          <text x="280" y="184" text-anchor="middle" class="pill-note">客人的每個動作</text>
+          <text x="280" y="202" text-anchor="middle" class="pill-note">都換成同一種貨幣</text>
+          <path d="M280 220 V280" stroke="var(--orange)" stroke-width="3" stroke-dasharray="6 6"/>
+
+          <!-- 3 QR 點餐 -->
+          <rect x="375" y="30" width="150" height="190" rx="18" fill="var(--paper)" stroke="var(--line)" stroke-width="2"/>
+          <g transform="translate(428 58)" fill="none" stroke="var(--slate)" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="0" y="0" width="17" height="17" rx="3"/><rect x="27" y="0" width="17" height="17" rx="3"/><rect x="0" y="27" width="17" height="17" rx="3"/><path d="M27 29h7M40 29v15M27 40h7"/>
+          </g>
+          <text x="450" y="160" text-anchor="middle" class="pill-label">QR 點餐</text>
+          <text x="450" y="184" text-anchor="middle" class="pill-note">客人自己點</text>
+          <text x="450" y="202" text-anchor="middle" class="pill-note">櫃台不用站人</text>
+          <path d="M450 220 V280" stroke="var(--orange)" stroke-width="3" stroke-dasharray="6 6"/>
+
+          <!-- 4 智能櫃 -->
+          <rect x="545" y="30" width="150" height="190" rx="18" fill="var(--paper)" stroke="var(--line)" stroke-width="2"/>
+          <g transform="translate(598 58)" fill="none" stroke="var(--slate)" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="0" y="0" width="44" height="46" rx="4"/><path d="M22 0v46M0 23h44"/><circle cx="16" cy="11" r="1.6"/><circle cx="16" cy="34" r="1.6"/>
+          </g>
+          <text x="620" y="160" text-anchor="middle" class="pill-label">智能櫃</text>
+          <text x="620" y="184" text-anchor="middle" class="pill-note">自己取餐</text>
+          <text x="620" y="202" text-anchor="middle" class="pill-note">不必等、不用碰面</text>
+          <path d="M620 220 V280" stroke="var(--orange)" stroke-width="3" stroke-dasharray="6 6"/>
+
+          <!-- 5 ESG -->
+          <rect x="715" y="30" width="150" height="190" rx="18" fill="var(--paper)" stroke="var(--line)" stroke-width="2"/>
+          <g transform="translate(768 58)" fill="none" stroke="var(--green)" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 44s-19-11-19-25a10 10 0 0 1 19-4 10 10 0 0 1 19 4c0 14-19 25-19 25z"/>
+          </g>
+          <text x="790" y="160" text-anchor="middle" class="pill-label">ESG 慈善</text>
+          <text x="790" y="184" text-anchor="middle" class="pill-note">捐點、惜食</text>
+          <text x="790" y="202" text-anchor="middle" class="pill-note">數字可稽核</text>
+          <path d="M790 220 V280" stroke="var(--green)" stroke-width="3" stroke-dasharray="6 6"/>
+        </g>
+
+        <!-- base slab -->
+        <rect x="35" y="282" width="830" height="118" rx="22" fill="var(--orange)"/>
+        <text x="72" y="330" class="base-label">常來點</text>
+        <text x="72" y="360" class="base-note">一個客人身分 ＋ 一本只能追加的點數帳</text>
+        <text x="72" y="382" class="base-note">每一次互動都留下一行有時間的紀錄</text>
+        <g transform="translate(760 306)" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" opacity=".92">
+          <path d="M8 44V22a14 14 0 0 1 28 0v22l6 6H2z"/><path d="M16 50h12"/>
+        </g>
+      </svg>
+      <p class="cap">五根柱子各自都能單獨賣。但少了下面那塊，每根柱子產生的資料都對不起來，也接不到同一個人身上。</p>
+    </div>
+  </section>
+
+  <!-- BEFORE / AFTER -->
+  <section>
+    <h2>同樣五套系統，差別在有沒有地基</h2>
+    <p class="sub">這不是功能多寡的差別，是資料能不能接在一起的差別。</p>
+    <div class="compare">
+      <div class="col before">
+        <div class="tag">現在的連鎖店</div>
+        <h3>四座孤島</h3>
+        <ul>
+          <li><i>·</i>POS 知道賣了什麼，不知道賣給誰</li>
+          <li><i>·</i>取餐櫃知道幾點被打開，不知道是誰來拿</li>
+          <li><i>·</i>問卷知道有人抱怨，不知道他還會不會再來</li>
+          <li><i>·</i>ESG 報告只能用估算，拿不出原始紀錄</li>
+          <li><i>·</i>總部要看全貌，得跟三個廠商各要一份報表</li>
+        </ul>
+      </div>
+      <div class="col after">
+        <div class="tag">接上常來點之後</div>
+        <h3>一條線串起來</h3>
+        <ul>
+          <li><i>→</i>同一個客人，從第一次掃碼到第十次回店都認得</li>
+          <li><i>→</i>他點了什麼、幾點來、自己取餐還是等人送，都在同一本帳</li>
+          <li><i>→</i>意見和回訪連得起來，才知道改了有沒有用</li>
+          <li><i>→</i>捐了多少、救了幾份剩食，每一筆都有時間戳</li>
+          <li><i>→</i>總部一個後台看完所有分店</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- POINTS AS ONE CURRENCY -->
+  <section>
+    <h2>點數是唯一的共同語言</h2>
+    <p class="sub">一種貨幣，可以買到四種客人行為。這是連鎖總部手上最便宜的方向盤。</p>
+    <div class="levers">
+      <div class="lever">
+        <svg class="ic" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 20L24 6l18 14"/><path d="M11 17v25h26V17"/><path d="M19 42V30h10v12"/></svg>
+        <h3>讓他再回來</h3>
+        <p>點數換餐券，餐券只能在店裡用掉。回訪不靠廣告，靠他手上那張券。</p>
+        <div class="who">回訪率</div>
+      </div>
+      <div class="lever">
+        <svg class="ic" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="36" height="36" rx="4"/><path d="M24 6v36M6 24h36"/><circle cx="15" cy="15" r="1.8"/><circle cx="33" cy="33" r="1.8"/></svg>
+        <h3>讓他自己來</h3>
+        <p>自助取餐加碼給點。客人不是被迫自助，是為了多拿點數自願自助。</p>
+        <div class="who">每人時營收</div>
+      </div>
+      <div class="lever">
+        <svg class="ic" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="4" width="30" height="40" rx="5"/><path d="M17 16h14M17 24h14M17 32h8"/></svg>
+        <h3>讓他先點好</h3>
+        <p>線上訂餐送點，尖峰人流往前挪。廚房排程從「被動接單」變成「已知訂單」。</p>
+        <div class="who">尖峰負載</div>
+      </div>
+      <div class="lever">
+        <svg class="ic" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M24 42S6 31 6 19a9 9 0 0 1 18-4 9 9 0 0 1 18 4c0 12-18 23-18 23z"/></svg>
+        <h3>讓他捐出去</h3>
+        <p>點數可以捐給公益，不換餐券。對客人是零成本的好事，對總部是可稽核的數字。</p>
+        <div class="who">ESG 原始數據</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ESG -->
+  <section>
+    <h2>ESG 不是加上去的公關，是帳本的副產品</h2>
+    <p class="sub">連鎖總部要對董事會、對加盟主、對通路夥伴交代永續作為。難的從來不是做，是拿得出可查證的數字。三條流都從同一本帳長出來。</p>
+    <div class="flows">
+      <div class="flow">
+        <svg class="ic" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="18"/><path d="M24 12v24M17 18h10a6 6 0 0 1 0 12H17"/></svg>
+        <h3>客人捐點</h3>
+        <p>客人把手上的點數捐給指定公益夥伴，換算成實際金額或實物。他不必掏錢，只是把本來要換餐券的點數換個用途。</p>
+        <div class="out"><b>可報數字</b>捐出點數、換算金額、參與人數</div>
+      </div>
+      <div class="flow">
+        <svg class="ic" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8v12a6 6 0 0 0 12 0V8"/><path d="M20 26v14"/><path d="M36 8c-3 4-4 9-4 14s1 10 4 14"/></svg>
+        <h3>店家配捐</h3>
+        <p>客人捐一點，店家配一點，總部再配一點。三方各出一份，帳本自動分開記三筆，誰出了多少一目了然。</p>
+        <div class="out"><b>可報數字</b>各層級配捐金額、參與門市數</div>
+      </div>
+      <div class="flow">
+        <svg class="ic" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 18h28l-3 24H13z"/><path d="M18 18V12a6 6 0 0 1 12 0v6"/><path d="M8 8l6 4M40 8l-6 4"/></svg>
+        <h3>剩食變惜食券</h3>
+        <p>快過期的餐點做成低價惜食券，放進智能櫃讓客人自己取。不用留人顧，也不必當垃圾丟掉。</p>
+        <div class="out"><b>可報數字</b>救回份數、避免的廢棄重量</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HQ -->
+  <section>
+    <h2>總部拿到的是三張表</h2>
+    <p class="sub">這三張表，是總部對董事會、對加盟主、對通路夥伴說話時手上要有的東西。少了地基，三張表都只能用估的。</p>
+    <div class="sheets">
+      <div class="sheet">
+        <div class="num">01</div>
+        <h3>客人資產表</h3>
+        <p>全品牌有多少個真實會員、他們多久回來一次、哪個時段哪群人吃什麼。這是加盟談判和展店選址的底氣。</p>
+        <div class="to">講給誰聽：董事會、投資人</div>
+      </div>
+      <div class="sheet">
+        <div class="num">02</div>
+        <h3>人力效率表</h3>
+        <p>自助點餐與自助取餐佔比多少、省下多少櫃台人時、每人時營收變化。AI 勞動力不是口號，是這張表上的數字。</p>
+        <div class="to">講給誰聽：加盟主、店長</div>
+      </div>
+      <div class="sheet">
+        <div class="num">03</div>
+        <h3>ESG 數據表</h3>
+        <p>捐出多少、救回多少份剩食、少用多少次性包裝。每個數字都能點回原始紀錄，經得起查。</p>
+        <div class="to">講給誰聽：通路、政府標案、永續報告書</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HONESTY -->
+  <section class="honesty">
+    <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M32 6l22 9v16c0 15-10 24-22 27C20 55 10 46 10 31V15z"/><path d="M22 32l7 7 14-14"/></svg>
+    <div>
+      <h2>為什麼敢把 ESG 數字拿出去</h2>
+      <p>因為<b>點數帳只能追加，不能修改</b>。每一筆捐出、每一份救回的剩食、每一次自助取餐，都是一行帶時間戳的紀錄，事後改不掉。要查就攤開來查。</p>
+      <p>我們不用估算值報 ESG。<b>算不出來的就不寫</b>，寧可數字小，也不要一個查下去站不住的漂亮數字。永續報告最貴的代價，是被抓到一個編的數字。</p>
+    </div>
+  </section>
+
+  <!-- PHASES -->
+  <section>
+    <h2>疊上去的順序</h2>
+    <p class="sub">地基先做好，上面四根柱子可以按連鎖自己的節奏加。</p>
+    <div class="phases">
+      <div class="phase live">
+        <div class="when">已上線</div>
+        <h3>會員＋點數</h3>
+        <p>掃碼、問卷、LINE 登入、點數、餐券、店員核銷。地基完成。</p>
+      </div>
+      <div class="phase">
+        <div class="when">第二期</div>
+        <h3>QR 線上訂餐</h3>
+        <p>訂單接上同一個客人，消費送點，尖峰往前挪。</p>
+      </div>
+      <div class="phase">
+        <div class="when">第三期</div>
+        <h3>智能取餐櫃</h3>
+        <p>自助取餐加碼給點，櫃台人力下降，數字進人力效率表。</p>
+      </div>
+      <div class="phase esg">
+        <div class="when">任一期都能疊</div>
+        <h3>ESG 慈善</h3>
+        <p>捐點與配捐現在就能做；惜食券要等智能櫃到位才完整。</p>
+      </div>
+    </div>
+  </section>
+
+</main>
