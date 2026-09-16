@@ -42,3 +42,11 @@ next-env.d.ts
 
 .vercel
 scripts/
+
+# playwright / 一次性驗證腳本
+/test-results/
+/simulate_v2.js
+/verify_fix.js
+
+# AI 生圖的 log，圖檔本身留著
+docs/brand/logo-candidates/**/*.log
